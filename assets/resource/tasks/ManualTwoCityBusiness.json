@@ -64,6 +64,7 @@
                 "ManualTwoCityTargetParams",
                 "ManualTwoCityRunMode",
                 "ManualTwoCityAccountProfileReadMode",
+                "ManualTwoCityAccountProfileSmartInterval",
                 "ManualTwoCityAutoImpactDrill",
                 "ManualTwoCityAutoSpeedProjectile",
                 "ManualTwoCityAutoDrink",
@@ -1029,6 +1030,58 @@
                         "ManualTwoCityBusinessSetAccountProfileReadMode": {
                             "custom_action_param": {
                                 "account_profile_read_mode": "none"
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "ManualTwoCityAccountProfileSmartInterval": {
+            "type": "select",
+            "label": "智能扫描间隔",
+            "description": "仅影响账号配置读取模式为智能读取时的内置扫描频率；全部读取会忽略该间隔并强制读取。",
+            "default_case": "daily",
+            "cases": [
+                {
+                    "name": "daily",
+                    "label": "每天",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetAccountProfileSmartInterval": {
+                            "custom_action_param": {
+                                "account_profile_smart_scan_interval": "daily"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "every_3_days",
+                    "label": "每3天",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetAccountProfileSmartInterval": {
+                            "custom_action_param": {
+                                "account_profile_smart_scan_interval": "every_3_days"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "weekly",
+                    "label": "每周",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetAccountProfileSmartInterval": {
+                            "custom_action_param": {
+                                "account_profile_smart_scan_interval": "weekly"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "monthly",
+                    "label": "每月",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetAccountProfileSmartInterval": {
+                            "custom_action_param": {
+                                "account_profile_smart_scan_interval": "monthly"
                             }
                         }
                     }

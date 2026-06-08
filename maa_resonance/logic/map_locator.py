@@ -42,7 +42,7 @@ NAV_TARGET_Y_MAX = 585
 NAV_TARGET_CENTER_X = (NAV_TARGET_X_MIN + NAV_TARGET_X_MAX) // 2
 NAV_TARGET_CENTER_Y = (NAV_TARGET_Y_MIN + NAV_TARGET_Y_MAX) // 2
 MIN_COORDINATE_DRAG_DISTANCE = 120
-MAX_COORDINATE_DRAG_DISTANCE = 240
+MAX_COORDINATE_DRAG_DISTANCE = 420
 
 
 @dataclass(frozen=True)
@@ -425,7 +425,7 @@ def score_transform(
                 else:
                     rounded = rounded_point(target_point)
                     if is_valid_map_point(rounded):
-                        score -= min(220, target_distance * 0.6)
+                        score -= min(360, target_distance * 1.0)
     return score, matches
 
 
@@ -442,6 +442,7 @@ def locate_candidates(
 ) -> MapLocateResult | None:
     stations = stations or load_world_stations()
     best: MapLocateResult | None = None
+    best_reliable: MapLocateResult | None = None
     scales = np.arange(scale_min, scale_max + scale_step / 2, scale_step)
     for candidate in candidates:
         cx, cy = candidate
@@ -474,20 +475,29 @@ def locate_candidates(
                 )
                 if best is None or result.score > best.score:
                     best = result
+                if is_reliable_location(result) and (
+                    best_reliable is None or result.score > best_reliable.score
+                ):
+                    best_reliable = result
 
     if not best:
         return None
-    candidate_xs = [match.candidate[0] for match in best.matches]
-    candidate_ys = [match.candidate[1] for match in best.matches]
+    if is_reliable_location(best):
+        return best
+    return best_reliable
+
+
+def is_reliable_location(result: MapLocateResult) -> bool:
+    candidate_xs = [match.candidate[0] for match in result.matches]
+    candidate_ys = [match.candidate[1] for match in result.matches]
+    if not candidate_xs or not candidate_ys:
+        return False
     has_stable_spread = max(candidate_xs) - min(candidate_xs) >= 180 and max(candidate_ys) - min(candidate_ys) >= 80
-    reliable = (
-        (best.match_count >= 5 and best.mean_error <= 6.0)
-        or (best.match_count >= 4 and best.mean_error <= 3.0)
-        or (best.match_count >= 3 and best.mean_error <= 1.2 and has_stable_spread)
+    return (
+        (result.match_count >= 5 and result.mean_error <= 6.0)
+        or (result.match_count >= 4 and result.mean_error <= 3.0)
+        or (result.match_count >= 3 and result.mean_error <= 1.2 and has_stable_spread)
     )
-    if not reliable:
-        return None
-    return best
 
 
 def locate_map_view_from_candidates(
@@ -526,7 +536,7 @@ def projected_target_drag_plan(point: tuple[int, int], drag_distance: int = 520)
     y_weight = abs(y_delta) / (NAV_TARGET_Y_MAX - NAV_TARGET_Y_MIN)
     if x_weight >= y_weight:
         direction = "east" if x_delta > 0 else "west"
-        distance = clamp_drag_distance(abs(x_delta) * 0.38, drag_distance)
+        distance = clamp_drag_distance(abs(x_delta) * 0.45, drag_distance)
     else:
         direction = "south" if y_delta > 0 else "north"
         distance = clamp_drag_distance(abs(y_delta) * 0.65, drag_distance)

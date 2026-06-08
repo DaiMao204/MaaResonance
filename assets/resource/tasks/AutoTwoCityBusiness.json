@@ -68,6 +68,7 @@
                 "AutoTwoCityWulinyuanPriority",
                 "ManualTwoCityRunMode",
                 "ManualTwoCityAccountProfileReadMode",
+                "ManualTwoCityAccountProfileSmartInterval",
                 "ManualTwoCityAutoImpactDrill",
                 "ManualTwoCityAutoSpeedProjectile",
                 "ManualTwoCityAutoDrink",

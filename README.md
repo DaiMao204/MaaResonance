@@ -2,8 +2,6 @@
 
 <div align="center">
 
-<img alt="LOGO" src="https://cdn.jsdelivr.net/gh/MaaAssistantArknights/design@main/v1/icons/maa-logo_512x512.png" width="256" height="256" />
-
 # MaaResonance
 
 基于 MaaFramework 全新架构的 雷索纳斯 小助手。图像识别 + 模拟控制，解放双手！  
@@ -26,6 +24,8 @@
 <div align="center">
 
 [简体中文](./README.md)
+
+[已有 Mirror酱 CDK？前往 Mirror酱高速下载](https://mirrorchyan.com/zh/projects?rid=MaaResonance)
 
 </div>
 

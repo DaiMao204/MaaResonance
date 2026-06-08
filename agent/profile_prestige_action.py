@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import calendar
 import json
 import math
 import os
@@ -11,6 +12,9 @@ import time
 import traceback
 import urllib.error
 import urllib.request
+from datetime import date
+from datetime import datetime
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
@@ -85,9 +89,26 @@ MANUAL_TWO_CITY_RUN_MODE_UNTIL_FATIGUE_EXHAUSTED = "until_fatigue_exhausted"
 MANUAL_TWO_CITY_ACCOUNT_READ_SMART = "smart"
 MANUAL_TWO_CITY_ACCOUNT_READ_FULL = "full"
 MANUAL_TWO_CITY_ACCOUNT_READ_NONE = "none"
+MANUAL_TWO_CITY_SMART_SCAN_DAILY = "daily"
+MANUAL_TWO_CITY_SMART_SCAN_EVERY_3_DAYS = "every_3_days"
+MANUAL_TWO_CITY_SMART_SCAN_WEEKLY = "weekly"
+MANUAL_TWO_CITY_SMART_SCAN_MONTHLY = "monthly"
+MANUAL_TWO_CITY_SMART_SCAN_INTERVAL_DAYS = {
+    MANUAL_TWO_CITY_SMART_SCAN_DAILY: 1,
+    MANUAL_TWO_CITY_SMART_SCAN_EVERY_3_DAYS: 3,
+    MANUAL_TWO_CITY_SMART_SCAN_WEEKLY: 7,
+    MANUAL_TWO_CITY_SMART_SCAN_MONTHLY: 30,
+}
+MANUAL_TWO_CITY_SMART_SCAN_INTERVAL_LABELS = {
+    MANUAL_TWO_CITY_SMART_SCAN_DAILY: "每天",
+    MANUAL_TWO_CITY_SMART_SCAN_EVERY_3_DAYS: "每 3 天",
+    MANUAL_TWO_CITY_SMART_SCAN_WEEKLY: "每周",
+    MANUAL_TWO_CITY_SMART_SCAN_MONTHLY: "每月",
+}
 MANUAL_TWO_CITY_TERMINAL_ONE_ROUND_COMPLETE = "one_round_complete"
 MANUAL_TWO_CITY_TERMINAL_FATIGUE_EXHAUSTED = "fatigue_exhausted"
 MANUAL_TWO_CITY_TERMINAL_FAILED = "failed"
+MANUAL_TWO_CITY_FATIGUE_SAFETY_BUFFER = 50
 BUY_BOOK_MAX_PER_BATCH = 10
 BUY_BOOK_TOOL_TARGET = (1082, 104)
 BUY_BOOK_MENU_TARGET = (1082, 162)
@@ -107,6 +128,7 @@ BUY_CART_SELECTED_ROI = [860, 80, 400, 90]
 BUY_GOODS_LIST_ROI = [500, 105, 430, 585]
 BUY_PAGE_READY_TEXTS = ["预计买入", "全部买入", "全部取消"]
 BUY_PAGE_CARGO_LOAD_ROI = [880, 360, 390, 85]
+BUY_PAGE_CARGO_LOAD_PROBE_ROI = [1070, 345, 210, 120]
 TRADE_SWITCH_TO_SELL_ROI = [0, 600, 430, 100]
 TRADE_SWITCH_TO_SELL_TARGET = (336, 669)
 TRADE_SWITCH_TO_BUY_ROI = [0, 600, 430, 100]
@@ -272,9 +294,11 @@ FATIGUE_HUASHI_FALLBACK_TARGET = (900, 613)
 FATIGUE_HUASHI_SHOP_PROMPT_TEXTS = ["购买次数不足", "月度商会支援礼包", "商会支援礼包", "前往购买"]
 FATIGUE_HUASHI_NOTICE_TEXTS = ["本次消耗", "桦石", "恢复", "疲劳"]
 FATIGUE_HUASHI_CANCEL_TARGET = (345, 503)
-FATIGUE_DRINK_INFO_TARGET = (1198, 343)
+FATIGUE_DRINK_INFO_ANCHOR_TEXTS = ["前往休息区", "REST AREA", "RESTAREA", "休息区"]
 FATIGUE_DRINK_INFO_DISMISS_TARGET = (640, 650)
 FATIGUE_DRINK_INFO_TEXTS = ["剩余次数", "剩余", "次数", "今日", "每日", "喝酒", "饮酒", r"\d+\s*/\s*\d+"]
+FATIGUE_DRINK_INFO_COUNT_KEYWORDS = ["银枝气泡水", "气泡水", "免材料次数", "材料次数", "免费次数", "剩余次数", "休息区"]
+FATIGUE_DRINK_INFO_RATIO_RE = re.compile(r"(\d{1,2})\s*[/／|｜丨\\lI]\s*(\d{1,2})")
 FATIGUE_DRINK_SKIP_CONFIRM_CHECKBOX_TARGET = (562, 670)
 FATIGUE_DRINK_SKIP_CONFIRM_BUTTON_TARGET = (963, 505)
 FATIGUE_DRINK_REPEAT_CONFIRM_CHECKBOX_TARGET = (580, 672)
@@ -1040,6 +1064,8 @@ def _profile_result_from_account_config(payload: dict[str, Any]) -> dict[str, An
         "uid": payload.get("uid"),
         "completed_parts": list(payload.get("completed_parts") or []),
     }
+    if isinstance(payload.get("account_profile_read"), dict):
+        result["account_profile_read"] = copy.deepcopy(payload.get("account_profile_read") or {})
     if trade.get("cargo_capacity") is not None:
         result["cargo_capacity"] = trade.get("cargo_capacity")
     if isinstance(trade.get("prestige_by_city"), dict):
@@ -1127,6 +1153,10 @@ def _merge_profile_result(previous: dict[str, Any], current: dict[str, Any]) -> 
             )
         )
         merged["product_unlock_status_by_city"] = _locked_product_status_by_city(merged["product_status_by_city"])
+    if isinstance(current.get("account_profile_read"), dict):
+        merged["account_profile_read"] = copy.deepcopy(current.get("account_profile_read") or {})
+    elif isinstance(merged.get("account_profile_read"), dict):
+        merged["account_profile_read"] = copy.deepcopy(merged.get("account_profile_read") or {})
     merged["completed_parts"] = sorted(set(merged.get("completed_parts") or []) | completed)
     merged["profile_read_run_id"] = current.get("profile_read_run_id") or merged.get("profile_read_run_id")
     return merged
@@ -1171,7 +1201,7 @@ def _compact_account_profile(result: dict[str, Any], *, uid: str) -> dict[str, A
         for key, value in planner.items()
         if value not in ({}, [], None)
     }
-    return {
+    payload = {
         "version": 1,
         "uid": uid,
         "updated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -1188,6 +1218,9 @@ def _compact_account_profile(result: dict[str, Any], *, uid: str) -> dict[str, A
         },
         "planner": planner,
     }
+    if isinstance(result.get("account_profile_read"), dict):
+        payload["account_profile_read"] = copy.deepcopy(result.get("account_profile_read") or {})
+    return payload
 
 
 def _save_unified_account_profile(partial_result: dict[str, Any], *, task_entry: str) -> str:
@@ -2472,12 +2505,14 @@ class ManualTwoCityBusinessCalculateAction(CustomAction):
         )
         run_mode = _manual_two_city_run_mode(params.get("run_mode"))
         account_read_mode = _manual_two_city_account_read_mode(params.get("account_profile_read_mode"))
+        smart_scan_interval = _manual_two_city_smart_scan_interval(params.get("account_profile_smart_scan_interval"))
         run_mode_label = "跑到疲劳耗尽" if run_mode == MANUAL_TWO_CITY_RUN_MODE_UNTIL_FATIGUE_EXHAUSTED else "跑 1 轮"
         account_read_mode_label = {
             MANUAL_TWO_CITY_ACCOUNT_READ_SMART: "智能读取",
             MANUAL_TWO_CITY_ACCOUNT_READ_FULL: "全部读取",
             MANUAL_TWO_CITY_ACCOUNT_READ_NONE: "不读取",
         }.get(account_read_mode, "智能读取")
+        smart_scan_interval_label = _manual_two_city_smart_scan_interval_label(smart_scan_interval)
         manual_params = {
             "start_city": start_city,
             "target_city": target_city,
@@ -2523,6 +2558,7 @@ class ManualTwoCityBusinessCalculateAction(CustomAction):
             state["run_id"] = run_id
             state["run_mode"] = run_mode
             state["account_profile_read_mode"] = account_read_mode
+            state["account_profile_smart_scan_interval"] = smart_scan_interval
             state["completed_rounds"] = 0
             state["strength_recovery_stop_pending"] = False
             state["product_scan_completed_cities"] = []
@@ -2561,7 +2597,16 @@ class ManualTwoCityBusinessCalculateAction(CustomAction):
                     data={
                         "default_account_cargo_capacity": result.get("default_account_cargo_capacity"),
                         "account_profile_read_mode": account_read_mode,
+                        "account_profile_smart_scan_interval": smart_scan_interval,
                     },
+                )
+            if account_read_mode == MANUAL_TWO_CITY_ACCOUNT_READ_SMART:
+                _append_user_log(
+                    MANUAL_TWO_CITY_TASK_ENTRY,
+                    f"账号配置智能读取间隔：{smart_scan_interval_label}。",
+                    run_id=run_id,
+                    event="manual_two_city_account_profile_smart_scan_interval",
+                    data={"interval": smart_scan_interval},
                 )
             for index, leg in enumerate(summary.get("legs") or [], start=1):
                 goods = "、".join(str(item) for item in leg.get("goods") or [])
@@ -2603,12 +2648,14 @@ class AutoTwoCityBusinessCalculateAction(CustomAction):
         wulinyuan_priority = str(params.get("wulinyuan_priority") or "total").strip() or "total"
         run_mode = _manual_two_city_run_mode(params.get("run_mode"))
         account_read_mode = _manual_two_city_account_read_mode(params.get("account_profile_read_mode"))
+        smart_scan_interval = _manual_two_city_smart_scan_interval(params.get("account_profile_smart_scan_interval"))
         run_mode_label = "跑到疲劳耗尽" if run_mode == MANUAL_TWO_CITY_RUN_MODE_UNTIL_FATIGUE_EXHAUSTED else "跑 1 轮"
         account_read_mode_label = {
             MANUAL_TWO_CITY_ACCOUNT_READ_SMART: "智能读取",
             MANUAL_TWO_CITY_ACCOUNT_READ_FULL: "全部读取",
             MANUAL_TWO_CITY_ACCOUNT_READ_NONE: "不读取",
         }.get(account_read_mode, "智能读取")
+        smart_scan_interval_label = _manual_two_city_smart_scan_interval_label(smart_scan_interval)
         auto_params = {
             "uid": uid,
             "priority_cities": priority_cities,
@@ -2665,6 +2712,7 @@ class AutoTwoCityBusinessCalculateAction(CustomAction):
             state["run_id"] = run_id
             state["run_mode"] = run_mode
             state["account_profile_read_mode"] = account_read_mode
+            state["account_profile_smart_scan_interval"] = smart_scan_interval
             state["completed_rounds"] = 0
             state["strength_recovery_stop_pending"] = False
             state["product_scan_completed_cities"] = []
@@ -2699,7 +2747,16 @@ class AutoTwoCityBusinessCalculateAction(CustomAction):
                     data={
                         "default_account_cargo_capacity": result.get("default_account_cargo_capacity"),
                         "account_profile_read_mode": account_read_mode,
+                        "account_profile_smart_scan_interval": smart_scan_interval,
                     },
+                )
+            if account_read_mode == MANUAL_TWO_CITY_ACCOUNT_READ_SMART:
+                _append_user_log(
+                    AUTO_TWO_CITY_TASK_ENTRY,
+                    f"账号配置智能读取间隔：{smart_scan_interval_label}。",
+                    run_id=run_id,
+                    event="manual_two_city_account_profile_smart_scan_interval",
+                    data={"interval": smart_scan_interval},
                 )
             for index, leg in enumerate(summary.get("legs") or [], start=1):
                 goods = "、".join(str(item) for item in leg.get("goods") or [])
@@ -3892,6 +3949,7 @@ def _manual_two_city_defaults() -> dict[str, Any]:
         "manual_start_city": "修格里城",
         "manual_target_city": "7号自由港",
         "account_profile_read_mode": MANUAL_TWO_CITY_ACCOUNT_READ_SMART,
+        "account_profile_smart_scan_interval": MANUAL_TWO_CITY_SMART_SCAN_DAILY,
         "run_mode": MANUAL_TWO_CITY_RUN_MODE_ONE_ROUND,
         "start_book": 4,
         "target_book": 0,
@@ -3993,6 +4051,18 @@ def _manual_two_city_recalculate_after_account_profile() -> bool:
     old_index = int(state.get("active_leg_index") or 0)
     phase = str(state.get("trade_phase") or "buy").strip().lower()
     current_city = normalize_city_name(str(state.get("current_city") or state.get("travel_arrived_city") or "").strip())
+    recalc_started_at = time.perf_counter()
+    _append_user_log(
+        task_entry,
+        f"账号配置已读取，开始按真实配置重算{task_label}收益。",
+        run_id=str(state.get("run_id") or ""),
+        event="manual_two_city_account_profile_recalculate_started",
+        data={
+            "auto_route_enabled": bool(state.get("auto_route_enabled")),
+            "current_city": current_city,
+            "phase": phase,
+        },
+    )
     try:
         transient_status = state.get("transient_product_status_by_city")
         if state.get("auto_route_enabled"):
@@ -4035,12 +4105,13 @@ def _manual_two_city_recalculate_after_account_profile() -> bool:
             state["selected_buy_goods"] = []
         output_path = save_manual_two_city_result(new_result, task_entry=task_entry)
         summary = new_result.get("summary") or {}
+        elapsed_ms = int((time.perf_counter() - recalc_started_at) * 1000)
         _append_user_log(
             task_entry,
             (
                 f"账号配置读取完成，已按真实配置重算{task_label}收益："
                 f"利润 {summary.get('profit')}，参考利润 {summary.get('reference_profit')}，"
-                f"疲劳 {summary.get('tired')}。"
+                f"疲劳 {summary.get('tired')}，耗时 {elapsed_ms}ms。"
             ),
             run_id=str(state.get("run_id") or ""),
             event="manual_two_city_account_profile_recalculated",
@@ -4050,17 +4121,19 @@ def _manual_two_city_recalculate_after_account_profile() -> bool:
                 "phase": phase,
                 "summary": summary,
                 "output_path": str(output_path),
+                "elapsed_ms": elapsed_ms,
             },
         )
         return True
     except Exception as exc:
+        elapsed_ms = int((time.perf_counter() - recalc_started_at) * 1000)
         _append_user_log(
             task_entry,
-            f"账号配置读取后重算{task_label}失败：{type(exc).__name__}: {exc}",
+            f"账号配置读取后重算{task_label}失败：{type(exc).__name__}: {exc}，耗时 {elapsed_ms}ms",
             run_id=str(state.get("run_id") or ""),
             level="error",
             event="manual_two_city_account_profile_recalculate_failed",
-            data={"params": params, "traceback": traceback.format_exc(limit=8)},
+            data={"params": params, "elapsed_ms": elapsed_ms, "traceback": traceback.format_exc(limit=8)},
         )
         return False
 
@@ -4081,6 +4154,7 @@ class ManualTwoCityBusinessConfigAction(CustomAction):
             "manual_start_city",
             "manual_target_city",
             "account_profile_read_mode",
+            "account_profile_smart_scan_interval",
             "run_mode",
             "start_book",
             "target_book",
@@ -4106,6 +4180,8 @@ class ManualTwoCityBusinessConfigAction(CustomAction):
                     state[key] = _manual_two_city_run_mode(params[key])
                 elif key == "account_profile_read_mode":
                     state[key] = _manual_two_city_account_read_mode(params[key])
+                elif key == "account_profile_smart_scan_interval":
+                    state[key] = _manual_two_city_smart_scan_interval(params[key])
                 else:
                     state[key] = params[key]
         for key, value in params.items():
@@ -4120,21 +4196,45 @@ class ManualTwoCityBusinessAccountProfileWarmupStartAction(CustomAction):
     def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
         params = _argv_param(argv)
         state = _manual_two_city_state()
+        task_entry = _manual_two_city_current_task_entry(state)
         if state.get("account_profile_warmup_done"):
             _json_payload("manual_two_city_business_account_profile_warmup_start", {"ok": False, "reason": "already_done"})
             return False
         mode = _manual_two_city_account_read_mode(state.get("account_profile_read_mode"))
+        interval = _manual_two_city_smart_scan_interval(state.get("account_profile_smart_scan_interval"))
         result = state.get("result") if isinstance(state.get("result"), dict) else {}
         if mode == MANUAL_TWO_CITY_ACCOUNT_READ_NONE:
             state["account_profile_warmup_done"] = True
             _append_user_log(
-                MANUAL_TWO_CITY_TASK_ENTRY,
+                task_entry,
                 "账号配置读取模式为不读取：跳过本轮内置读取，继续使用本地已有配置；若本地缺失则继续使用默认配置。",
                 run_id=str(state.get("run_id") or ""),
                 event="manual_two_city_account_profile_warmup_skipped_none",
             )
             _json_payload("manual_two_city_business_account_profile_warmup_start", {"ok": False, "reason": "mode_none"})
             return False
+        if mode == MANUAL_TWO_CITY_ACCOUNT_READ_SMART:
+            scan_status = _manual_two_city_smart_scan_status(state, interval)
+            if not scan_status.get("due"):
+                state["account_profile_warmup_pending"] = False
+                state["account_profile_warmup_done"] = True
+                _append_user_log(
+                    task_entry,
+                    (
+                        "账号配置智能读取：上次智能扫描仍在间隔内，"
+                        f"本轮跳过扫描（上次 {scan_status.get('last_smart_scan_date')}，"
+                        f"下次 {scan_status.get('next_smart_scan_date')}）。"
+                    ),
+                    run_id=str(state.get("run_id") or ""),
+                    event="manual_two_city_account_profile_warmup_skipped_interval",
+                    data=scan_status,
+                )
+                _json_payload(
+                    "manual_two_city_business_account_profile_warmup_start",
+                    {"ok": False, "reason": "smart_scan_interval_not_elapsed", "scan_status": scan_status},
+                )
+                return False
+            state["account_profile_smart_scan_status"] = scan_status
         state["account_profile_warmup_pending"] = True
         state["account_profile_warmup_started_at"] = time.time()
         if mode == MANUAL_TWO_CITY_ACCOUNT_READ_FULL:
@@ -4142,16 +4242,20 @@ class ManualTwoCityBusinessAccountProfileWarmupStartAction(CustomAction):
             mode_detail = "会全量读取账号配置，完成后自动改回智能读取。"
         else:
             mode_label = "智能读取"
-            mode_detail = "会在个人信息页读取货仓容量，并只检查未解锁/缺失城市与缺失乘员。"
+            mode_detail = f"间隔为{_manual_two_city_smart_scan_interval_label(interval)}，会在个人信息页读取货仓容量，并只检查未解锁/缺失城市与缺失乘员。"
         source = str(params.get("source") or "").strip()
         location_label = "已到主界面" if source == "main_map" else "账号配置读取"
         _append_user_log(
-            MANUAL_TWO_CITY_TASK_ENTRY,
+            task_entry,
             f"{location_label}：账号配置{mode_label}启动，{mode_detail}读取完成后会重算跑商收益再继续。",
             run_id=str(state.get("run_id") or ""),
             level="info",
             event="manual_two_city_account_profile_warmup_start",
-            data={"account_profile_read_mode": mode, "used_default_account_config": bool(result.get("used_default_account_config"))},
+            data={
+                "account_profile_read_mode": mode,
+                "account_profile_smart_scan_interval": interval,
+                "used_default_account_config": bool(result.get("used_default_account_config")),
+            },
         )
         _json_payload("manual_two_city_business_account_profile_warmup_start", {"ok": True})
         return True
@@ -4213,17 +4317,30 @@ class ManualTwoCityBusinessTradeOutletOpenFailedDispatchAction(CustomAction):
 class ManualTwoCityBusinessAccountProfileWarmupDoneAction(CustomAction):
     def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
         state = _manual_two_city_state()
+        task_entry = _manual_two_city_current_task_entry(state)
         mode = _manual_two_city_account_read_mode(state.get("account_profile_read_mode"))
+        interval = _manual_two_city_smart_scan_interval(state.get("account_profile_smart_scan_interval"))
         state["account_profile_warmup_pending"] = False
         state["account_profile_warmup_done"] = True
         ok = _manual_two_city_recalculate_after_account_profile()
         config_update: dict[str, Any] | None = None
+        read_meta_update: dict[str, Any] | None = None
+        if ok:
+            read_meta_update = _manual_two_city_mark_account_profile_read_completed(mode, interval)
+            if read_meta_update.get("updated"):
+                _append_user_log(
+                    task_entry,
+                    "账号配置读取日期已写入账号配置。",
+                    run_id=str(state.get("run_id") or ""),
+                    event="manual_two_city_account_profile_read_date_saved",
+                    data={"read_meta_update": read_meta_update},
+                )
         if mode == MANUAL_TWO_CITY_ACCOUNT_READ_FULL:
             config_update = _manual_two_city_reset_account_read_mode_to_smart()
             state["account_profile_read_mode"] = MANUAL_TWO_CITY_ACCOUNT_READ_SMART
             if config_update.get("updated"):
                 _append_user_log(
-                    MANUAL_TWO_CITY_TASK_ENTRY,
+                    task_entry,
                     "账号配置全部读取已完成，已将跑商任务读取模式自动改回智能读取。",
                     run_id=str(state.get("run_id") or ""),
                     event="manual_two_city_account_profile_full_reset_to_smart",
@@ -4231,13 +4348,16 @@ class ManualTwoCityBusinessAccountProfileWarmupDoneAction(CustomAction):
                 )
             else:
                 _append_user_log(
-                    MANUAL_TWO_CITY_TASK_ENTRY,
+                    task_entry,
                     "账号配置全部读取已完成；未找到需要写回的前端配置项，本轮内已切回智能读取。",
                     run_id=str(state.get("run_id") or ""),
                     event="manual_two_city_account_profile_full_reset_to_smart_noop",
                     data={"config_update": config_update},
                 )
-        _json_payload("manual_two_city_business_account_profile_warmup_done", {"ok": ok, "config_update": config_update})
+        _json_payload(
+            "manual_two_city_business_account_profile_warmup_done",
+            {"ok": ok, "config_update": config_update, "read_meta_update": read_meta_update},
+        )
         return ok
 
 
@@ -4826,6 +4946,172 @@ def _manual_two_city_account_read_mode(value: Any) -> str:
     return MANUAL_TWO_CITY_ACCOUNT_READ_SMART
 
 
+def _manual_two_city_smart_scan_interval(value: Any) -> str:
+    text = str(value or "").strip().lower()
+    aliases = {
+        MANUAL_TWO_CITY_SMART_SCAN_DAILY: MANUAL_TWO_CITY_SMART_SCAN_DAILY,
+        "day": MANUAL_TWO_CITY_SMART_SCAN_DAILY,
+        "daily": MANUAL_TWO_CITY_SMART_SCAN_DAILY,
+        "every_day": MANUAL_TWO_CITY_SMART_SCAN_DAILY,
+        "每天": MANUAL_TWO_CITY_SMART_SCAN_DAILY,
+        "每日": MANUAL_TWO_CITY_SMART_SCAN_DAILY,
+        MANUAL_TWO_CITY_SMART_SCAN_EVERY_3_DAYS: MANUAL_TWO_CITY_SMART_SCAN_EVERY_3_DAYS,
+        "3_days": MANUAL_TWO_CITY_SMART_SCAN_EVERY_3_DAYS,
+        "three_days": MANUAL_TWO_CITY_SMART_SCAN_EVERY_3_DAYS,
+        "every3days": MANUAL_TWO_CITY_SMART_SCAN_EVERY_3_DAYS,
+        "每3天": MANUAL_TWO_CITY_SMART_SCAN_EVERY_3_DAYS,
+        "每 3 天": MANUAL_TWO_CITY_SMART_SCAN_EVERY_3_DAYS,
+        "三天": MANUAL_TWO_CITY_SMART_SCAN_EVERY_3_DAYS,
+        MANUAL_TWO_CITY_SMART_SCAN_WEEKLY: MANUAL_TWO_CITY_SMART_SCAN_WEEKLY,
+        "week": MANUAL_TWO_CITY_SMART_SCAN_WEEKLY,
+        "every_week": MANUAL_TWO_CITY_SMART_SCAN_WEEKLY,
+        "每周": MANUAL_TWO_CITY_SMART_SCAN_WEEKLY,
+        "每星期": MANUAL_TWO_CITY_SMART_SCAN_WEEKLY,
+        MANUAL_TWO_CITY_SMART_SCAN_MONTHLY: MANUAL_TWO_CITY_SMART_SCAN_MONTHLY,
+        "month": MANUAL_TWO_CITY_SMART_SCAN_MONTHLY,
+        "every_month": MANUAL_TWO_CITY_SMART_SCAN_MONTHLY,
+        "每月": MANUAL_TWO_CITY_SMART_SCAN_MONTHLY,
+    }
+    return aliases.get(text, MANUAL_TWO_CITY_SMART_SCAN_DAILY)
+
+
+def _manual_two_city_smart_scan_interval_label(value: Any) -> str:
+    interval = _manual_two_city_smart_scan_interval(value)
+    return MANUAL_TWO_CITY_SMART_SCAN_INTERVAL_LABELS.get(interval, "每天")
+
+
+def _parse_profile_read_date(value: Any) -> date | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    for fmt in ("%Y-%m-%d", "%Y-%m-%d %H:%M:%S", "%Y/%m/%d", "%Y/%m/%d %H:%M:%S"):
+        try:
+            return datetime.strptime(text[:19], fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+def _manual_two_city_smart_scan_next_date(last_date: date, interval: Any) -> date:
+    interval_key = _manual_two_city_smart_scan_interval(interval)
+    if interval_key == MANUAL_TWO_CITY_SMART_SCAN_MONTHLY:
+        month = last_date.month + 1
+        year = last_date.year
+        if month > 12:
+            month = 1
+            year += 1
+        day = min(last_date.day, calendar.monthrange(year, month)[1])
+        return date(year, month, day)
+    days = MANUAL_TWO_CITY_SMART_SCAN_INTERVAL_DAYS.get(interval_key, 1)
+    return last_date + timedelta(days=days)
+
+
+def _manual_two_city_account_profile_read_meta(account: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(account, dict):
+        return {}
+    for key in ("account_profile_read", "profile_read", "scan_meta"):
+        meta = account.get(key)
+        if isinstance(meta, dict):
+            return meta
+    return {}
+
+
+def _manual_two_city_smart_scan_status(state: dict[str, Any], interval: Any) -> dict[str, Any]:
+    interval_key = _manual_two_city_smart_scan_interval(interval)
+    result = state.get("result") if isinstance(state.get("result"), dict) else {}
+    path, account, uid, has_context = _manual_two_city_known_account_context(result)
+    if result.get("used_default_account_config"):
+        return {
+            "due": True,
+            "reason": "default_account_config",
+            "interval": interval_key,
+            "uid": uid,
+            "account_config": str(path),
+        }
+    if not has_context:
+        return {
+            "due": True,
+            "reason": "missing_account_config",
+            "interval": interval_key,
+            "uid": uid,
+            "account_config": str(path),
+        }
+    meta = _manual_two_city_account_profile_read_meta(account)
+    last_date = _parse_profile_read_date(
+        meta.get("last_smart_scan_date")
+        or meta.get("last_smart_scan_at")
+        or meta.get("last_smart_read_date")
+        or meta.get("last_smart_read_at")
+    )
+    if last_date is None:
+        return {
+            "due": True,
+            "reason": "missing_last_smart_scan_date",
+            "interval": interval_key,
+            "uid": uid,
+            "account_config": str(path),
+        }
+    today = date.today()
+    next_date = _manual_two_city_smart_scan_next_date(last_date, interval_key)
+    return {
+        "due": today >= next_date,
+        "reason": "interval_elapsed" if today >= next_date else "interval_not_elapsed",
+        "interval": interval_key,
+        "uid": uid,
+        "account_config": str(path),
+        "last_smart_scan_date": last_date.isoformat(),
+        "next_smart_scan_date": next_date.isoformat(),
+        "today": today.isoformat(),
+    }
+
+
+def _manual_two_city_mark_account_profile_read_completed(mode: Any, interval: Any) -> dict[str, Any]:
+    state = _manual_two_city_state()
+    task_entry = _manual_two_city_current_task_entry(state)
+    interval_key = _manual_two_city_smart_scan_interval(interval)
+    result = state.get("result") if isinstance(state.get("result"), dict) else {}
+    path, account, uid, has_context = _manual_two_city_known_account_context(result)
+    if not has_context:
+        return {
+            "updated": False,
+            "reason": "missing_account_config",
+            "uid": uid,
+            "account_config": str(path),
+        }
+    now = time.strftime("%Y-%m-%d %H:%M:%S")
+    today = date.today().isoformat()
+    meta = account.setdefault("account_profile_read", {})
+    if not isinstance(meta, dict):
+        meta = {}
+        account["account_profile_read"] = meta
+    read_mode = _manual_two_city_account_read_mode(mode)
+    meta["last_read_at"] = now
+    meta["last_read_date"] = today
+    meta["last_read_mode"] = read_mode
+    meta["smart_scan_interval"] = interval_key
+    if read_mode == MANUAL_TWO_CITY_ACCOUNT_READ_SMART:
+        meta["last_smart_scan_at"] = now
+        meta["last_smart_scan_date"] = today
+    elif read_mode == MANUAL_TWO_CITY_ACCOUNT_READ_FULL:
+        meta["last_full_read_at"] = now
+        meta["last_full_read_date"] = today
+    account["updated_at"] = now
+    source = account.setdefault("_source", {})
+    if isinstance(source, dict):
+        source["last_task_entry"] = task_entry
+        source["last_account_profile_read_task_entry"] = task_entry
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(account, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+    return {
+        "updated": True,
+        "uid": uid,
+        "account_config": str(path),
+        "mode": read_mode,
+        "interval": interval_key,
+        "last_read_date": today,
+    }
+
+
 def _manual_two_city_drink_allowed_cities() -> set[str]:
     return {
         normalize_city_name(city)
@@ -4865,24 +5151,58 @@ def _manual_two_city_bool(value: Any, default: bool = False) -> bool:
 
 
 def _manual_two_city_drink_remaining_from_texts(texts: list[str]) -> dict[str, Any] | None:
-    joined = "".join(clean_text(text).replace("O", "0").replace("o", "0") for text in texts if str(text).strip())
+    normalized_texts = [
+        clean_text(text)
+        .translate(str.maketrans("０１２３４５６７８９Ｏｏ", "012345678900"))
+        .replace("O", "0")
+        .replace("o", "0")
+        for text in texts
+        if str(text).strip()
+    ]
+    joined = " ".join(normalized_texts)
     if not joined:
         return None
-    for pattern in (
-        r"(?:剩余次数|剩余|可用|还能|今日|每日)[^\d]{0,12}(\d{1,2})\s*/\s*(\d{1,2})",
-        r"(\d{1,2})\s*/\s*(\d{1,2})",
-    ):
-        match = re.search(pattern, joined)
-        if not match:
-            continue
+
+    candidates: list[tuple[int, int, int, int, str]] = []
+    for match in FATIGUE_DRINK_INFO_RATIO_RE.finditer(joined):
         remaining = int(match.group(1))
         total = int(match.group(2))
         if total <= 0 or remaining < 0 or remaining > total:
             continue
-        return {"remaining": remaining, "total": total, "texts": texts[:30]}
+        if total > FATIGUE_DRINK_MAX_ATTEMPTS:
+            continue
+        context = joined[max(0, match.start() - 28) : match.end() + 28]
+        priority = 0 if any(keyword in context for keyword in FATIGUE_DRINK_INFO_COUNT_KEYWORDS) else 1
+        candidates.append((priority, match.start(), remaining, total, context))
+    if candidates:
+        _, _, remaining, total, context = sorted(candidates, key=lambda item: (item[0], item[1]))[0]
+        return {"remaining": remaining, "total": total, "texts": texts[:30], "context": context}
+
     if any(keyword in joined for keyword in ("次数不足", "次数已用完", "没有可用次数", "今日次数已用完", "每日次数已用完")):
         return {"remaining": 0, "total": None, "texts": texts[:30]}
     return None
+
+
+def _manual_two_city_drink_info_target_from_entries(entries: list[dict[str, Any]]) -> tuple[int, int] | None:
+    candidates: list[tuple[int, int, int]] = []
+    for entry in entries:
+        text = clean_text(entry.get("text"))
+        if not text:
+            continue
+        cx = float(entry.get("center_x") or 0)
+        cy = float(entry.get("center_y") or 0)
+        if cx <= 0 or cy <= 0:
+            continue
+        if "前往休息区" in text:
+            candidates.append((0, int(cx + 45), int(cy - 60)))
+        elif "RESTAREA" in text or "休息区" in text:
+            candidates.append((1, int(cx + 45), int(cy + 28)))
+        elif "REST" in text or "AREA" in text:
+            candidates.append((2, int(cx + 55), int(cy + 24)))
+    if not candidates:
+        return None
+    _, x, y = sorted(candidates, key=lambda item: item[0])[0]
+    return max(1020, min(1238, x)), max(150, min(430, y))
 
 
 def _manual_two_city_leg_required_fatigue(leg: dict[str, Any]) -> int:
@@ -4894,6 +5214,13 @@ def _manual_two_city_leg_required_fatigue(leg: dict[str, Any]) -> int:
             return value
     required, _ = _manual_two_city_route_required_fatigue(leg.get("buy_city"), leg.get("sell_city"))
     return required
+
+
+def _manual_two_city_required_fatigue_with_buffer(required: int) -> int:
+    required = _fatigue_int(required, 0)
+    if required <= 0:
+        return 0
+    return required + MANUAL_TWO_CITY_FATIGUE_SAFETY_BUFFER
 
 
 def _manual_two_city_next_required_fatigue(
@@ -4923,8 +5250,8 @@ def _manual_two_city_next_required_fatigue(
             if not _manual_two_city_until_fatigue_exhausted(current_state):
                 return 0
             next_index = 0
-        return _manual_two_city_leg_required_fatigue(legs[next_index])
-    return _manual_two_city_leg_required_fatigue(legs[active_index])
+        return _manual_two_city_required_fatigue_with_buffer(_manual_two_city_leg_required_fatigue(legs[next_index]))
+    return _manual_two_city_required_fatigue_with_buffer(_manual_two_city_leg_required_fatigue(legs[active_index]))
 
 
 def _manual_two_city_strength_recovery_state(state: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -5095,7 +5422,7 @@ def _manual_two_city_mark_recovery_budget_insufficient(
     _append_user_log(
         _manual_two_city_current_task_entry(state),
         (
-            f"跑商补疲劳：剩余疲劳 {remaining}，单程还差 {gap}，"
+            f"跑商补疲劳：剩余疲劳 {remaining}，安全需求还差 {gap}，"
             f"体力药/桦石可补 {int(budget.get('restore_budget') or 0)}，不足以完成下一段，停止消耗恢复资源。"
         ),
         level="warning",
@@ -5110,6 +5437,14 @@ def _manual_two_city_mark_recovery_budget_insufficient(
             "budget": budget,
             "recovery": _manual_two_city_strength_recovery_state(state),
         },
+    )
+    _manual_two_city_mark_strength_stop(
+        state,
+        phase=phase,
+        status=status,
+        required=required,
+        reason=reason,
+        leg=_manual_two_city_active_leg(),
     )
 
 
@@ -5191,7 +5526,8 @@ def _manual_two_city_probe_medicine_actual_budget(
         detail["texts"] = inventory_texts[:20]
         if inventory is None or inventory <= 0:
             reason = "页面数量为 0" if inventory == 0 else "未识别页面数量"
-            _manual_two_city_recovery_mark_unavailable(recovery, resource, reason)
+            if inventory == 0:
+                _manual_two_city_recovery_mark_unavailable(recovery, resource, reason)
             detail["reason"] = reason
             actual_details.append(detail)
             continue
@@ -5239,7 +5575,6 @@ def _manual_two_city_probe_medicine_actual_budget(
         detail["daily_remaining"] = daily_remaining
         detail["daily_texts"] = daily_texts[:20]
         if daily_remaining is None:
-            _manual_two_city_recovery_mark_unavailable(recovery, "桦石", "未识别页面剩余次数")
             detail["reason"] = "daily_remaining_missing"
         elif daily_remaining <= 0:
             _manual_two_city_recovery_mark_unavailable(recovery, "桦石", "次数不足")
@@ -5267,6 +5602,40 @@ def _manual_two_city_probe_medicine_actual_budget(
         "theoretical": theoretical,
     }
     if actual_restore < gap:
+        unknown_resources = [
+            str(detail.get("resource"))
+            for detail in actual_details
+            if detail.get("allowed")
+            and (
+                (
+                    str(detail.get("resource_type") or "") == "medicine"
+                    and detail.get("inventory") is None
+                )
+                or (
+                    str(detail.get("resource_type") or "") == "huashi"
+                    and detail.get("daily_remaining") is None
+                )
+                or str(detail.get("reason") or "") in {"未识别页面数量", "daily_remaining_missing"}
+            )
+        ]
+        if unknown_resources:
+            _append_user_log(
+                _manual_two_city_current_task_entry(state),
+                (
+                    "跑商补疲劳：疲劳药/桦石页面次数未完全读到，"
+                    "不按 0 次处理，继续逐个尝试可用恢复资源。"
+                ),
+                level="warning",
+                event="manual_two_city_strength_recovery_budget_unknown",
+                data={
+                    "phase": phase,
+                    "status": status,
+                    "required": required,
+                    "unknown_resources": unknown_resources,
+                    "budget": actual_budget,
+                },
+            )
+            return True
         _manual_two_city_mark_recovery_budget_insufficient(
             state,
             phase=phase,
@@ -5279,7 +5648,7 @@ def _manual_two_city_probe_medicine_actual_budget(
 
     _append_user_log(
         _manual_two_city_current_task_entry(state),
-        f"跑商补疲劳：实际库存/次数预算可补 {actual_restore}，足够补齐单程缺口 {gap}，开始使用恢复资源。",
+        f"跑商补疲劳：实际库存/次数预算可补 {actual_restore}，足够补齐安全需求缺口 {gap}，开始使用恢复资源。",
         event="manual_two_city_strength_recovery_budget_enough",
         data={"phase": phase, "status": status, "required": required, "budget": actual_budget},
     )
@@ -5386,16 +5755,48 @@ def _manual_two_city_read_strength_status(context: Context, name: str) -> tuple[
         ["疲劳值", TRADE_STRENGTH_STATUS_TEXT],
         roi=[780, 0, 500, 95],
     )
-    return strength_status_from_texts(fallback_texts), fallback_texts or texts
+    status = strength_status_from_texts(fallback_texts)
+    if status:
+        return status, fallback_texts
+    _, _, fatigue_page_texts = _manual_two_city_ocr_entries(
+        context,
+        f"{name}FatiguePage",
+        ["列车长疲劳值", "疲劳值", TRADE_STRENGTH_STATUS_TEXT],
+        roi=[20, 480, 430, 220],
+    )
+    return strength_status_from_texts(fatigue_page_texts), fatigue_page_texts or fallback_texts or texts
 
 
 def _manual_two_city_strength_enough(status: dict[str, int] | None, required: int) -> bool:
     return bool(status and required > 0 and int(status.get("remaining") or 0) >= required)
 
 
-def _manual_two_city_parse_buy_page_cargo_load(entries: list[dict[str, Any]]) -> dict[str, Any] | None:
+def _manual_two_city_parse_buy_page_cargo_load(
+    entries: list[dict[str, Any]],
+    *,
+    roi: list[int] | None = None,
+) -> dict[str, Any] | None:
     candidates: list[dict[str, Any]] = []
-    roi_x, roi_y, roi_w, roi_h = BUY_PAGE_CARGO_LOAD_ROI
+    roi_x, roi_y, roi_w, roi_h = roi or BUY_PAGE_CARGO_LOAD_ROI
+
+    def add_candidate(used: int, capacity: int, raw_text: str, normalized_text: str, entry: dict[str, Any]) -> None:
+        if capacity <= 0 or used < 0:
+            return
+        if used > capacity * 2:
+            return
+        x = int(float(entry.get("x") or 0))
+        y = int(float(entry.get("y") or 0))
+        candidates.append(
+            {
+                "used": used,
+                "capacity": capacity,
+                "ratio": used / capacity,
+                "text": raw_text,
+                "normalized_text": normalized_text,
+                "box": [x, y, int(entry.get("w") or 0), int(entry.get("h") or 0)],
+            }
+        )
+
     for entry in entries:
         try:
             x = float(entry.get("x") or 0)
@@ -5409,27 +5810,41 @@ def _manual_two_city_parse_buy_page_cargo_load(entries: list[dict[str, Any]]) ->
         text_variants = {
             text,
             text.replace(".", "").replace("·", "").replace("。", ""),
+            text.replace("／", "/").replace("|", "/").replace("I", "/").replace("l", "/"),
         }
         for candidate_text in text_variants:
             for match in re.finditer(r"(\d{1,5})\s*/\s*[^\d]{0,3}(\d{1,5})\+?", candidate_text):
                 used = int(match.group(1))
                 capacity = int(match.group(2))
-                if capacity <= 0:
-                    continue
-                ratio = used / capacity
-                candidates.append(
-                    {
-                        "used": used,
-                        "capacity": capacity,
-                        "ratio": ratio,
-                        "text": raw_text,
-                        "normalized_text": candidate_text,
-                        "box": [int(x), int(y), int(entry.get("w") or 0), int(entry.get("h") or 0)],
-                    }
-                )
+                add_candidate(used, capacity, raw_text, candidate_text, entry)
+            digits = re.sub(r"\D+", "", candidate_text)
+            if len(digits) < 4 or "%" in candidate_text:
+                continue
+            for split in range(1, len(digits)):
+                used = int(digits[:split])
+                capacity = int(digits[split:])
+                if 100 <= capacity <= 9999:
+                    add_candidate(used, capacity, raw_text, f"{digits[:split]}/{digits[split:]}", entry)
     if not candidates:
         return None
     return max(candidates, key=lambda item: (item["capacity"], item["used"]))
+
+
+def _manual_two_city_read_buy_page_cargo_load(
+    context: Context,
+    entries: list[dict[str, Any]],
+) -> tuple[dict[str, Any] | None, list[str], bool]:
+    cargo_load = _manual_two_city_parse_buy_page_cargo_load(entries)
+    if cargo_load is not None:
+        return cargo_load, [], False
+    _hit, probe_entries, probe_texts = _manual_two_city_ocr_entries(
+        context,
+        "ManualTwoCityBuyPageCargoLoadProbe",
+        r"\d{1,5}\s*/\s*\d{1,5}",
+        roi=BUY_PAGE_CARGO_LOAD_PROBE_ROI,
+    )
+    cargo_load = _manual_two_city_parse_buy_page_cargo_load(probe_entries, roi=BUY_PAGE_CARGO_LOAD_PROBE_ROI)
+    return cargo_load, probe_texts, True
 
 
 def _known_buy_goods_for_city(city_name: Any) -> list[str]:
@@ -6411,26 +6826,26 @@ def _manual_two_city_try_bento_recovery(
 
     _manual_two_city_resource_used(state, "便当", "bento")
     _manual_two_city_recovery_mark_unavailable(recovery, "便当", "已全部使用")
+    _manual_two_city_click(context, RECOVERY_PAGE_BACK_TARGET, 0.9)
     status, status_texts = _manual_two_city_read_strength_status(context, "ManualTwoCityStrengthBentoStatus")
     if _manual_two_city_strength_enough(status, required):
         _append_user_log(
             MANUAL_TWO_CITY_TASK_ENTRY,
             (
                 f"跑商补疲劳：便当后剩余疲劳 {status['remaining']}，"
-                f"已满足单程需求 {required}，返回交易页。"
+                f"已满足安全需求 {required}，返回交易页。"
             ),
             event="manual_two_city_strength_bento_enough",
             data={"phase": phase, "status": status, "required": required, "texts": status_texts[:20]},
         )
         _manual_two_city_click(context, RECOVERY_PAGE_BACK_TARGET, 0.8)
-        _manual_two_city_click(context, RECOVERY_PAGE_BACK_TARGET, 0.9)
         state["skip_next_drink_check"] = True
         return {"used": True, "resource": "便当", "enough": True, "return_trade": True, "status": status}
 
     if status:
-        message = f"跑商补疲劳：便当后剩余疲劳 {status['remaining']}，仍低于单程需求 {required}，继续尝试体力药。"
+        message = f"跑商补疲劳：便当后剩余疲劳 {status['remaining']}，仍低于安全需求 {required}，继续尝试体力药。"
     else:
-        message = "跑商补疲劳：便当后未读到疲劳值，返回疲劳页继续尝试体力药。"
+        message = "跑商补疲劳：便当后回到疲劳页仍未读到疲劳值，继续尝试体力药。"
     _append_user_log(
         MANUAL_TWO_CITY_TASK_ENTRY,
         message,
@@ -6438,7 +6853,6 @@ def _manual_two_city_try_bento_recovery(
         event="manual_two_city_strength_bento_not_enough",
         data={"phase": phase, "status": status, "required": required, "texts": status_texts[:20]},
     )
-    _manual_two_city_click(context, RECOVERY_PAGE_BACK_TARGET, 0.8)
     return {"used": True, "resource": "便当", "enough": False, "return_trade": False, "status": status}
 
 
@@ -7372,7 +7786,7 @@ class ManualTwoCityBusinessBuyPageReadyAction(CustomAction):
             state["current_city"] = current_city
         leg = _manual_two_city_set_active_leg_by_city(current_city) if current_city else _manual_two_city_active_leg()
         planned_goods = [str(item) for item in (leg.get("goods") or []) if str(item).strip()]
-        cargo_load = _manual_two_city_parse_buy_page_cargo_load(entries)
+        cargo_load, cargo_probe_texts, cargo_probe_used = _manual_two_city_read_buy_page_cargo_load(context, entries)
         cleanup_signature = None
         if cargo_load is not None:
             cleanup_signature = (
@@ -7520,7 +7934,7 @@ class ManualTwoCityBusinessBuyPageReadyAction(CustomAction):
         cargo_note = (
             f"，货仓 {cargo_load['used']}/{cargo_load['capacity']} ({cargo_load['ratio']:.1%})"
             if cargo_load is not None
-            else "，货仓载量未识别"
+            else "，货仓载量读取失败"
         )
         _append_user_log(
             MANUAL_TWO_CITY_TASK_ENTRY,
@@ -7535,6 +7949,8 @@ class ManualTwoCityBusinessBuyPageReadyAction(CustomAction):
                 "active_leg_index": state.get("active_leg_index"),
                 "leg": leg,
                 "cargo_load": cargo_load,
+                "cargo_probe_used": cargo_probe_used,
+                "cargo_probe_texts": cargo_probe_texts[:12],
                 "texts": texts[:40],
             },
         )
@@ -7862,8 +8278,9 @@ class ManualTwoCityBusinessInitialTransferNeededAction(CustomAction):
 
         transfer = _manual_two_city_choose_initial_transfer_destination(current_city)
         destination = str(transfer.get("city") or "").strip()
-        required = _fatigue_int(transfer.get("fatigue"), 0)
-        if not destination or required <= 0:
+        base_required = _fatigue_int(transfer.get("fatigue"), 0)
+        required = _manual_two_city_required_fatigue_with_buffer(base_required)
+        if not destination or base_required <= 0:
             _append_user_log(
                 MANUAL_TWO_CITY_TASK_ENTRY,
                 f"异地开局：当前城市 {current_city} 不是起点/终点，但无法计算最近端点，跳过中转分支。",
@@ -7878,21 +8295,38 @@ class ManualTwoCityBusinessInitialTransferNeededAction(CustomAction):
         state["initial_transfer_source_city"] = current_city
         state["initial_transfer_destination_city"] = destination
         state["initial_transfer_required_fatigue"] = required
+        state["initial_transfer_base_required_fatigue"] = base_required
         state["initial_transfer_required_estimated"] = bool(transfer.get("estimated"))
         state["initial_transfer_needs_recovery"] = False
         _append_user_log(
             MANUAL_TWO_CITY_TASK_ENTRY,
             (
                 f"异地开局：当前在 {current_city}，不是起点 {start_city} 或目标 {target_city}。"
-                f"将先全买本城商品，再前往最近端点 {destination}（预计疲劳 {required}）。"
+                f"将先全买本城商品，再前往最近端点 {destination}"
+                f"（预计疲劳 {base_required}，安全需求 {required}）。"
             ),
             level="warning",
             event="manual_two_city_initial_transfer_needed",
-            data={"current_city": current_city, "destination": destination, "required": required, "transfer": transfer, "texts": texts[:40]},
+            data={
+                "current_city": current_city,
+                "destination": destination,
+                "base_required": base_required,
+                "required": required,
+                "safety_buffer": MANUAL_TWO_CITY_FATIGUE_SAFETY_BUFFER,
+                "transfer": transfer,
+                "texts": texts[:40],
+            },
         )
         _json_payload(
             "manual_two_city_business_initial_transfer_needed",
-            {"ok": True, "current_city": current_city, "destination_city": destination, "required_fatigue": required},
+            {
+                "ok": True,
+                "current_city": current_city,
+                "destination_city": destination,
+                "base_required_fatigue": base_required,
+                "required_fatigue": required,
+                "safety_buffer": MANUAL_TWO_CITY_FATIGUE_SAFETY_BUFFER,
+            },
         )
         return True
 
@@ -7923,9 +8357,16 @@ class ManualTwoCityBusinessInitialTransferStrengthCheckAction(CustomAction):
         if _manual_two_city_strength_enough(status, required):
             _append_user_log(
                 MANUAL_TWO_CITY_TASK_ENTRY,
-                f"异地开局疲劳检查：剩余 {status['remaining']}，足够前往 {destination}（需要 {required}）。",
+                f"异地开局疲劳检查：剩余 {status['remaining']}，足够前往 {destination}（安全需求 {required}）。",
                 event="manual_two_city_initial_transfer_strength_enough",
-                data={"source": source, "destination": destination, "required": required, "status": status},
+                data={
+                    "source": source,
+                    "destination": destination,
+                    "required": required,
+                    "base_required": state.get("initial_transfer_base_required_fatigue"),
+                    "safety_buffer": MANUAL_TWO_CITY_FATIGUE_SAFETY_BUFFER,
+                    "status": status,
+                },
             )
             _json_payload(
                 "manual_two_city_business_initial_transfer_strength_check",
@@ -7938,12 +8379,19 @@ class ManualTwoCityBusinessInitialTransferStrengthCheckAction(CustomAction):
             _append_user_log(
                 MANUAL_TWO_CITY_TASK_ENTRY,
                 (
-                    f"异地开局疲劳不足：剩余 {status['remaining']}，前往 {destination} 需要 {required}，"
+                    f"异地开局疲劳不足：剩余 {status['remaining']}，前往 {destination} 安全需求 {required}，"
                     "且未开启便当/疲劳药/桦石，已停止。"
                 ),
                 level="error",
                 event="manual_two_city_initial_transfer_strength_blocked",
-                data={"source": source, "destination": destination, "required": required, "status": status},
+                data={
+                    "source": source,
+                    "destination": destination,
+                    "required": required,
+                    "base_required": state.get("initial_transfer_base_required_fatigue"),
+                    "safety_buffer": MANUAL_TWO_CITY_FATIGUE_SAFETY_BUFFER,
+                    "status": status,
+                },
             )
             _json_payload(
                 "manual_two_city_business_initial_transfer_strength_check",
@@ -7959,11 +8407,19 @@ class ManualTwoCityBusinessInitialTransferStrengthCheckAction(CustomAction):
         _append_user_log(
             MANUAL_TWO_CITY_TASK_ENTRY,
             (
-                f"异地开局疲劳不足：剩余 {status['remaining']}，前往 {destination} 需要 {required}，"
+                f"异地开局疲劳不足：剩余 {status['remaining']}，前往 {destination} 安全需求 {required}，"
                 f"准备先使用{'、'.join(methods)}。"
             ),
             event="manual_two_city_initial_transfer_strength_recovery_needed",
-            data={"source": source, "destination": destination, "required": required, "status": status, "methods": methods},
+            data={
+                "source": source,
+                "destination": destination,
+                "required": required,
+                "base_required": state.get("initial_transfer_base_required_fatigue"),
+                "safety_buffer": MANUAL_TWO_CITY_FATIGUE_SAFETY_BUFFER,
+                "status": status,
+                "methods": methods,
+            },
         )
         _json_payload(
             "manual_two_city_business_initial_transfer_strength_check",
@@ -7997,7 +8453,7 @@ class ManualTwoCityBusinessInitialTransferSkipSoldOutBuyAction(CustomAction):
         source = str(state.get("initial_transfer_source_city") or state.get("current_city") or "").strip()
         destination = str(state.get("initial_transfer_destination_city") or "").strip()
         required = _fatigue_int(state.get("initial_transfer_required_fatigue"), 0)
-        cargo_load = _manual_two_city_parse_buy_page_cargo_load(entries)
+        cargo_load, cargo_probe_texts, cargo_probe_used = _manual_two_city_read_buy_page_cargo_load(context, entries)
         state["initial_transfer_pending"] = False
         state["initial_transfer_in_progress"] = True
         state["initial_transfer_buy_skipped_reason"] = "sold_out_or_no_selectable_goods"
@@ -8007,7 +8463,7 @@ class ManualTwoCityBusinessInitialTransferSkipSoldOutBuyAction(CustomAction):
             MANUAL_TWO_CITY_TASK_ENTRY,
             (
                 f"异地开局：{source or '当前城市'} 商品已买空或没有可选商品，"
-                f"跳过本城买入，返回主界面前往最近端点 {destination or '-'}（需要疲劳 {required}）。"
+                f"跳过本城买入，返回主界面前往最近端点 {destination or '-'}（安全需求 {required}）。"
             ),
             level="warning",
             event="manual_two_city_initial_transfer_skip_sold_out_buy",
@@ -8015,7 +8471,11 @@ class ManualTwoCityBusinessInitialTransferSkipSoldOutBuyAction(CustomAction):
                 "source": source,
                 "destination": destination,
                 "required": required,
+                "base_required": state.get("initial_transfer_base_required_fatigue"),
+                "safety_buffer": MANUAL_TWO_CITY_FATIGUE_SAFETY_BUFFER,
                 "cargo_load": cargo_load,
+                "cargo_probe_used": cargo_probe_used,
+                "cargo_probe_texts": cargo_probe_texts[:12],
                 "texts": texts[:40],
             },
         )
@@ -8551,6 +9011,43 @@ class ManualTwoCityBusinessShouldDrinkAction(CustomAction):
         return True
 
 
+@AgentServer.custom_action("manual_two_city_business_tap_drink_info")
+class ManualTwoCityBusinessTapDrinkInfoAction(CustomAction):
+    def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
+        hit, entries, texts = _manual_two_city_ocr_entries(
+            context,
+            "ManualTwoCityDrinkInfoAnchor",
+            FATIGUE_DRINK_INFO_ANCHOR_TEXTS,
+            roi=[980, 120, 290, 520],
+        )
+        target = _manual_two_city_drink_info_target_from_entries(entries)
+        if target is None:
+            _append_user_log(
+                MANUAL_TWO_CITY_TASK_ENTRY,
+                "跑商喝酒：未识别到休息区次数提示入口，本次跳过喝酒。",
+                level="warning",
+                event="manual_two_city_drink_info_anchor_missing",
+                data={"hit": hit, "texts": texts[:30], "entries": entries[:10]},
+            )
+            _json_payload(
+                "manual_two_city_business_tap_drink_info",
+                {"ok": False, "reason": "anchor_missing", "hit": hit, "texts": texts[:30]},
+            )
+            return False
+        _manual_two_city_click(context, target, 0.6)
+        _append_user_log(
+            MANUAL_TWO_CITY_TASK_ENTRY,
+            "跑商喝酒：已识别休息区次数提示入口并点击。",
+            event="manual_two_city_drink_info_tapped",
+            data={"target": target, "texts": texts[:30], "entries": entries[:10]},
+        )
+        _json_payload(
+            "manual_two_city_business_tap_drink_info",
+            {"ok": True, "target": target, "hit": hit, "texts": texts[:30]},
+        )
+        return True
+
+
 @AgentServer.custom_action("manual_two_city_business_drink_info_ready")
 class ManualTwoCityBusinessDrinkInfoReadyAction(CustomAction):
     def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
@@ -8559,11 +9056,23 @@ class ManualTwoCityBusinessDrinkInfoReadyAction(CustomAction):
         remaining = _manual_two_city_drink_remaining_from_texts(texts)
         if remaining:
             state["drink_info_observed"] = remaining
+            remain_count = _fatigue_int(remaining.get("remaining"), 0)
+            if remain_count <= 0:
+                state["drink_unavailable"] = True
+                _append_user_log(
+                    MANUAL_TWO_CITY_TASK_ENTRY,
+                    "跑商喝酒：次数提示显示剩余 0 次，本轮跳过喝酒。",
+                    level="warning",
+                    event="manual_two_city_drink_remaining_empty",
+                    data={"remaining": remaining},
+                )
+                _json_payload("manual_two_city_business_drink_info_ready", {"ok": False, "remaining": remaining, "texts": texts[:30]})
+                return False
             _append_user_log(
                 MANUAL_TWO_CITY_TASK_ENTRY,
                 (
                     f"跑商喝酒：观察到次数提示 {remaining.get('remaining')}/{remaining.get('total')}，"
-                    "不作为是否可喝的判断依据，继续由实际成功喝酒次数控制。"
+                    "继续进入休息区喝酒流程。"
                 ),
                 event="manual_two_city_drink_remaining_ready",
                 data={"remaining": remaining},
@@ -8572,11 +9081,13 @@ class ManualTwoCityBusinessDrinkInfoReadyAction(CustomAction):
             state.pop("drink_info_observed", None)
             _append_user_log(
                 MANUAL_TWO_CITY_TASK_ENTRY,
-                "跑商喝酒：未读到次数提示，将继续尝试喝酒并由后续页面判断是否可用。",
+                "跑商喝酒：未读到次数提示，本次不进入喝酒界面。",
                 level="warning",
                 event="manual_two_city_drink_remaining_unknown",
                 data={"texts": texts[:30]},
             )
+            _json_payload("manual_two_city_business_drink_info_ready", {"ok": False, "remaining": remaining, "texts": texts[:30]})
+            return False
         _json_payload("manual_two_city_business_drink_info_ready", {"ok": True, "remaining": remaining, "texts": texts[:30]})
         return True
 
@@ -8714,19 +9225,19 @@ def _manual_two_city_mark_strength_stop(
     state["strength_recovery_stop_phase"] = phase
     if until_fatigue:
         state["strength_recovery_stop_terminal_status"] = MANUAL_TWO_CITY_TERMINAL_FATIGUE_EXHAUSTED
-        state["strength_recovery_stop_terminal_reason"] = "恢复手段已不可用且剩余疲劳不足下一段单程"
+        state["strength_recovery_stop_terminal_reason"] = "恢复手段已不可用且剩余疲劳不足下一段安全需求"
         level = "warning"
         message = (
-            f"跑到疲劳耗尽：剩余疲劳 {remaining} 低于单程需求 {required}，"
+            f"跑到疲劳耗尽：剩余疲劳 {remaining} 低于安全需求 {required}，"
             "且恢复手段已不可用，停止继续买入。"
         )
         event = "manual_two_city_strength_recovery_exhausted_stop_ready"
     else:
         state["strength_recovery_stop_terminal_status"] = MANUAL_TWO_CITY_TERMINAL_FAILED
-        state["strength_recovery_stop_terminal_reason"] = "跑 1 轮模式下剩余疲劳不足下一段单程且恢复手段不可用"
+        state["strength_recovery_stop_terminal_reason"] = "跑 1 轮模式下剩余疲劳不足下一段安全需求且恢复手段不可用"
         level = "error"
         message = (
-            f"跑 1 轮失败：剩余疲劳 {remaining} 低于单程需求 {required}，"
+            f"跑 1 轮失败：剩余疲劳 {remaining} 低于安全需求 {required}，"
             "且恢复手段不可用，已阻止本次买入/抬砍。"
         )
         event = "manual_two_city_strength_recovery_unavailable_fail_ready"
@@ -8795,7 +9306,7 @@ class ManualTwoCityBusinessShouldRecoverStrengthAction(CustomAction):
             _append_user_log(
                 MANUAL_TWO_CITY_TASK_ENTRY,
                 (
-                    f"卖出页疲劳预检：剩余疲劳 {remaining} 低于下一段单程需求 {required}，"
+                    f"卖出页疲劳预检：剩余疲劳 {remaining} 低于下一段安全需求 {required}，"
                     "先卖出当前货物，卖完后再决定恢复或结束。"
                 ),
                 level="warning",
@@ -8847,7 +9358,7 @@ class ManualTwoCityBusinessShouldRecoverStrengthAction(CustomAction):
         _append_user_log(
             MANUAL_TWO_CITY_TASK_ENTRY,
             (
-                f"跑商补疲劳预检：剩余疲劳 {remaining} < 单程需求 {required}，"
+                f"跑商补疲劳预检：剩余疲劳 {remaining} < 安全需求 {required}，"
                 f"准备按顺序使用{'、'.join(methods)}。"
             ),
             event="manual_two_city_strength_precheck_needed",
@@ -8877,7 +9388,7 @@ class ManualTwoCityBusinessStopIfFatigueExhaustedAction(CustomAction):
         state["terminal_status"] = terminal_status
         state["terminal_reason"] = str(
             state.get("strength_recovery_stop_terminal_reason")
-            or "恢复手段已不可用且剩余疲劳不足下一段单程"
+            or "恢复手段已不可用且剩余疲劳不足下一段安全需求"
         ).strip()
         status = state.get("strength_recovery_stop_status")
         required = _fatigue_int(state.get("strength_recovery_stop_required"), 0)
@@ -8890,9 +9401,9 @@ class ManualTwoCityBusinessStopIfFatigueExhaustedAction(CustomAction):
             status_text = "当前疲劳未识别"
         is_fatigue_exhausted = terminal_status == MANUAL_TWO_CITY_TERMINAL_FATIGUE_EXHAUSTED
         message = (
-            f"跑到疲劳耗尽：{status_text}，单程需求 {required}，恢复手段已不可用，结束跑商。"
+            f"跑到疲劳耗尽：{status_text}，安全需求 {required}，恢复手段已不可用，结束跑商。"
             if is_fatigue_exhausted
-            else f"跑商失败：{status_text}，单程需求 {required}，恢复手段不可用，已停止继续买入。"
+            else f"跑商失败：{status_text}，安全需求 {required}，恢复手段不可用，已停止继续买入。"
         )
         _append_user_log(
             _manual_two_city_current_task_entry(state),
@@ -8980,16 +9491,17 @@ class ManualTwoCityBusinessRecoverStrengthOnceAction(CustomAction):
             _json_payload(
                 "manual_two_city_business_recover_strength_once",
                 {
-                    "ok": False,
+                    "ok": True,
                     "phase": phase,
                     "required": required,
                     "status": status,
                     "reason": "recovery_budget_insufficient",
+                    "stop_pending": bool(state.get("strength_recovery_stop_pending")),
                     "used": dict(recovery.get("used") or {}),
                     "unavailable": dict(recovery.get("unavailable") or {}),
                 },
             )
-            return False
+            return True
 
         for resource in FATIGUE_MEDICINE_RESOURCES:
             result = _manual_two_city_try_medicine_recovery(context, state, resource, phase=phase)
@@ -9013,7 +9525,7 @@ class ManualTwoCityBusinessRecoverStrengthOnceAction(CustomAction):
         _append_user_log(
             MANUAL_TWO_CITY_TASK_ENTRY,
             (
-                f"跑商补疲劳：当前剩余疲劳不足单程需求 {required}，"
+                f"跑商补疲劳：当前剩余疲劳不足安全需求 {required}，"
                 "但便当、体力药和桦石都未能使用，将返回交易页重新预检；若仍不足则停止买入。"
             ),
             level="warning",
@@ -9049,6 +9561,19 @@ class ManualTwoCityBusinessAfterStrengthRecoveryAction(CustomAction):
         phase = str(state.get("strength_recovery_phase") or state.get("trade_phase") or "buy").strip().lower()
         state["trade_phase"] = "sell" if phase == "sell" else "buy"
         state["skip_next_drink_check"] = True
+        if state.get("strength_recovery_stop_pending"):
+            _append_user_log(
+                MANUAL_TWO_CITY_TASK_ENTRY,
+                "跑商补疲劳：恢复资源不足，转入停止流程，不再继续原买卖流程。",
+                level="warning",
+                event="manual_two_city_after_strength_recovery_stop_pending",
+                data={"phase": state.get("trade_phase"), "leg": _manual_two_city_active_leg()},
+            )
+            _json_payload(
+                "manual_two_city_business_after_strength_recovery",
+                {"ok": True, "phase": state.get("trade_phase"), "stop_pending": True},
+            )
+            return True
         resource = str(state.get("strength_recovery_last_resource") or "恢复资源")
         _append_user_log(
             MANUAL_TWO_CITY_TASK_ENTRY,
@@ -9067,6 +9592,19 @@ class ManualTwoCityBusinessStrengthRecoveryResumeAction(CustomAction):
         phase = str(state.get("strength_recovery_phase") or state.get("trade_phase") or "buy").strip().lower()
         state["trade_phase"] = "sell" if phase == "sell" else "buy"
         state["skip_next_drink_check"] = True
+        if state.get("strength_recovery_stop_pending"):
+            _append_user_log(
+                MANUAL_TWO_CITY_TASK_ENTRY,
+                "跑商补疲劳：检测到终止标记，转入停止流程，不再继续原买卖流程。",
+                level="warning",
+                event="manual_two_city_strength_recovery_resume_stop_pending",
+                data={"phase": state.get("trade_phase"), "leg": _manual_two_city_active_leg()},
+            )
+            _json_payload(
+                "manual_two_city_business_strength_recovery_resume",
+                {"ok": True, "phase": state.get("trade_phase"), "stop_pending": True},
+            )
+            return True
         _append_user_log(
             MANUAL_TWO_CITY_TASK_ENTRY,
             "跑商补疲劳：准备确认交易页并继续原买卖流程。",
@@ -9344,9 +9882,16 @@ class ManualTwoCityBusinessBuyReportReadyAction(CustomAction):
             required = _fatigue_int(state.get("initial_transfer_required_fatigue"), 0)
             _append_user_log(
                 MANUAL_TWO_CITY_TASK_ENTRY,
-                f"异地开局：{source or '当前城市'} 商品全买完成，准备前往最近端点 {destination or '-'}（需要疲劳 {required}）。",
+                f"异地开局：{source or '当前城市'} 商品全买完成，准备前往最近端点 {destination or '-'}（安全需求 {required}）。",
                 event="manual_two_city_initial_transfer_buy_report_ready",
-                data={"source": source, "destination": destination, "required": required, "texts": _ocr_texts(argv)[:40]},
+                data={
+                    "source": source,
+                    "destination": destination,
+                    "required": required,
+                    "base_required": state.get("initial_transfer_base_required_fatigue"),
+                    "safety_buffer": MANUAL_TWO_CITY_FATIGUE_SAFETY_BUFFER,
+                    "texts": _ocr_texts(argv)[:40],
+                },
             )
             _json_payload(
                 "manual_two_city_business_buy_report_ready",

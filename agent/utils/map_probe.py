@@ -696,6 +696,16 @@ def destination_map_coordinate_probe(context: Context, params: dict[str, Any]) -
                 if image is None:
                     result["reason"] = "screencap_failed_after_close_panel"
                     return result
+            visible_probe = destination_visible_text_probe(context, image, destination_city)
+            if visible_probe.get("ok"):
+                result.update(
+                    {
+                        "ok": True,
+                        "reason": "visible_text_before_projected_probe",
+                        "click": visible_probe.get("click"),
+                    }
+                )
+                return result
             array = np.ascontiguousarray(np.asarray(image)[:, :, :3])
             if array.ndim != 3 or array.shape[2] < 3:
                 result["reason"] = "invalid_screenshot"
@@ -767,11 +777,51 @@ def destination_map_coordinate_probe(context: Context, params: dict[str, Any]) -
             last_target_point = target_point
 
             if safe:
+                typed_probe_points = _typed_candidate_probe_points(
+                    station,
+                    target_point,
+                    station_candidates,
+                    candidate_types,
+                    max_distance=110,
+                    limit=2,
+                )
+                target_kind = station_icon_kind(station)
+                same_kind_candidates = [
+                    candidate for candidate in station_candidates if candidate_types.get(candidate) == target_kind
+                ] if target_kind else []
+                if typed_probe_points:
+                    probe_points = typed_probe_points
+                    attempt["probe_source"] = "typed_candidate"
+                elif target_kind and same_kind_candidates:
+                    visible_probe = destination_visible_text_probe(context, image, destination_city)
+                    attempt["visible_text_probe"] = visible_probe
+                    attempt["near_typed_candidates"] = _near_typed_candidates(
+                        station,
+                        target_point,
+                        station_candidates,
+                        candidate_types,
+                    )
+                    if visible_probe.get("ok"):
+                        attempts.append(attempt)
+                        result.update(
+                            {
+                                "ok": True,
+                                "reason": "visible_text_without_near_typed_candidate",
+                                "click": visible_probe.get("click"),
+                            }
+                        )
+                        return result
+                    attempt["reason"] = "target_kind_candidate_not_near_projected_point"
+                    attempts.append(attempt)
+                    result["reason"] = "target_kind_candidate_not_near_projected_point"
+                    return result
+                else:
+                    probe_points = _projected_fallback_probe_points(target_point)
+                    attempt["probe_source"] = "projected_fallback"
+                attempt["typed_probe_points"] = [list(point) for point in typed_probe_points]
                 probe_results: list[dict[str, Any]] = []
                 attempt["probes"] = probe_results
-                for probe_point in map_probe_offsets(target_point):
-                    if not is_valid_map_point(probe_point):
-                        continue
+                for probe_point in probe_points:
                     context.tasker.controller.post_click(probe_point[0], probe_point[1]).wait()
                     time.sleep(0.75)
                     verify_image = controller_screencap_image(context)
