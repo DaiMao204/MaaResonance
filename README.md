@@ -35,7 +35,7 @@
 >
 > 本软件为第三方工具，通过识别游戏画面模拟常规交互动作，简化《雷索纳斯》的游戏玩法。本项目遵循相关法律法规。本项目旨在简化用户的重复性操作，不会破坏游戏平衡或提供不公平优势，也绝不会修改任何游戏文件或数据。
 >
-> 本项目开源、免费，且仅供学习和交流使用，请勿用于任何商业或营利性目的。开发者团队拥有本项目的最终解释权。因使用本软件而产生的任何问题，均与本项目及开发者无关。
+> 本项目开源、免费，且仅供学习和交流使用。项目源码使用 GNU Affero General Public License v3.0 only 开源；再分发、修改或发布衍生版本时，请遵守 AGPL-3.0-only 及第三方组件各自许可证。开发者团队拥有本项目的最终解释权。因使用本软件而产生的任何问题，均与本项目及开发者无关。
 >
 > 本项目使用了一定程度的AI编程，可能会导致代码可读性差、开发维护困难等，如遇到问题可提交Issues。
 
@@ -65,6 +65,14 @@
 - [开发文档](./docs/zh_cn/develop/how_to_develop.md)
 
 更多文档请前往 [MaaFramework](https://github.com/MaaXYZ/MaaFramework) 主仓库查看。
+
+## 开源许可证
+
+本项目使用 GNU Affero General Public License v3.0 only 开源，详见 [LICENSE](./LICENSE)。
+发布包中包含的第三方组件按其原许可证授权：
+
+- [MaaFramework](https://github.com/MaaXYZ/MaaFramework)：LGPL-3.0
+- [MXU](https://github.com/MistEO/MXU)：AGPL-3.0
 
 ## Star 历史
 
