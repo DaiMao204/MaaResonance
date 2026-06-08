@@ -36,6 +36,9 @@ on:
       - "**.py"
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   meta:
     runs-on: ubuntu-latest
