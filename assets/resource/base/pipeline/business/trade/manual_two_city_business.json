@@ -384,6 +384,22 @@
         "next": "AccountProfileCargoReturnHome",
         "on_error": "ManualTwoCityBusinessTradeEntryFailed"
     },
+    "ManualTwoCityBusinessAccountProfileWarmupStartFromMainMap": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_account_profile_warmup_start",
+                "custom_action_param": {
+                    "source": "main_map"
+                }
+            }
+        },
+        "next": "AccountProfileReadStart",
+        "on_error": "ManualTwoCityBusinessOpenCurrentCityStart"
+    },
     "ManualTwoCityBusinessStartupTravelResolveDirection": {
         "recognition": {
             "type": "DirectHit"
@@ -614,7 +630,7 @@
                 "custom_action": "manual_two_city_business_account_profile_warmup_start"
             }
         },
-        "next": "ManualTwoCityBusinessAccountProfileWarmupFastPathReady",
+        "next": "AccountProfileReadStart",
         "on_error": "CityTradeOutletOpenStart"
     },
     "ManualTwoCityBusinessAccountProfileWarmupFastPathReady": {

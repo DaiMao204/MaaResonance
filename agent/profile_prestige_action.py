@@ -2551,7 +2551,7 @@ class ManualTwoCityBusinessCalculateAction(CustomAction):
                 },
             )
             if result.get("used_default_account_config"):
-                suffix = "到达城市主界面后会读取真实账号配置并重算。" if account_read_mode != MANUAL_TWO_CITY_ACCOUNT_READ_NONE else "本轮已选择不读取账号配置，将继续使用默认配置。"
+                suffix = "回到主界面后会读取真实账号配置并重算。" if account_read_mode != MANUAL_TWO_CITY_ACCOUNT_READ_NONE else "本轮已选择不读取账号配置，将继续使用默认配置。"
                 _append_user_log(
                     MANUAL_TWO_CITY_TASK_ENTRY,
                     f"未找到账号配置，先使用默认配置临时计算：货仓 1016、城市商品全开、乘员共振按满级处理；{suffix}",
@@ -2689,7 +2689,7 @@ class AutoTwoCityBusinessCalculateAction(CustomAction):
                 },
             )
             if result.get("used_default_account_config"):
-                suffix = "到达城市主界面后会读取真实账号配置并重新自动规划。" if account_read_mode != MANUAL_TWO_CITY_ACCOUNT_READ_NONE else "本轮已选择不读取账号配置，将继续使用默认配置。"
+                suffix = "回到主界面后会读取真实账号配置并重新自动规划。" if account_read_mode != MANUAL_TWO_CITY_ACCOUNT_READ_NONE else "本轮已选择不读取账号配置，将继续使用默认配置。"
                 _append_user_log(
                     AUTO_TWO_CITY_TASK_ENTRY,
                     f"未找到账号配置，先使用默认配置临时规划：货仓 1016、城市商品全开、乘员共振按满级处理；{suffix}",
@@ -4118,6 +4118,7 @@ class ManualTwoCityBusinessConfigAction(CustomAction):
 @AgentServer.custom_action("manual_two_city_business_account_profile_warmup_start")
 class ManualTwoCityBusinessAccountProfileWarmupStartAction(CustomAction):
     def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
+        params = _argv_param(argv)
         state = _manual_two_city_state()
         if state.get("account_profile_warmup_done"):
             _json_payload("manual_two_city_business_account_profile_warmup_start", {"ok": False, "reason": "already_done"})
@@ -4141,10 +4142,12 @@ class ManualTwoCityBusinessAccountProfileWarmupStartAction(CustomAction):
             mode_detail = "会全量读取账号配置，完成后自动改回智能读取。"
         else:
             mode_label = "智能读取"
-            mode_detail = "会重新读取货仓容量，并只检查未解锁/缺失城市与缺失乘员。"
+            mode_detail = "会在个人信息页读取货仓容量，并只检查未解锁/缺失城市与缺失乘员。"
+        source = str(params.get("source") or "").strip()
+        location_label = "已到主界面" if source == "main_map" else "账号配置读取"
         _append_user_log(
             MANUAL_TWO_CITY_TASK_ENTRY,
-            f"已到城市主界面：账号配置{mode_label}启动，{mode_detail}读取完成后会重算跑商收益再继续。",
+            f"{location_label}：账号配置{mode_label}启动，{mode_detail}读取完成后会重算跑商收益再继续。",
             run_id=str(state.get("run_id") or ""),
             level="info",
             event="manual_two_city_account_profile_warmup_start",
@@ -4162,33 +4165,19 @@ class ManualTwoCityBusinessAccountProfileWarmupFastPathReadyAction(CustomAction)
         result = state.get("result") if isinstance(state.get("result"), dict) else {}
         path, account, uid, has_context = _manual_two_city_known_account_context(result)
         current_city = normalize_city_name(str(state.get("current_city") or "").strip())
-        ok = (
-            bool(state.get("account_profile_warmup_pending"))
-            and mode == MANUAL_TWO_CITY_ACCOUNT_READ_SMART
-            and bool(current_city)
-            and has_context
-        )
-        if ok:
-            _append_user_log(
-                MANUAL_TWO_CITY_TASK_ENTRY,
-                "账号配置智能读取：已在城市界面且存在账号配置，直接进入交易所读取货仓容量。",
-                run_id=str(state.get("run_id") or ""),
-                level="info",
-                event="manual_two_city_account_profile_warmup_fast_path",
-                data={"uid": uid, "current_city": current_city, "account_config": str(path)},
-            )
         _json_payload(
             "manual_two_city_business_account_profile_warmup_fast_path_ready",
             {
-                "ok": ok,
+                "ok": False,
                 "mode": mode,
                 "uid": uid,
                 "current_city": current_city,
                 "account_config": str(path),
                 "has_context": has_context,
+                "reason": "cargo_capacity_is_read_from_profile_panel",
             },
         )
-        return ok
+        return False
 
 
 @AgentServer.custom_action("manual_two_city_business_state_recovery_complete_dispatch")
@@ -4203,19 +4192,21 @@ class ManualTwoCityBusinessStateRecoveryCompleteDispatchAction(CustomAction):
 @AgentServer.custom_action("manual_two_city_business_trade_outlet_open_done_dispatch")
 class ManualTwoCityBusinessTradeOutletOpenDoneDispatchAction(CustomAction):
     def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
-        state = _manual_two_city_state()
-        pending = bool(state.get("account_profile_warmup_pending"))
-        _json_payload("manual_two_city_business_trade_outlet_open_done_dispatch", {"ok": pending})
-        return pending
+        _json_payload(
+            "manual_two_city_business_trade_outlet_open_done_dispatch",
+            {"ok": False, "reason": "cargo_capacity_is_read_from_profile_panel"},
+        )
+        return False
 
 
 @AgentServer.custom_action("manual_two_city_business_trade_outlet_open_failed_dispatch")
 class ManualTwoCityBusinessTradeOutletOpenFailedDispatchAction(CustomAction):
     def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
-        state = _manual_two_city_state()
-        pending = bool(state.get("account_profile_warmup_pending"))
-        _json_payload("manual_two_city_business_trade_outlet_open_failed_dispatch", {"ok": pending})
-        return pending
+        _json_payload(
+            "manual_two_city_business_trade_outlet_open_failed_dispatch",
+            {"ok": False, "reason": "cargo_capacity_is_read_from_profile_panel"},
+        )
+        return False
 
 
 @AgentServer.custom_action("manual_two_city_business_account_profile_warmup_done")

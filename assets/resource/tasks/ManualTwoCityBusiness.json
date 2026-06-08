@@ -15,7 +15,7 @@
             ],
             "pipeline_override": {
                 "StateRecoveryComplete": {
-                    "next": "ManualTwoCityBusinessStateRecoveryCompleteDispatch"
+                    "next": "ManualTwoCityBusinessAccountProfileWarmupStartFromMainMap"
                 },
                 "StateRecoveryFailed": {
                     "next": "ManualTwoCityBusinessTradeEntryFailed"
@@ -30,11 +30,8 @@
                     "next": "AccountProfileUidRead"
                 },
                 "AccountProfileUidRead": {
-                    "next": "AccountProfileCargoInit",
-                    "on_error": "AccountProfileCargoInit"
-                },
-                "AccountProfileCargoDone": {
-                    "next": "AccountProfilePrestigeStart"
+                    "next": "AccountProfilePrestigeStart",
+                    "on_error": "AccountProfilePrestigeStart"
                 },
                 "AccountProfilePrestigeStart": {
                     "recognition": {
@@ -650,7 +647,7 @@
         "ManualTwoCityAccountProfileReadMode": {
             "type": "select",
             "label": "账号配置读取模式",
-            "description": "智能读取会在本轮第一次到达城市主界面后重新读取货仓容量，并只检查未解锁/缺失城市与缺失乘员；全部读取会强制全量读取一次，读取完成后自动改回智能读取；不读取会跳过读取，但仍优先使用本地已有配置，缺失时使用默认配置。",
+            "description": "智能读取会在本轮第一次回到主界面后读取 UID、货仓容量与城市声望，并只检查未解锁/缺失城市与缺失乘员；全部读取会强制全量读取一次，读取完成后自动改回智能读取；不读取会跳过读取，但仍优先使用本地已有配置，缺失时使用默认配置。",
             "default_case": "smart",
             "cases": [
                 {

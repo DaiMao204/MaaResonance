@@ -15,7 +15,7 @@
             ],
             "pipeline_override": {
                 "StateRecoveryComplete": {
-                    "next": "ManualTwoCityBusinessStateRecoveryCompleteDispatch"
+                    "next": "ManualTwoCityBusinessAccountProfileWarmupStartFromMainMap"
                 },
                 "StateRecoveryFailed": {
                     "next": "ManualTwoCityBusinessTradeEntryFailed"
@@ -30,11 +30,8 @@
                     "next": "AccountProfileUidRead"
                 },
                 "AccountProfileUidRead": {
-                    "next": "AccountProfileCargoInit",
-                    "on_error": "AccountProfileCargoInit"
-                },
-                "AccountProfileCargoDone": {
-                    "next": "AccountProfilePrestigeStart"
+                    "next": "AccountProfilePrestigeStart",
+                    "on_error": "AccountProfilePrestigeStart"
                 },
                 "AccountProfilePrestigeStart": {
                     "recognition": {

@@ -136,8 +136,7 @@ jobs:
         run: |
           {
             echo "release_body<<EOF"
-            echo "修复了城市名称重复识别的错误"
-            echo "修复了尝试在武林源喝酒失败后导致喝酒不可用的错误"
+            echo "优化了识别货仓大小的逻辑，减少了无用的重复点击"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 

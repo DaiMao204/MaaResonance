@@ -35,7 +35,44 @@
         "action": {
             "type": "DoNothing"
         },
-        "next": "AccountProfilePrestigeTapMoreInfo"
+        "next": "AccountProfilePrestigeCargoStart"
+    },
+    "AccountProfilePrestigeCargoStart": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_cargo_start"
+            }
+        },
+        "next": "AccountProfilePrestigeCargoOcr"
+    },
+    "AccountProfilePrestigeCargoOcr": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "\\d+\\s*/\\s*\\d+",
+                    "\\d{3,8}"
+                ],
+                "roi": [
+                    500,
+                    248,
+                    180,
+                    58
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_cargo_read"
+            }
+        },
+        "next": "AccountProfilePrestigeTapMoreInfo",
+        "on_error": "AccountProfilePrestigeTapMoreInfo"
     },
     "AccountProfilePrestigeTapMoreInfo": {
         "recognition": {
