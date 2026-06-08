@@ -6,6 +6,8 @@ env:
   # - 设置 VERSION 为具体版本号时（如 v1.2.3），下载指定版本
   MAAFW_VERSION: ""
   MXU_VERSION: ""
+  PYTHONUTF8: "1"
+  PYTHONIOENCODING: "utf-8"
 
 on:
   push:
@@ -123,26 +125,17 @@ jobs:
     needs: meta
     runs-on: ubuntu-latest
     outputs:
-      release_body: ${{ steps.git-cliff.outputs.content }}
+      release_body: ${{ steps.release_notes.outputs.release_body }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Generate a changelog
-        uses: orhun/git-cliff-action@v4
-        id: git-cliff
-        with:
-          config: .github/cliff.toml
-          # 正式版：使用 tag-pattern 只匹配正式版标签，包含所有从上一个正式版以来的提交
-          # 预发布版：正常生成，只包含从上一个标签以来的提交
-          args: >-
-            -vv --latest --strip header
-            ${{ needs.meta.outputs.is_prerelease == 'false' && '--tag-pattern "^v[0-9]+\\.[0-9]+\\.[0-9]+$"' || '' }}
-        env:
-          OUTPUT: CHANGES.md
-          GITHUB_REPO: ${{ github.repository }}
+      - name: Generate release notes
+        id: release_notes
+        shell: bash
+        run: |
+          {
+            echo "release_body<<EOF"
+            echo "迁移到MAA框架，适配手动、自动跑商功能，同时支持账号配置智能读取、自动疲劳恢复。"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
   release:
     if: ${{ needs.meta.outputs.is_release == 'true' }}

@@ -8,6 +8,12 @@ from jsonschema import Draft7Validator, Draft202012Validator
 from jsonschema.exceptions import ValidationError
 
 try:
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+except AttributeError:
+    pass
+
+try:
     from referencing import Registry, Resource
     from referencing.jsonschema import DRAFT202012, DRAFT7
     import referencing.retrieval
