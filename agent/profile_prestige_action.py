@@ -4154,6 +4154,43 @@ class ManualTwoCityBusinessAccountProfileWarmupStartAction(CustomAction):
         return True
 
 
+@AgentServer.custom_action("manual_two_city_business_account_profile_warmup_fast_path_ready")
+class ManualTwoCityBusinessAccountProfileWarmupFastPathReadyAction(CustomAction):
+    def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
+        state = _manual_two_city_state()
+        mode = _manual_two_city_account_read_mode(state.get("account_profile_read_mode"))
+        result = state.get("result") if isinstance(state.get("result"), dict) else {}
+        path, account, uid, has_context = _manual_two_city_known_account_context(result)
+        current_city = normalize_city_name(str(state.get("current_city") or "").strip())
+        ok = (
+            bool(state.get("account_profile_warmup_pending"))
+            and mode == MANUAL_TWO_CITY_ACCOUNT_READ_SMART
+            and bool(current_city)
+            and has_context
+        )
+        if ok:
+            _append_user_log(
+                MANUAL_TWO_CITY_TASK_ENTRY,
+                "账号配置智能读取：已在城市界面且存在账号配置，直接进入交易所读取货仓容量。",
+                run_id=str(state.get("run_id") or ""),
+                level="info",
+                event="manual_two_city_account_profile_warmup_fast_path",
+                data={"uid": uid, "current_city": current_city, "account_config": str(path)},
+            )
+        _json_payload(
+            "manual_two_city_business_account_profile_warmup_fast_path_ready",
+            {
+                "ok": ok,
+                "mode": mode,
+                "uid": uid,
+                "current_city": current_city,
+                "account_config": str(path),
+                "has_context": has_context,
+            },
+        )
+        return ok
+
+
 @AgentServer.custom_action("manual_two_city_business_state_recovery_complete_dispatch")
 class ManualTwoCityBusinessStateRecoveryCompleteDispatchAction(CustomAction):
     def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
@@ -4796,6 +4833,24 @@ def _manual_two_city_account_read_mode(value: Any) -> str:
     if text in {"full", "all", "force", "全部读取", "全量读取"}:
         return MANUAL_TWO_CITY_ACCOUNT_READ_FULL
     return MANUAL_TWO_CITY_ACCOUNT_READ_SMART
+
+
+def _manual_two_city_drink_allowed_cities() -> set[str]:
+    return {
+        normalize_city_name(city)
+        for city in load_city_names()
+        if normalize_city_name(city) and normalize_city_name(city) != "武林源"
+    }
+
+
+def _manual_two_city_drink_city(state: dict[str, Any], phase: str, leg: dict[str, Any]) -> str:
+    current_city = normalize_city_name(
+        str(state.get("current_city") or state.get("travel_arrived_city") or "").strip()
+    )
+    if current_city:
+        return current_city
+    leg_key = "sell_city" if phase == "sell" else "buy_city"
+    return normalize_city_name(str(leg.get(leg_key) or "").strip())
 
 
 def _manual_two_city_until_fatigue_exhausted(state: dict[str, Any] | None = None) -> bool:
@@ -5636,6 +5691,15 @@ def _manual_two_city_load_account_config_for_result(result: dict[str, Any] | Non
     if account:
         account = _manual_two_city_persist_account_product_status_defaults(path, account)
     return path, account
+
+
+def _manual_two_city_known_account_context(result: dict[str, Any] | None = None) -> tuple[Path, dict[str, Any], str, bool]:
+    current_result = result if isinstance(result, dict) else {}
+    path, account = _manual_two_city_load_account_config_for_result(current_result)
+    account_uid = account.get("uid") if isinstance(account, dict) else None
+    uid = _safe_account_uid(account_uid or current_result.get("uid") or _PROFILE_UID or path.stem)
+    has_context = bool(account) and uid != "unknown" and _is_real_account_config_path(path)
+    return path, account, uid, has_context
 
 
 def _manual_two_city_update_product_status(
@@ -7035,6 +7099,26 @@ class ManualTwoCityBusinessCurrentCityReadyAction(CustomAction):
         return True
 
 
+@AgentServer.custom_action("manual_two_city_business_should_read_city_page")
+class ManualTwoCityBusinessShouldReadCityPageAction(CustomAction):
+    def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
+        state = _manual_two_city_state()
+        current_city = normalize_city_name(str(state.get("current_city") or "").strip())
+        should_read = not bool(current_city)
+        if not should_read:
+            _append_user_log(
+                MANUAL_TWO_CITY_TASK_ENTRY,
+                f"当前位置已在主界面识别为 {current_city}，跳过城市页重复识别。",
+                event="manual_two_city_skip_city_page_current_city_read",
+                data={"current_city": current_city},
+            )
+        _json_payload(
+            "manual_two_city_business_should_read_city_page",
+            {"ok": should_read, "current_city": current_city},
+        )
+        return should_read
+
+
 @AgentServer.custom_action("manual_two_city_business_use_buy_books")
 class ManualTwoCityBusinessUseBuyBooksAction(CustomAction):
     def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
@@ -8413,6 +8497,35 @@ class ManualTwoCityBusinessShouldDrinkAction(CustomAction):
             return False
         if state.pop("skip_next_drink_check", False):
             _json_payload("manual_two_city_business_should_drink", {"ok": False, "reason": "skip_once", "phase": phase})
+            return False
+        drink_city = _manual_two_city_drink_city(state, phase, leg)
+        allowed_cities = _manual_two_city_drink_allowed_cities()
+        if drink_city not in allowed_cities:
+            skip_key = f"{phase}:{drink_city or '-'}"
+            logged = state.setdefault("drink_city_skip_logged", {})
+            if isinstance(logged, dict) and not logged.get(skip_key):
+                logged[skip_key] = True
+                _append_user_log(
+                    MANUAL_TWO_CITY_TASK_ENTRY,
+                    f"跑商喝酒预检：当前城市 {drink_city or '未识别'} 不是可喝酒的主声望城市，跳过喝酒。",
+                    event="manual_two_city_drink_city_not_allowed",
+                    data={
+                        "phase": phase,
+                        "city": drink_city,
+                        "leg": leg,
+                        "allowed_cities": sorted(allowed_cities),
+                    },
+                )
+            _json_payload(
+                "manual_two_city_business_should_drink",
+                {
+                    "ok": False,
+                    "reason": "city_not_allowed",
+                    "phase": phase,
+                    "city": drink_city,
+                    "allowed_cities": sorted(allowed_cities),
+                },
+            )
             return False
         if not status:
             _append_user_log(

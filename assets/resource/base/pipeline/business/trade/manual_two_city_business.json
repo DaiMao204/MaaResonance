@@ -547,8 +547,21 @@
                 }
             }
         },
-        "next": "ManualTwoCityBusinessReadCurrentCityOnCityPage",
+        "next": "ManualTwoCityBusinessMaybeReadCurrentCityOnCityPage",
         "on_error": "CityTradeOutletOpenStart"
+    },
+    "ManualTwoCityBusinessMaybeReadCurrentCityOnCityPage": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_should_read_city_page"
+            }
+        },
+        "next": "ManualTwoCityBusinessReadCurrentCityOnCityPage",
+        "on_error": "ManualTwoCityBusinessAccountProfileWarmupStart"
     },
     "ManualTwoCityBusinessReadCurrentCityOnCityPage": {
         "recognition": {
@@ -601,8 +614,21 @@
                 "custom_action": "manual_two_city_business_account_profile_warmup_start"
             }
         },
-        "next": "StateRecoveryStart",
+        "next": "ManualTwoCityBusinessAccountProfileWarmupFastPathReady",
         "on_error": "CityTradeOutletOpenStart"
+    },
+    "ManualTwoCityBusinessAccountProfileWarmupFastPathReady": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_account_profile_warmup_fast_path_ready"
+            }
+        },
+        "next": "CityTradeOutletOpenStart",
+        "on_error": "StateRecoveryStart"
     },
     "ManualTwoCityBusinessAccountProfileWarmupDone": {
         "recognition": {

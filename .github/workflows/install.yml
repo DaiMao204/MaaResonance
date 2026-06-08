@@ -136,7 +136,8 @@ jobs:
         run: |
           {
             echo "release_body<<EOF"
-            echo "迁移到MAA框架，适配手动、自动跑商功能，同时支持账号配置智能读取、自动疲劳恢复。"
+            echo "修复了城市名称重复识别的错误"
+            echo "修复了尝试在武林源喝酒失败后导致喝酒不可用的错误"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
