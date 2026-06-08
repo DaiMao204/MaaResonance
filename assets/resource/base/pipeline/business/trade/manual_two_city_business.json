@@ -1,0 +1,3991 @@
+{
+    "RunManualTwoCityBusiness": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_config",
+                "custom_action_param": {
+                    "reset": true
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessSetOutboundCity"
+    },
+    "RunAutoTwoCityBusiness": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_config",
+                "custom_action_param": {
+                    "reset": true,
+                    "task_entry": "AutoTwoCityBusiness",
+                    "auto_route_enabled": true
+                }
+            }
+        },
+        "next": "AutoTwoCityBusinessSetPriorityCities"
+    },
+    "AutoTwoCityBusinessSetPriorityCities": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_config",
+                "custom_action_param": {
+                    "priority_cities": []
+                }
+            }
+        },
+        "next": "AutoTwoCityBusinessSetExcludeCities"
+    },
+    "AutoTwoCityBusinessSetExcludeCities": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_config",
+                "custom_action_param": {
+                    "exclude_cities": []
+                }
+            }
+        },
+        "next": "AutoTwoCityBusinessSetPlannerParams"
+    },
+    "AutoTwoCityBusinessSetPlannerParams": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_config",
+                "custom_action_param": {
+                    "max_restock": 6,
+                    "wulinyuan_priority": "total"
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessSetRunMode"
+    },
+    "ManualTwoCityBusinessSetOutboundCity": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_config",
+                "custom_action_param": {
+                    "manual_start_city": "修格里城"
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessSetOutboundParams"
+    },
+    "ManualTwoCityBusinessSetOutboundParams": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_config",
+                "custom_action_param": {
+                    "start_book": 4,
+                    "start_bargain_percent": 20,
+                    "start_raise_percent": 20
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessSetReturnCity"
+    },
+    "ManualTwoCityBusinessSetReturnCity": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_config",
+                "custom_action_param": {
+                    "manual_target_city": "7号自由港"
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessSetReturnParams"
+    },
+    "ManualTwoCityBusinessSetReturnParams": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_config",
+                "custom_action_param": {
+                    "target_book": 0,
+                    "target_bargain_percent": 0,
+                    "target_raise_percent": 0
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessSetRunMode"
+    },
+    "ManualTwoCityBusinessSetRunMode": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_config",
+                "custom_action_param": {
+                    "run_mode": "one_round"
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessSetAccountProfileReadMode"
+    },
+    "ManualTwoCityBusinessSetAccountProfileReadMode": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_config",
+                "custom_action_param": {
+                    "account_profile_read_mode": "smart"
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessSetAutoImpactDrill"
+    },
+    "ManualTwoCityBusinessSetAutoImpactDrill": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_config",
+                "custom_action_param": {
+                    "auto_use_impact_drill": false
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessSetAutoSpeedProjectile"
+    },
+    "ManualTwoCityBusinessSetAutoSpeedProjectile": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_config",
+                "custom_action_param": {
+                    "auto_use_speed_projectile": false
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessSetAutoDrink"
+    },
+    "ManualTwoCityBusinessSetAutoDrink": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_config",
+                "custom_action_param": {
+                    "auto_drink": false,
+                    "drink_fatigue_threshold": 300
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessSetAutoBento"
+    },
+    "ManualTwoCityBusinessSetAutoBento": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_config",
+                "custom_action_param": {
+                    "use_bento": false
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessSetMedicineSwitch"
+    },
+    "ManualTwoCityBusinessSetMedicineSwitch": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_config",
+                "custom_action_param": {
+                    "use_fatigue_medicine": false
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessSetMedicineLimits"
+    },
+    "ManualTwoCityBusinessSetMedicineLimits": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_config",
+                "custom_action_param": {
+                    "lollipop_use_limit": 0,
+                    "gum_use_limit": 0,
+                    "cactus_candy_use_limit": 0,
+                    "huashi_use_limit": 0
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessCalculate"
+    },
+    "ManualTwoCityBusinessCalculate": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_calculate"
+            }
+        },
+        "next": "ManualTwoCityBusinessStartupTravelCheck"
+    },
+    "AutoTwoCityBusinessCalculate": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "auto_two_city_business_calculate"
+            }
+        },
+        "next": "ManualTwoCityBusinessStartupTravelCheck"
+    },
+    "ManualTwoCityBusinessStartupTravelCheck": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_startup_travel_check"
+            }
+        },
+        "post_delay": 200,
+        "next": "ManualTwoCityBusinessStartupTravelResolveDirection",
+        "on_error": "ManualTwoCityBusinessStartupTravelRecover"
+    },
+    "ManualTwoCityBusinessStartupTravelRecover": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 8000,
+        "next": [
+            "ManualTwoCityBusinessRouteImpactDrillEnabled",
+            "ManualTwoCityBusinessRouteImpactDrillButton",
+            "ManualTwoCityBusinessRouteSpeedProjectileEnabled",
+            "ManualTwoCityBusinessRouteEventAttack",
+            "ManualTwoCityBusinessRouteEventPanelReady",
+            "ManualTwoCityBusinessRouteEventContinue",
+            "ManualTwoCityBusinessFightClearTeamPopupCancel",
+            "ManualTwoCityBusinessFightFormationReady",
+            "ManualTwoCityBusinessFightStartByOcr",
+            "ManualTwoCityBusinessFightStartButton",
+            "ManualTwoCityBusinessFightAutoButton",
+            "ManualTwoCityBusinessTravelGenericPopup",
+            "ManualTwoCityBusinessTravelStartScreen",
+            "ManualTwoCityBusinessTravelResourceDownloadPrompt",
+            "ManualTwoCityBusinessFightActive",
+            "ManualTwoCityBusinessTravelInProgress",
+            "ManualTwoCityBusinessStartupTravelFallbackRecovery"
+        ],
+        "on_error": "StateRecoveryStart"
+    },
+    "ManualTwoCityBusinessStartupTravelFallbackRecovery": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_startup_travel_fallback_recovery"
+            }
+        },
+        "next": "StateRecoveryStart",
+        "on_error": "ManualTwoCityBusinessTravelFailed"
+    },
+    "ManualTwoCityBusinessStateRecoveryCompleteDispatch": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_state_recovery_complete_dispatch"
+            }
+        },
+        "next": "AccountProfileReadStart",
+        "on_error": "ManualTwoCityBusinessOpenCurrentCityStart"
+    },
+    "ManualTwoCityBusinessTradeOutletOpenDoneDispatch": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_trade_outlet_open_done_dispatch"
+            }
+        },
+        "next": "AccountProfileCargoTradeMenuReady",
+        "on_error": "ManualTwoCityBusinessTradeOutletDispatch"
+    },
+    "ManualTwoCityBusinessTradeOutletOpenFailedDispatch": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_trade_outlet_open_failed_dispatch"
+            }
+        },
+        "next": "AccountProfileCargoReturnHome",
+        "on_error": "ManualTwoCityBusinessTradeEntryFailed"
+    },
+    "ManualTwoCityBusinessStartupTravelResolveDirection": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_startup_travel_resolve_direction"
+            }
+        },
+        "post_delay": 1200,
+        "next": "ManualTwoCityBusinessStartupTravelStarted",
+        "on_error": "ManualTwoCityBusinessStartupTravelRecover"
+    },
+    "ManualTwoCityBusinessStartupTravelStarted": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_startup_travel_started"
+            }
+        },
+        "next": "ManualTwoCityBusinessTravelMonitor",
+        "on_error": "ManualTwoCityBusinessTravelFailed"
+    },
+    "ManualTwoCityBusinessOpenCurrentCityStart": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_stage",
+                "custom_action_param": {
+                    "stage": "打开当前城市",
+                    "detail": "准备确认当前位置；若已在城市界面则直接找交易所，若在主界面则先进入当前城市。"
+                }
+            }
+        },
+        "next": [
+            "ManualTwoCityBusinessCurrentCityReady",
+            "ManualTwoCityBusinessReadCurrentCityOnMainMap",
+            "ManualTwoCityBusinessOpenCurrentCityByOcr",
+            "ManualTwoCityBusinessOpenCurrentCityFallback"
+        ]
+    },
+    "ManualTwoCityBusinessReadCurrentCityOnMainMap": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "7号自由港",
+                    "云岫桥基地",
+                    "修格里城",
+                    "塔图站",
+                    "岚心城",
+                    "曼德矿场",
+                    "栖羽站",
+                    "武林源",
+                    "汇流塔",
+                    "海角城",
+                    "淘金乐园",
+                    "澄明数据中心",
+                    "维蒂林场",
+                    "荒原站",
+                    "贡露城",
+                    "远星大桥",
+                    "铁盟哨站",
+                    "阿妮塔发射中心",
+                    "阿妮塔战备工厂",
+                    "阿妮塔能源研究所",
+                    "黑月游乐城"
+                ],
+                "roi": [
+                    930,
+                    300,
+                    350,
+                    330
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_current_city_ready",
+                "custom_action_param": {
+                    "source": "main_map"
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessOpenCurrentCityByOcr",
+        "on_error": "ManualTwoCityBusinessOpenCurrentCityByOcr"
+    },
+    "ManualTwoCityBusinessOpenCurrentCityByOcr": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "访问城市",
+                    "进入城市",
+                    "当前城市"
+                ],
+                "roi": [
+                    1000,
+                    360,
+                    280,
+                    260
+                ]
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 1600,
+        "next": "ManualTwoCityBusinessCurrentCityReady"
+    },
+    "ManualTwoCityBusinessOpenCurrentCityFallback": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "main_map.png",
+                "threshold": 0.95
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    1270,
+                    494
+                ]
+            }
+        },
+        "post_delay": 1600,
+        "next": "ManualTwoCityBusinessCurrentCityReady",
+        "on_error": "ManualTwoCityBusinessTradeEntryFailed"
+    },
+    "ManualTwoCityBusinessCurrentCityReady": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "fame.png",
+                "roi": [
+                    25,
+                    634,
+                    74,
+                    73
+                ],
+                "threshold": 0.95
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_stage",
+                "custom_action_param": {
+                    "stage": "当前城市",
+                    "detail": "已进入当前城市，准备查找交易所。"
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessReadCurrentCityOnCityPage",
+        "on_error": "CityTradeOutletOpenStart"
+    },
+    "ManualTwoCityBusinessReadCurrentCityOnCityPage": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "7号自由港",
+                    "云岫桥基地",
+                    "修格里城",
+                    "塔图站",
+                    "岚心城",
+                    "曼德矿场",
+                    "栖羽站",
+                    "武林源",
+                    "汇流塔",
+                    "海角城",
+                    "淘金乐园",
+                    "澄明数据中心",
+                    "维蒂林场",
+                    "荒原站",
+                    "贡露城",
+                    "远星大桥",
+                    "铁盟哨站",
+                    "阿妮塔发射中心",
+                    "阿妮塔战备工厂",
+                    "阿妮塔能源研究所",
+                    "黑月游乐城"
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_current_city_ready",
+                "custom_action_param": {
+                    "source": "city_page"
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessAccountProfileWarmupStart",
+        "on_error": "ManualTwoCityBusinessAccountProfileWarmupStart"
+    },
+    "ManualTwoCityBusinessAccountProfileWarmupStart": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_account_profile_warmup_start"
+            }
+        },
+        "next": "StateRecoveryStart",
+        "on_error": "CityTradeOutletOpenStart"
+    },
+    "ManualTwoCityBusinessAccountProfileWarmupDone": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_account_profile_warmup_done"
+            }
+        },
+        "post_delay": 200,
+        "next": "ManualTwoCityBusinessOpenCurrentCityStart",
+        "on_error": "ManualTwoCityBusinessTradeEntryFailed"
+    },
+    "ManualTwoCityBusinessOpenBuyPage": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": "我要买",
+                "roi": [
+                    700,
+                    280,
+                    520,
+                    100
+                ]
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 1200,
+        "next": "ManualTwoCityBusinessBuyPageReady",
+        "on_error": "ManualTwoCityBusinessTradeEntryFailed"
+    },
+    "ManualTwoCityBusinessTradeOutletDispatch": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_should_open_sell"
+            }
+        },
+        "post_delay": 1200,
+        "next": [
+            "ManualTwoCityBusinessSellPageReady",
+            "ManualTwoCityBusinessBuyPageReady"
+        ],
+        "on_error": "ManualTwoCityBusinessTradeEntryFailed"
+    },
+    "ManualTwoCityBusinessOpenSellPage": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": "我要卖",
+                "roi": [
+                    700,
+                    360,
+                    520,
+                    110
+                ]
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 1200,
+        "next": "ManualTwoCityBusinessSellPageReady",
+        "on_error": "ManualTwoCityBusinessTradeEntryFailed"
+    },
+    "ManualTwoCityBusinessBuyPageReady": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "预计买入",
+                    "全部买入",
+                    "全部取消"
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_buy_page_ready",
+                "custom_action_param": {
+                    "stage": "买入页",
+                    "detail": "已进入买入页。当前版本先验证跑商入口，后续接入商品选择、买入、发车和卖出。"
+                }
+            }
+        },
+        "next": [
+            "ManualTwoCityBusinessSellPageReady",
+            "ManualTwoCityBusinessSkipBuyDueFullCargo",
+            "ManualTwoCityBusinessInitialTransferNeeded",
+            "ManualTwoCityBusinessProductScanNeeded",
+            "ManualTwoCityBusinessBuyDrinkCheck"
+        ],
+        "on_error": "ManualTwoCityBusinessTradeEntryFailed"
+    },
+    "ManualTwoCityBusinessSkipBuyDueFullCargo": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_skip_buy_due_full_cargo"
+            }
+        },
+        "post_delay": 200,
+        "next": "ManualTwoCityBusinessReturnHomeAfterBuy",
+        "on_error": "ManualTwoCityBusinessInitialTransferNeeded"
+    },
+    "ManualTwoCityBusinessInitialTransferNeeded": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_initial_transfer_needed"
+            }
+        },
+        "post_delay": 200,
+        "next": "ManualTwoCityBusinessInitialTransferStrengthCheck",
+        "on_error": "ManualTwoCityBusinessProductScanNeeded"
+    },
+    "ManualTwoCityBusinessInitialTransferStrengthCheck": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": "\\d+\\s*/\\s*\\d+",
+                "roi": [
+                    940,
+                    0,
+                    130,
+                    50
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_initial_transfer_strength_check"
+            }
+        },
+        "next": [
+            "ManualTwoCityBusinessInitialTransferStrengthRecoveryNeeded",
+            "ManualTwoCityBusinessInitialTransferTapBuyAll"
+        ],
+        "on_error": "ManualTwoCityBusinessTradeEntryFailed"
+    },
+    "ManualTwoCityBusinessInitialTransferStrengthRecoveryNeeded": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_initial_transfer_strength_recovery_needed"
+            }
+        },
+        "next": "ManualTwoCityBusinessOpenStrengthForRecovery",
+        "on_error": "ManualTwoCityBusinessInitialTransferTapBuyAll"
+    },
+    "ManualTwoCityBusinessInitialTransferTapBuyAll": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": "全部买入",
+                "roi": [
+                    860,
+                    80,
+                    400,
+                    90
+                ]
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 900,
+        "next": [
+            "ManualTwoCityBusinessInitialTransferSelectionReady",
+            "ManualTwoCityBusinessInitialTransferTapBuyAllRetry"
+        ],
+        "on_error": "ManualTwoCityBusinessTradeEntryFailed"
+    },
+    "ManualTwoCityBusinessInitialTransferSelectionReady": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": "全部取消",
+                "roi": [
+                    860,
+                    80,
+                    400,
+                    90
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "next": "ManualTwoCityBusinessInitialTransferTapBuyButton",
+        "on_error": "ManualTwoCityBusinessInitialTransferTapBuyAllRetry"
+    },
+    "ManualTwoCityBusinessInitialTransferTapBuyAllRetry": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": "全部买入",
+                "roi": [
+                    860,
+                    80,
+                    400,
+                    90
+                ]
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 900,
+        "next": [
+            "ManualTwoCityBusinessInitialTransferSelectionReadyAfterRetry",
+            "ManualTwoCityBusinessInitialTransferSoldOutSkip"
+        ],
+        "on_error": "ManualTwoCityBusinessTradeEntryFailed"
+    },
+    "ManualTwoCityBusinessInitialTransferSoldOutSkip": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": "可补充",
+                "roi": [
+                    460,
+                    120,
+                    420,
+                    560
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_initial_transfer_skip_sold_out_buy"
+            }
+        },
+        "post_delay": 200,
+        "next": "ManualTwoCityBusinessReturnHomeAfterBuy",
+        "on_error": "ManualTwoCityBusinessTradeEntryFailed"
+    },
+    "ManualTwoCityBusinessInitialTransferSelectionReadyAfterRetry": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": "全部取消",
+                "roi": [
+                    860,
+                    80,
+                    400,
+                    90
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "next": "ManualTwoCityBusinessInitialTransferTapBuyButton",
+        "on_error": "ManualTwoCityBusinessTradeEntryFailed"
+    },
+    "ManualTwoCityBusinessInitialTransferTapBuyButton": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "全部买入",
+                    "买入"
+                ],
+                "roi": [
+                    880,
+                    585,
+                    360,
+                    115
+                ]
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 1000,
+        "next": [
+            "ManualTwoCityBusinessBuyReportReady",
+            "ManualTwoCityBusinessBuyConfirmPopup",
+            "ManualTwoCityBusinessBuyConfirmRetry001"
+        ],
+        "on_error": "ManualTwoCityBusinessTradeEntryFailed"
+    },
+    "ManualTwoCityBusinessProductScanNeeded": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_product_scan_needed"
+            }
+        },
+        "post_delay": 200,
+        "next": "ManualTwoCityBusinessProductScanPage001",
+        "on_error": "ManualTwoCityBusinessBuyDrinkCheck"
+    },
+    "ManualTwoCityBusinessProductScanResetTop001": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "预计买入",
+                    "全部买入",
+                    "全部取消"
+                ]
+            }
+        },
+        "action": {
+            "type": "Swipe",
+            "param": {
+                "begin": [
+                    690,
+                    210
+                ],
+                "end": [
+                    690,
+                    560
+                ],
+                "duration": 600
+            }
+        },
+        "post_delay": 450,
+        "next": "ManualTwoCityBusinessProductScanResetTop002",
+        "on_error": "ManualTwoCityBusinessProductScanResetTop002"
+    },
+    "ManualTwoCityBusinessProductScanResetTop002": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "预计买入",
+                    "全部买入",
+                    "全部取消"
+                ]
+            }
+        },
+        "action": {
+            "type": "Swipe",
+            "param": {
+                "begin": [
+                    690,
+                    210
+                ],
+                "end": [
+                    690,
+                    560
+                ],
+                "duration": 600
+            }
+        },
+        "post_delay": 450,
+        "next": "ManualTwoCityBusinessProductScanResetTop003",
+        "on_error": "ManualTwoCityBusinessProductScanResetTop003"
+    },
+    "ManualTwoCityBusinessProductScanResetTop003": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "预计买入",
+                    "全部买入",
+                    "全部取消"
+                ]
+            }
+        },
+        "action": {
+            "type": "Swipe",
+            "param": {
+                "begin": [
+                    690,
+                    210
+                ],
+                "end": [
+                    690,
+                    560
+                ],
+                "duration": 600
+            }
+        },
+        "post_delay": 450,
+        "next": "ManualTwoCityBusinessProductScanResetTop004",
+        "on_error": "ManualTwoCityBusinessProductScanResetTop004"
+    },
+    "ManualTwoCityBusinessProductScanResetTop004": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "预计买入",
+                    "全部买入",
+                    "全部取消"
+                ]
+            }
+        },
+        "action": {
+            "type": "Swipe",
+            "param": {
+                "begin": [
+                    690,
+                    210
+                ],
+                "end": [
+                    690,
+                    560
+                ],
+                "duration": 600
+            }
+        },
+        "post_delay": 450,
+        "next": "ManualTwoCityBusinessProductScanPage001",
+        "on_error": "ManualTwoCityBusinessProductScanPage001"
+    },
+    "ManualTwoCityBusinessProductScanPage001": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": ".+",
+                "roi": [
+                    500,
+                    105,
+                    430,
+                    585
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_product_scan_page",
+                "custom_action_param": {
+                    "page_index": 1
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessProductScanContinue001",
+        "on_error": "ManualTwoCityBusinessProductScanScroll001"
+    },
+    "ManualTwoCityBusinessProductScanContinue001": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_product_scan_should_continue",
+                "custom_action_param": {
+                    "page_index": 1
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessProductScanScroll001",
+        "on_error": "ManualTwoCityBusinessProductScanComplete"
+    },
+    "ManualTwoCityBusinessProductScanScroll001": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "预计买入",
+                    "全部买入",
+                    "全部取消"
+                ]
+            }
+        },
+        "action": {
+            "type": "Swipe",
+            "param": {
+                "begin": [
+                    690,
+                    560
+                ],
+                "end": [
+                    690,
+                    210
+                ],
+                "duration": 600
+            }
+        },
+        "post_delay": 650,
+        "next": "ManualTwoCityBusinessProductScanPage002",
+        "on_error": "ManualTwoCityBusinessProductScanComplete"
+    },
+    "ManualTwoCityBusinessProductScanPage002": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": ".+",
+                "roi": [
+                    500,
+                    105,
+                    430,
+                    585
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_product_scan_page",
+                "custom_action_param": {
+                    "page_index": 2
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessProductScanContinue002",
+        "on_error": "ManualTwoCityBusinessProductScanScroll002"
+    },
+    "ManualTwoCityBusinessProductScanContinue002": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_product_scan_should_continue",
+                "custom_action_param": {
+                    "page_index": 2
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessProductScanScroll002",
+        "on_error": "ManualTwoCityBusinessProductScanComplete"
+    },
+    "ManualTwoCityBusinessProductScanScroll002": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "预计买入",
+                    "全部买入",
+                    "全部取消"
+                ]
+            }
+        },
+        "action": {
+            "type": "Swipe",
+            "param": {
+                "begin": [
+                    690,
+                    560
+                ],
+                "end": [
+                    690,
+                    210
+                ],
+                "duration": 600
+            }
+        },
+        "post_delay": 650,
+        "next": "ManualTwoCityBusinessProductScanPage003",
+        "on_error": "ManualTwoCityBusinessProductScanComplete"
+    },
+    "ManualTwoCityBusinessProductScanPage003": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": ".+",
+                "roi": [
+                    500,
+                    105,
+                    430,
+                    585
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_product_scan_page",
+                "custom_action_param": {
+                    "page_index": 3
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessProductScanContinue003",
+        "on_error": "ManualTwoCityBusinessProductScanScroll003"
+    },
+    "ManualTwoCityBusinessProductScanContinue003": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_product_scan_should_continue",
+                "custom_action_param": {
+                    "page_index": 3
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessProductScanScroll003",
+        "on_error": "ManualTwoCityBusinessProductScanComplete"
+    },
+    "ManualTwoCityBusinessProductScanScroll003": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "预计买入",
+                    "全部买入",
+                    "全部取消"
+                ]
+            }
+        },
+        "action": {
+            "type": "Swipe",
+            "param": {
+                "begin": [
+                    690,
+                    560
+                ],
+                "end": [
+                    690,
+                    210
+                ],
+                "duration": 600
+            }
+        },
+        "post_delay": 650,
+        "next": "ManualTwoCityBusinessProductScanPage004",
+        "on_error": "ManualTwoCityBusinessProductScanComplete"
+    },
+    "ManualTwoCityBusinessProductScanPage004": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": ".+",
+                "roi": [
+                    500,
+                    105,
+                    430,
+                    585
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_product_scan_page",
+                "custom_action_param": {
+                    "page_index": 4
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessProductScanContinue004",
+        "on_error": "ManualTwoCityBusinessProductScanScroll004"
+    },
+    "ManualTwoCityBusinessProductScanContinue004": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_product_scan_should_continue",
+                "custom_action_param": {
+                    "page_index": 4
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessProductScanScroll004",
+        "on_error": "ManualTwoCityBusinessProductScanComplete"
+    },
+    "ManualTwoCityBusinessProductScanScroll004": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "预计买入",
+                    "全部买入",
+                    "全部取消"
+                ]
+            }
+        },
+        "action": {
+            "type": "Swipe",
+            "param": {
+                "begin": [
+                    690,
+                    560
+                ],
+                "end": [
+                    690,
+                    210
+                ],
+                "duration": 600
+            }
+        },
+        "post_delay": 650,
+        "next": "ManualTwoCityBusinessProductScanPage005",
+        "on_error": "ManualTwoCityBusinessProductScanComplete"
+    },
+    "ManualTwoCityBusinessProductScanPage005": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": ".+",
+                "roi": [
+                    500,
+                    105,
+                    430,
+                    585
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_product_scan_page",
+                "custom_action_param": {
+                    "page_index": 5
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessProductScanContinue005",
+        "on_error": "ManualTwoCityBusinessProductScanScroll005"
+    },
+    "ManualTwoCityBusinessProductScanContinue005": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_product_scan_should_continue",
+                "custom_action_param": {
+                    "page_index": 5
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessProductScanScroll005",
+        "on_error": "ManualTwoCityBusinessProductScanComplete"
+    },
+    "ManualTwoCityBusinessProductScanScroll005": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "预计买入",
+                    "全部买入",
+                    "全部取消"
+                ]
+            }
+        },
+        "action": {
+            "type": "Swipe",
+            "param": {
+                "begin": [
+                    690,
+                    560
+                ],
+                "end": [
+                    690,
+                    210
+                ],
+                "duration": 600
+            }
+        },
+        "post_delay": 650,
+        "next": "ManualTwoCityBusinessProductScanPage006",
+        "on_error": "ManualTwoCityBusinessProductScanComplete"
+    },
+    "ManualTwoCityBusinessProductScanPage006": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": ".+",
+                "roi": [
+                    500,
+                    105,
+                    430,
+                    585
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_product_scan_page",
+                "custom_action_param": {
+                    "page_index": 6
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessProductScanContinue006",
+        "on_error": "ManualTwoCityBusinessProductScanScroll006"
+    },
+    "ManualTwoCityBusinessProductScanContinue006": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_product_scan_should_continue",
+                "custom_action_param": {
+                    "page_index": 6
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessProductScanScroll006",
+        "on_error": "ManualTwoCityBusinessProductScanComplete"
+    },
+    "ManualTwoCityBusinessProductScanScroll006": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "预计买入",
+                    "全部买入",
+                    "全部取消"
+                ]
+            }
+        },
+        "action": {
+            "type": "Swipe",
+            "param": {
+                "begin": [
+                    690,
+                    560
+                ],
+                "end": [
+                    690,
+                    210
+                ],
+                "duration": 600
+            }
+        },
+        "post_delay": 650,
+        "next": "ManualTwoCityBusinessProductScanPage007",
+        "on_error": "ManualTwoCityBusinessProductScanComplete"
+    },
+    "ManualTwoCityBusinessProductScanPage007": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": ".+",
+                "roi": [
+                    500,
+                    105,
+                    430,
+                    585
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_product_scan_page",
+                "custom_action_param": {
+                    "page_index": 7
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessProductScanContinue007",
+        "on_error": "ManualTwoCityBusinessProductScanScroll007"
+    },
+    "ManualTwoCityBusinessProductScanContinue007": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_product_scan_should_continue",
+                "custom_action_param": {
+                    "page_index": 7
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessProductScanScroll007",
+        "on_error": "ManualTwoCityBusinessProductScanComplete"
+    },
+    "ManualTwoCityBusinessProductScanScroll007": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "预计买入",
+                    "全部买入",
+                    "全部取消"
+                ]
+            }
+        },
+        "action": {
+            "type": "Swipe",
+            "param": {
+                "begin": [
+                    690,
+                    560
+                ],
+                "end": [
+                    690,
+                    210
+                ],
+                "duration": 600
+            }
+        },
+        "post_delay": 650,
+        "next": "ManualTwoCityBusinessProductScanPage008",
+        "on_error": "ManualTwoCityBusinessProductScanComplete"
+    },
+    "ManualTwoCityBusinessProductScanPage008": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": ".+",
+                "roi": [
+                    500,
+                    105,
+                    430,
+                    585
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_product_scan_page",
+                "custom_action_param": {
+                    "page_index": 8
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessProductScanComplete",
+        "on_error": "ManualTwoCityBusinessProductScanComplete"
+    },
+    "ManualTwoCityBusinessProductScanComplete": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_product_scan_complete"
+            }
+        },
+        "post_delay": 300,
+        "next": "ManualTwoCityBusinessBuyDrinkCheck",
+        "on_error": "ManualTwoCityBusinessTradeEntryFailed"
+    },
+    "ManualTwoCityBusinessSellPageReady": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "预计卖出",
+                    "全部卖出",
+                    "全部出售",
+                    "全部取消"
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_sell_page_ready"
+            }
+        },
+        "next": "ManualTwoCityBusinessSellDrinkCheck",
+        "on_error": "ManualTwoCityBusinessTradeEntryFailed"
+    },
+    "ManualTwoCityBusinessBuyDrinkCheck": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": "\\d+\\s*/\\s*\\d+",
+                "roi": [
+                    940,
+                    0,
+                    130,
+                    50
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_should_drink",
+                "custom_action_param": {
+                    "phase": "buy"
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessOpenStrengthForDrink",
+        "on_error": "ManualTwoCityBusinessBuyStrengthRecoveryCheck"
+    },
+    "ManualTwoCityBusinessSellDrinkCheck": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": "\\d+\\s*/\\s*\\d+",
+                "roi": [
+                    940,
+                    0,
+                    130,
+                    50
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_should_drink",
+                "custom_action_param": {
+                    "phase": "sell"
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessOpenStrengthForDrink",
+        "on_error": "ManualTwoCityBusinessSellStrengthRecoveryCheck"
+    },
+    "ManualTwoCityBusinessOpenStrengthForDrink": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    974,
+                    32
+                ]
+            }
+        },
+        "post_delay": 1000,
+        "next": "ManualTwoCityBusinessStrengthPageReadyForDrink"
+    },
+    "ManualTwoCityBusinessStrengthPageReadyForDrink": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "FATIGUE",
+                    "疲劳值",
+                    "请选择恢复疲劳值方式",
+                    "前往便当柜"
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "next": "ManualTwoCityBusinessTapDrinkInfo",
+        "on_error": "ManualTwoCityBusinessDrinkResumeAfterSkip"
+    },
+    "ManualTwoCityBusinessTapDrinkInfo": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    1198,
+                    343
+                ]
+            }
+        },
+        "post_delay": 600,
+        "next": "ManualTwoCityBusinessDrinkInfoReady"
+    },
+    "ManualTwoCityBusinessDrinkInfoReady": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": ".+",
+                "roi": [
+                    0,
+                    120,
+                    1280,
+                    520
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_drink_info_ready"
+            }
+        },
+        "next": "ManualTwoCityBusinessDismissDrinkInfoBeforeLoop",
+        "on_error": "ManualTwoCityBusinessDismissDrinkInfoAndSkip"
+    },
+    "ManualTwoCityBusinessDismissDrinkInfoBeforeLoop": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    640,
+                    650
+                ]
+            }
+        },
+        "post_delay": 350,
+        "next": "ManualTwoCityBusinessDrinkLoop"
+    },
+    "ManualTwoCityBusinessDismissDrinkInfoAndSkip": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    640,
+                    650
+                ]
+            }
+        },
+        "post_delay": 350,
+        "next": "ManualTwoCityBusinessCloseStrengthAfterDrinkSkipped"
+    },
+    "ManualTwoCityBusinessDrinkLoop": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_drink_until_cost",
+                "custom_action_param": {
+                    "max_attempts": 6
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessReturnCityAfterDrink",
+        "on_error": "ManualTwoCityBusinessCloseStrengthAfterDrinkSkipped"
+    },
+    "ManualTwoCityBusinessReturnCityAfterDrink": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    83,
+                    36
+                ]
+            }
+        },
+        "post_delay": 1200,
+        "next": "ManualTwoCityBusinessReturnCityAfterDrinkSecondBack"
+    },
+    "ManualTwoCityBusinessReturnCityAfterDrinkSecondBack": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    83,
+                    36
+                ]
+            }
+        },
+        "post_delay": 1200,
+        "next": "ManualTwoCityBusinessAfterDrinkReturnCity"
+    },
+    "ManualTwoCityBusinessAfterDrinkReturnCity": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_after_drink_return_city"
+            }
+        },
+        "next": "ManualTwoCityBusinessOpenCurrentCityStart"
+    },
+    "ManualTwoCityBusinessCloseStrengthAfterDrinkSkipped": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    83,
+                    36
+                ]
+            }
+        },
+        "post_delay": 900,
+        "next": "ManualTwoCityBusinessDrinkResumeAfterSkip"
+    },
+    "ManualTwoCityBusinessDrinkResumeAfterSkip": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_drink_skipped"
+            }
+        },
+        "next": [
+            "ManualTwoCityBusinessSellPageReady",
+            "ManualTwoCityBusinessBuyPageReady",
+            "ManualTwoCityBusinessOpenCurrentCityStart"
+        ]
+    },
+    "ManualTwoCityBusinessBuyStrengthRecoveryCheck": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_should_recover_strength",
+                "custom_action_param": {
+                    "phase": "buy"
+                }
+            }
+        },
+        "next": [
+            "ManualTwoCityBusinessStopIfFatigueExhausted",
+            "ManualTwoCityBusinessOpenStrengthForRecovery"
+        ],
+        "on_error": "ManualTwoCityBusinessUseBuyBooks"
+    },
+    "ManualTwoCityBusinessSellStrengthRecoveryCheck": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_should_recover_strength",
+                "custom_action_param": {
+                    "phase": "sell"
+                }
+            }
+        },
+        "next": [
+            "ManualTwoCityBusinessStopIfFatigueExhausted",
+            "ManualTwoCityBusinessOpenStrengthForRecovery"
+        ],
+        "on_error": "ManualTwoCityBusinessTapSellAllButton"
+    },
+    "ManualTwoCityBusinessStopIfFatigueExhausted": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_stop_if_fatigue_exhausted"
+            }
+        },
+        "next": "RunManualTwoCityBusinessDone",
+        "on_error": "ManualTwoCityBusinessOpenStrengthForRecovery"
+    },
+    "ManualTwoCityBusinessOpenStrengthForRecovery": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    974,
+                    32
+                ]
+            }
+        },
+        "post_delay": 1000,
+        "next": "ManualTwoCityBusinessStrengthPageReadyForRecovery"
+    },
+    "ManualTwoCityBusinessStrengthPageReadyForRecovery": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "FATIGUE",
+                    "疲劳值",
+                    "请选择恢复疲劳值方式",
+                    "前往便当柜"
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "next": "ManualTwoCityBusinessRecoverStrengthOnce",
+        "on_error": "ManualTwoCityBusinessStrengthRecoveryResumeAfterFail"
+    },
+    "ManualTwoCityBusinessRecoverStrengthOnce": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_recover_strength_once"
+            }
+        },
+        "next": "ManualTwoCityBusinessAfterStrengthRecovery",
+        "on_error": "ManualTwoCityBusinessStrengthRecoveryResumeAfterFail"
+    },
+    "ManualTwoCityBusinessAfterStrengthRecovery": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_after_strength_recovery"
+            }
+        },
+        "next": [
+            "ManualTwoCityBusinessCloseStrengthPageForTrade",
+            "ManualTwoCityBusinessSellPageReady",
+            "ManualTwoCityBusinessBuyPageReady",
+            "CityTradeOutletOpenStart"
+        ]
+    },
+    "ManualTwoCityBusinessCloseStrengthPageForTrade": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "FATIGUE",
+                    "请选择恢复疲劳值方式",
+                    "前往便当柜",
+                    "列车长疲劳值"
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    83,
+                    36
+                ]
+            }
+        },
+        "post_delay": 1200,
+        "next": "ManualTwoCityBusinessStrengthRecoveryResume"
+    },
+    "ManualTwoCityBusinessStrengthRecoveryResumeAfterFail": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    83,
+                    36
+                ]
+            }
+        },
+        "post_delay": 900,
+        "next": "ManualTwoCityBusinessStrengthRecoveryResume"
+    },
+    "ManualTwoCityBusinessStrengthRecoveryResume": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_strength_recovery_resume"
+            }
+        },
+        "next": [
+            "ManualTwoCityBusinessCloseStrengthPageForTrade",
+            "ManualTwoCityBusinessSellPageReady",
+            "ManualTwoCityBusinessBuyPageReady",
+            "CityTradeOutletOpenStart"
+        ]
+    },
+    "ManualTwoCityBusinessTapSellAllButton": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "全部卖出",
+                    "全部出售"
+                ],
+                "roi": [
+                    860,
+                    80,
+                    400,
+                    90
+                ]
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 900,
+        "next": [
+            "ManualTwoCityBusinessSellSelectionReady",
+            "ManualTwoCityBusinessTapSellAllRetry001"
+        ],
+        "on_error": "ManualTwoCityBusinessTradeEntryFailed"
+    },
+    "ManualTwoCityBusinessTapSellAllRetry001": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "全部卖出",
+                    "全部出售"
+                ],
+                "roi": [
+                    860,
+                    80,
+                    400,
+                    90
+                ]
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 900,
+        "next": [
+            "ManualTwoCityBusinessSellSelectionReady",
+            "ManualTwoCityBusinessSellGoodsMissing"
+        ],
+        "on_error": "ManualTwoCityBusinessSellGoodsMissing"
+    },
+    "ManualTwoCityBusinessSellSelectionReady": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": "全部取消",
+                "roi": [
+                    860,
+                    80,
+                    400,
+                    90
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "next": "ManualTwoCityBusinessApplySellHaggle",
+        "on_error": "ManualTwoCityBusinessSellGoodsMissing"
+    },
+    "ManualTwoCityBusinessApplySellHaggle": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_apply_sell_haggle"
+            }
+        },
+        "post_delay": 300,
+        "next": "ManualTwoCityBusinessTapSellConfirmButton",
+        "on_error": "ManualTwoCityBusinessTradeEntryFailed"
+    },
+    "ManualTwoCityBusinessTapSellConfirmButton": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "确认卖出",
+                    "确认出售",
+                    "卖出",
+                    "出售"
+                ],
+                "roi": [
+                    880,
+                    585,
+                    360,
+                    115
+                ]
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 1000,
+        "next": [
+            "ManualTwoCityBusinessSellReportReady",
+            "ManualTwoCityBusinessSellMarketChangeNotice",
+            "ManualTwoCityBusinessSellConfirmPopup",
+            "ManualTwoCityBusinessTapSellConfirmFallback"
+        ],
+        "on_error": "ManualTwoCityBusinessTapSellConfirmFallback"
+    },
+    "ManualTwoCityBusinessTapSellConfirmFallback": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": "全部取消",
+                "roi": [
+                    860,
+                    80,
+                    400,
+                    90
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    1056,
+                    647
+                ]
+            }
+        },
+        "post_delay": 1000,
+        "next": [
+            "ManualTwoCityBusinessSellReportReady",
+            "ManualTwoCityBusinessSellMarketChangeNotice",
+            "ManualTwoCityBusinessSellConfirmPopup",
+            "ManualTwoCityBusinessTapSellConfirmRetry001"
+        ],
+        "on_error": "ManualTwoCityBusinessTapSellConfirmRetry001"
+    },
+    "ManualTwoCityBusinessSellConfirmPopup": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "确认",
+                    "确定"
+                ],
+                "roi": [
+                    820,
+                    420,
+                    420,
+                    230
+                ]
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 1000,
+        "next": [
+            "ManualTwoCityBusinessSellReportReady",
+            "ManualTwoCityBusinessSellMarketChangeNotice",
+            "ManualTwoCityBusinessTapSellConfirmRetry001"
+        ],
+        "on_error": "ManualTwoCityBusinessTradeEntryFailed"
+    },
+    "ManualTwoCityBusinessTapSellConfirmRetry001": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "确认卖出",
+                    "确认出售",
+                    "卖出",
+                    "出售"
+                ],
+                "roi": [
+                    880,
+                    585,
+                    360,
+                    115
+                ]
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 1000,
+        "next": [
+            "ManualTwoCityBusinessSellReportReady",
+            "ManualTwoCityBusinessSellMarketChangeNotice",
+            "ManualTwoCityBusinessSellConfirmPopup",
+            "ManualTwoCityBusinessTradeEntryFailed"
+        ],
+        "on_error": "ManualTwoCityBusinessTradeEntryFailed"
+    },
+    "ManualTwoCityBusinessSellMarketChangeNotice": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "行情变动",
+                    "行情变化",
+                    "价格变动",
+                    "价格变化",
+                    "价格已变化",
+                    "市场行情"
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_stage",
+                "custom_action_param": {
+                    "stage": "卖出行情变动",
+                    "detail": "卖出确认时检测到行情变动，准备确认后重试。"
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessSellMarketChangeConfirmButton",
+        "on_error": "ManualTwoCityBusinessSellConfirmPopup"
+    },
+    "ManualTwoCityBusinessSellMarketChangeConfirmButton": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "确认",
+                    "确定"
+                ],
+                "roi": [
+                    860,
+                    430,
+                    260,
+                    230
+                ]
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 1000,
+        "next": [
+            "ManualTwoCityBusinessSellReportReady",
+            "ManualTwoCityBusinessTapSellConfirmRetry001"
+        ],
+        "on_error": "ManualTwoCityBusinessTapSellConfirmRetry001"
+    },
+    "ManualTwoCityBusinessSellReportReady": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "卖出结算报告",
+                    "出售结算报告",
+                    "触碰空白区域退出"
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_sell_report_ready"
+            }
+        },
+        "next": "ManualTwoCityBusinessCloseSellReport",
+        "on_error": "ManualTwoCityBusinessTradeEntryFailed"
+    },
+    "ManualTwoCityBusinessCloseSellReport": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_close_sell_report"
+            }
+        },
+        "post_delay": 200,
+        "next": "ManualTwoCityBusinessAfterSell",
+        "on_error": "ManualTwoCityBusinessAfterSell"
+    },
+    "ManualTwoCityBusinessAfterSell": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_after_sell"
+            }
+        },
+        "next": [
+            "ManualTwoCityBusinessBuyPageReady",
+            "ManualTwoCityBusinessCloseSellPageForNextLeg",
+            "ManualTwoCityBusinessOpenBuyPage",
+            "CityTradeOutletOpenStart"
+        ],
+        "on_error": "RunManualTwoCityBusinessDone"
+    },
+    "ManualTwoCityBusinessCloseSellPageForNextLeg": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "预计卖出",
+                    "全部卖出",
+                    "全部出售",
+                    "全部取消"
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_close_sell_page_for_next_leg"
+            }
+        },
+        "post_delay": 300,
+        "next": "ManualTwoCityBusinessOpenBuyPage",
+        "on_error": "ManualTwoCityBusinessOpenBuyPage"
+    },
+    "ManualTwoCityBusinessUseBuyBooks": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_use_buy_books"
+            }
+        },
+        "post_delay": 300,
+        "next": "ManualTwoCityBusinessBuySelectionResetTop001",
+        "on_error": "ManualTwoCityBusinessTradeEntryFailed"
+    },
+    "ManualTwoCityBusinessBuySelectionResetTop001": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "预计买入",
+                    "全部买入",
+                    "全部取消"
+                ]
+            }
+        },
+        "action": {
+            "type": "Swipe",
+            "param": {
+                "begin": [
+                    690,
+                    210
+                ],
+                "end": [
+                    690,
+                    560
+                ],
+                "duration": 600
+            }
+        },
+        "post_delay": 450,
+        "next": "ManualTwoCityBusinessBuySelectionResetTop002",
+        "on_error": "ManualTwoCityBusinessBuySelectionResetTop002"
+    },
+    "ManualTwoCityBusinessBuySelectionResetTop002": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "预计买入",
+                    "全部买入",
+                    "全部取消"
+                ]
+            }
+        },
+        "action": {
+            "type": "Swipe",
+            "param": {
+                "begin": [
+                    690,
+                    210
+                ],
+                "end": [
+                    690,
+                    560
+                ],
+                "duration": 600
+            }
+        },
+        "post_delay": 450,
+        "next": "ManualTwoCityBusinessSelectBuyGoodsPage001",
+        "on_error": "ManualTwoCityBusinessSelectBuyGoodsPage001"
+    },
+    "ManualTwoCityBusinessSelectBuyGoodsPage001": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": ".+",
+                "roi": [
+                    500,
+                    105,
+                    430,
+                    585
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_select_buy_goods",
+                "custom_action_param": {
+                    "page_index": 1
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessConfirmBuySelection",
+        "on_error": "ManualTwoCityBusinessScrollBuyGoods001"
+    },
+    "ManualTwoCityBusinessScrollBuyGoods001": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "预计买入",
+                    "全部买入",
+                    "全部取消"
+                ]
+            }
+        },
+        "action": {
+            "type": "Swipe",
+            "param": {
+                "begin": [
+                    690,
+                    560
+                ],
+                "end": [
+                    690,
+                    210
+                ],
+                "duration": 600
+            }
+        },
+        "post_delay": 650,
+        "next": "ManualTwoCityBusinessSelectBuyGoodsPage002",
+        "on_error": "ManualTwoCityBusinessBuyGoodsMissing"
+    },
+    "ManualTwoCityBusinessSelectBuyGoodsPage002": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": ".+",
+                "roi": [
+                    500,
+                    105,
+                    430,
+                    585
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_select_buy_goods",
+                "custom_action_param": {
+                    "page_index": 2
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessConfirmBuySelection",
+        "on_error": "ManualTwoCityBusinessScrollBuyGoods002"
+    },
+    "ManualTwoCityBusinessScrollBuyGoods002": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "预计买入",
+                    "全部买入",
+                    "全部取消"
+                ]
+            }
+        },
+        "action": {
+            "type": "Swipe",
+            "param": {
+                "begin": [
+                    690,
+                    560
+                ],
+                "end": [
+                    690,
+                    210
+                ],
+                "duration": 600
+            }
+        },
+        "post_delay": 650,
+        "next": "ManualTwoCityBusinessSelectBuyGoodsPage003",
+        "on_error": "ManualTwoCityBusinessBuyGoodsMissing"
+    },
+    "ManualTwoCityBusinessSelectBuyGoodsPage003": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": ".+",
+                "roi": [
+                    500,
+                    105,
+                    430,
+                    585
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_select_buy_goods",
+                "custom_action_param": {
+                    "page_index": 3
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessConfirmBuySelection",
+        "on_error": "ManualTwoCityBusinessScrollBuyGoods003"
+    },
+    "ManualTwoCityBusinessScrollBuyGoods003": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "预计买入",
+                    "全部买入",
+                    "全部取消"
+                ]
+            }
+        },
+        "action": {
+            "type": "Swipe",
+            "param": {
+                "begin": [
+                    690,
+                    560
+                ],
+                "end": [
+                    690,
+                    210
+                ],
+                "duration": 600
+            }
+        },
+        "post_delay": 650,
+        "next": "ManualTwoCityBusinessSelectBuyGoodsPage004",
+        "on_error": "ManualTwoCityBusinessBuyGoodsMissing"
+    },
+    "ManualTwoCityBusinessSelectBuyGoodsPage004": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": ".+",
+                "roi": [
+                    500,
+                    105,
+                    430,
+                    585
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_select_buy_goods",
+                "custom_action_param": {
+                    "page_index": 4
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessConfirmBuySelection",
+        "on_error": "ManualTwoCityBusinessBuyGoodsMissing"
+    },
+    "ManualTwoCityBusinessConfirmBuySelection": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": "全部取消",
+                "roi": [
+                    860,
+                    80,
+                    400,
+                    90
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "next": "ManualTwoCityBusinessApplyBuyHaggle",
+        "on_error": "ManualTwoCityBusinessBuyGoodsMissing"
+    },
+    "ManualTwoCityBusinessApplyBuyHaggle": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_apply_buy_haggle"
+            }
+        },
+        "post_delay": 300,
+        "next": "ManualTwoCityBusinessTapBuyButton",
+        "on_error": "ManualTwoCityBusinessTradeEntryFailed"
+    },
+    "ManualTwoCityBusinessTapBuyButton": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "全部买入",
+                    "买入"
+                ],
+                "roi": [
+                    880,
+                    585,
+                    360,
+                    115
+                ]
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 1000,
+        "next": [
+            "ManualTwoCityBusinessBuyReportReady",
+            "ManualTwoCityBusinessBuyConfirmPopup",
+            "ManualTwoCityBusinessBuyConfirmRetry001"
+        ],
+        "on_error": "ManualTwoCityBusinessTradeEntryFailed"
+    },
+    "ManualTwoCityBusinessBuyConfirmPopup": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "确认",
+                    "确定"
+                ],
+                "roi": [
+                    820,
+                    420,
+                    420,
+                    230
+                ]
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 1000,
+        "next": [
+            "ManualTwoCityBusinessBuyReportReady",
+            "ManualTwoCityBusinessBuyConfirmRetry001"
+        ],
+        "on_error": "ManualTwoCityBusinessBuyConfirmRetry001"
+    },
+    "ManualTwoCityBusinessBuyConfirmRetry001": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "全部买入",
+                    "买入"
+                ],
+                "roi": [
+                    880,
+                    585,
+                    360,
+                    115
+                ]
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 1000,
+        "next": [
+            "ManualTwoCityBusinessBuyReportReady",
+            "ManualTwoCityBusinessBuyConfirmPopup",
+            "ManualTwoCityBusinessBuyConfirmRetry002"
+        ],
+        "on_error": "ManualTwoCityBusinessBuyConfirmRetry002"
+    },
+    "ManualTwoCityBusinessBuyConfirmRetry002": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "全部买入",
+                    "买入"
+                ],
+                "roi": [
+                    880,
+                    585,
+                    360,
+                    115
+                ]
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 1000,
+        "next": [
+            "ManualTwoCityBusinessBuyReportReady",
+            "ManualTwoCityBusinessBuyConfirmPopup",
+            "ManualTwoCityBusinessTradeEntryFailed"
+        ],
+        "on_error": "ManualTwoCityBusinessTradeEntryFailed"
+    },
+    "ManualTwoCityBusinessBuyReportReady": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "买入结算报告",
+                    "触碰空白区域退出"
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_buy_report_ready"
+            }
+        },
+        "next": "ManualTwoCityBusinessCloseBuyReport",
+        "on_error": "ManualTwoCityBusinessTradeEntryFailed"
+    },
+    "ManualTwoCityBusinessCloseBuyReport": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_close_buy_report"
+            }
+        },
+        "post_delay": 200,
+        "next": "ManualTwoCityBusinessReturnHomeAfterBuy",
+        "on_error": "ManualTwoCityBusinessDepartFailed"
+    },
+    "ManualTwoCityBusinessReturnHomeAfterBuy": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "go_home.png",
+                "roi": [
+                    154,
+                    9,
+                    89,
+                    58
+                ],
+                "threshold": 0.9
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 1200,
+        "next": "ManualTwoCityBusinessOpenRouteMap",
+        "on_error": "ManualTwoCityBusinessOpenRouteMap"
+    },
+    "ManualTwoCityBusinessOpenRouteMap": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "启程",
+                    "START ENGINE",
+                    "STARTENGINE"
+                ]
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 1600,
+        "next": "ManualTwoCityBusinessRouteMapReady",
+        "on_error": "ManualTwoCityBusinessDepartFailed"
+    },
+    "ManualTwoCityBusinessRouteMapReady": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "路线图",
+                    "前往目的地",
+                    "当前站点",
+                    "当前城市",
+                    "图示",
+                    "导航至",
+                    "主线任务车站",
+                    "7号自由港",
+                    "武林源",
+                    "阿妮塔战备工厂",
+                    "阿妮塔能源研究所",
+                    "阿妮塔发射中心",
+                    "汇流塔",
+                    "海角城",
+                    "远星大桥",
+                    "贡露城",
+                    "澄明数据中心",
+                    "修格里城",
+                    "铁盟哨站",
+                    "曼德矿场",
+                    "淘金乐园",
+                    "荒原站",
+                    "云岫桥基地",
+                    "栖羽站",
+                    "岚心城"
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "post_delay": 200,
+        "next": "ManualTwoCityBusinessRouteMapZoomOut001",
+        "on_error": "ManualTwoCityBusinessDepartFailed"
+    },
+    "ManualTwoCityBusinessRouteMapZoomOut001": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    1152,
+                    584
+                ]
+            }
+        },
+        "post_delay": 500,
+        "next": "ManualTwoCityBusinessMoveToDestination"
+    },
+    "ManualTwoCityBusinessMoveToDestination": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_move_to_destination",
+                "custom_action_param": {
+                    "max_steps": 9,
+                    "drag_distance": 520
+                }
+            }
+        },
+        "post_delay": 500,
+        "next": "ManualTwoCityBusinessTapGoDestination",
+        "on_error": "ManualTwoCityBusinessDepartFailed"
+    },
+    "ManualTwoCityBusinessTapGoDestination": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": "前往目的地",
+                "roi": [
+                    880,
+                    590,
+                    380,
+                    120
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    1080,
+                    642
+                ]
+            }
+        },
+        "post_delay": 1200,
+        "next": [
+            "ManualTwoCityBusinessTapDepartDoNotRemindWeekly",
+            "ManualTwoCityBusinessTapDepartNow",
+            "ManualTwoCityBusinessTravelStarted"
+        ],
+        "on_error": "ManualTwoCityBusinessDepartFailed"
+    },
+    "ManualTwoCityBusinessTapDepartDoNotRemindWeekly": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "本周不再提示",
+                    "今日不再提示"
+                ],
+                "roi": [
+                    760,
+                    485,
+                    460,
+                    90
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    -70,
+                    0,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 300,
+        "next": "ManualTwoCityBusinessTapDepartNow"
+    },
+    "ManualTwoCityBusinessTapDepartNow": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "立即出发",
+                    "出发"
+                ],
+                "roi": [
+                    440,
+                    360,
+                    620,
+                    150
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    170,
+                    0,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 4000,
+        "next": [
+            "ManualTwoCityBusinessTravelStarted",
+            "ManualTwoCityBusinessDepartFatiguePopup"
+        ],
+        "on_error": "ManualTwoCityBusinessDepartFailed"
+    },
+    "ManualTwoCityBusinessDepartFatiguePopup": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "疲劳不足",
+                    "疲劳值不足",
+                    "恢复疲劳",
+                    "疲劳值已达",
+                    "列车长疲劳值",
+                    "当前疲劳值",
+                    "请选择恢复疲劳值方式"
+                ],
+                "roi": [
+                    220,
+                    160,
+                    840,
+                    420
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_depart_fatigue_popup"
+            }
+        },
+        "next": "RunManualTwoCityBusinessDone",
+        "on_error": "ManualTwoCityBusinessDepartFailed"
+    },
+    "ManualTwoCityBusinessTravelStarted": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "目的地",
+                    "剩余行程",
+                    "巡航"
+                ],
+                "roi": [
+                    460,
+                    16,
+                    380,
+                    145
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_travel_started"
+            }
+        },
+        "next": "ManualTwoCityBusinessTravelInProgress",
+        "on_error": "ManualTwoCityBusinessDepartFailed"
+    },
+    "ManualTwoCityBusinessTravelMonitor": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "rate_limit": 3000,
+        "timeout": 1200000,
+        "next": [
+            "ManualTwoCityBusinessFightClearTeamPopupCancel",
+            "ManualTwoCityBusinessArrivedMainMap",
+            "ManualTwoCityBusinessArrivedVisitCity",
+            "ManualTwoCityBusinessArrivedVisitCityByStatus",
+            "ManualTwoCityBusinessRouteImpactDrillEnabled",
+            "ManualTwoCityBusinessRouteImpactDrillButton",
+            "ManualTwoCityBusinessRouteSpeedProjectileEnabled",
+            "ManualTwoCityBusinessRouteEventAttack",
+            "ManualTwoCityBusinessRouteEventPanelReady",
+            "ManualTwoCityBusinessRouteEventContinue",
+            "ManualTwoCityBusinessRouteLossReport",
+            "ManualTwoCityBusinessFightFormationReady",
+            "ManualTwoCityBusinessFightEndButton",
+            "ManualTwoCityBusinessFightStartByOcr",
+            "ManualTwoCityBusinessFightStartButton",
+            "ManualTwoCityBusinessFightAutoButton",
+            "ManualTwoCityBusinessTravelGenericPopup",
+            "ManualTwoCityBusinessTravelStartScreen",
+            "ManualTwoCityBusinessTravelResourceDownloadPrompt",
+            "ManualTwoCityBusinessFightActive",
+            "ManualTwoCityBusinessTravelStallWatchdog",
+            "ManualTwoCityBusinessTravelInProgress"
+        ],
+        "on_error": "ManualTwoCityBusinessTravelFailed"
+    },
+    "ManualTwoCityBusinessTravelStallWatchdog": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_travel_stall_watchdog"
+            }
+        },
+        "post_delay": 200,
+        "next": "ManualTwoCityBusinessTravelStallDispatch",
+        "on_error": "ManualTwoCityBusinessTravelMonitor"
+    },
+    "ManualTwoCityBusinessTravelStallDispatch": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_travel_stall_dispatch"
+            }
+        },
+        "post_delay": 200,
+        "next": "ManualTwoCityBusinessTravelStuckRestartStopApp",
+        "on_error": "RunManualTwoCityBusinessDone"
+    },
+    "ManualTwoCityBusinessTravelStuckRestartStopApp": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "StopApp",
+            "param": {
+                "package": "com.hermes.goda"
+            }
+        },
+        "post_delay": 2000,
+        "next": "ManualTwoCityBusinessTravelStuckRestartStartApp"
+    },
+    "ManualTwoCityBusinessTravelStuckRestartStartApp": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "StartApp",
+            "param": {
+                "package": "com.hermes.goda"
+            }
+        },
+        "post_delay": 12000,
+        "next": "ManualTwoCityBusinessTravelStuckRestartDone"
+    },
+    "ManualTwoCityBusinessTravelStuckRestartDone": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_travel_stuck_restart_done"
+            }
+        },
+        "post_delay": 200,
+        "next": "ManualTwoCityBusinessStartupTravelCheck",
+        "on_error": "ManualTwoCityBusinessTravelFailed"
+    },
+    "ManualTwoCityBusinessTravelInProgress": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "剩余行程",
+                    "巡航"
+                ],
+                "roi": [
+                    460,
+                    16,
+                    380,
+                    145
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_travel_continue_if_needed"
+            }
+        },
+        "post_delay": 3000,
+        "next": "ManualTwoCityBusinessTapTravelContinue",
+        "on_error": "ManualTwoCityBusinessTravelMonitor"
+    },
+    "ManualTwoCityBusinessTapTravelContinue": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "目的地",
+                    "剩余行程",
+                    "巡航"
+                ],
+                "roi": [
+                    460,
+                    16,
+                    380,
+                    145
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    1248,
+                    616
+                ]
+            }
+        },
+        "post_delay": 900,
+        "next": "ManualTwoCityBusinessTravelMonitor",
+        "on_error": "ManualTwoCityBusinessTravelMonitor"
+    },
+    "ManualTwoCityBusinessArrivedVisitCity": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "进入城市",
+                    "进入站点"
+                ],
+                "roi": [
+                    760,
+                    320,
+                    360,
+                    120
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    900,
+                    357
+                ]
+            }
+        },
+        "post_delay": 800,
+        "next": "ManualTwoCityBusinessArrivedMainMap",
+        "on_error": "ManualTwoCityBusinessArrivedMainMap"
+    },
+    "ManualTwoCityBusinessArrivedVisitCityByStatus": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "列车已经到站",
+                    "已经到站",
+                    "进入站点"
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    900,
+                    357
+                ]
+            }
+        },
+        "post_delay": 800,
+        "next": "ManualTwoCityBusinessArrivedMainMap",
+        "on_error": "ManualTwoCityBusinessArrivedMainMap"
+    },
+    "ManualTwoCityBusinessArrivedMainMap": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "访问城市"
+                ],
+                "roi": [
+                    1030,
+                    450,
+                    245,
+                    105
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    1185,
+                    497
+                ]
+            }
+        },
+        "post_delay": 900,
+        "next": "ManualTwoCityBusinessDestinationCityReady",
+        "on_error": "ManualTwoCityBusinessDestinationCityReady"
+    },
+    "ManualTwoCityBusinessDestinationCityReady": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "fame.png",
+                "roi": [
+                    25,
+                    634,
+                    74,
+                    73
+                ],
+                "threshold": 0.95
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_travel_arrived"
+            }
+        },
+        "next": "ManualTwoCityBusinessAccountProfileWarmupStart",
+        "on_error": "ManualTwoCityBusinessDestinationCityReadyByOcr"
+    },
+    "ManualTwoCityBusinessDestinationCityReadyByOcr": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "声望等级",
+                    "城市发展度",
+                    "商会",
+                    "市政厅",
+                    "帮助手册"
+                ],
+                "roi": [
+                    0,
+                    80,
+                    760,
+                    610
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_travel_arrived"
+            }
+        },
+        "next": "ManualTwoCityBusinessAccountProfileWarmupStart",
+        "on_error": "ManualTwoCityBusinessTravelMonitor"
+    },
+    "ManualTwoCityBusinessTravelGenericPopup": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": "触碰空白区域退出",
+                "roi": [
+                    360,
+                    620,
+                    560,
+                    95
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    640,
+                    705
+                ]
+            }
+        },
+        "post_delay": 900,
+        "next": "ManualTwoCityBusinessTravelMonitor",
+        "on_error": "ManualTwoCityBusinessTravelMonitor"
+    },
+    "ManualTwoCityBusinessTravelStartScreen": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "点击屏幕进入游戏",
+                    "点击任意位置进入游戏",
+                    "下载已经完成"
+                ]
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 2000,
+        "next": "ManualTwoCityBusinessTravelMonitor",
+        "on_error": "ManualTwoCityBusinessTravelMonitor"
+    },
+    "ManualTwoCityBusinessTravelResourceDownloadPrompt": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "需要下载资源包",
+                    "下载资源包"
+                ],
+                "roi": [
+                    260,
+                    260,
+                    760,
+                    220
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "next": "ManualTwoCityBusinessTapTravelResourceDownloadConfirm",
+        "on_error": "ManualTwoCityBusinessTravelMonitor"
+    },
+    "ManualTwoCityBusinessTapTravelResourceDownloadConfirm": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": "确认",
+                "roi": [
+                    320,
+                    440,
+                    640,
+                    130
+                ]
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 5000,
+        "next": "ManualTwoCityBusinessTravelMonitor",
+        "on_error": "ManualTwoCityBusinessTravelMonitor"
+    },
+    "ManualTwoCityBusinessRouteEventAttack": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": "护卫队迎击"
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_stage",
+                "custom_action_param": {
+                    "stage": "行车遇敌",
+                    "detail": "道中遇到敌人，准备点击护卫队迎击。"
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessRouteEventAttackTap",
+        "on_error": "ManualTwoCityBusinessTravelMonitor"
+    },
+    "ManualTwoCityBusinessRouteEventAttackTap": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": "护卫队迎击"
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 1500,
+        "next": [
+            "ManualTwoCityBusinessFightStartButton",
+            "ManualTwoCityBusinessFightStartByOcr",
+            "ManualTwoCityBusinessFightFormationReady",
+            "ManualTwoCityBusinessFightAutoButton",
+            "ManualTwoCityBusinessTravelMonitor"
+        ],
+        "on_error": "ManualTwoCityBusinessTravelMonitor"
+    },
+    "ManualTwoCityBusinessRouteEventPanelReady": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "敌方等级",
+                    "应对方式",
+                    "请选择"
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_stage",
+                "custom_action_param": {
+                    "stage": "行车事件",
+                    "detail": "识别到道中事件面板，准备选择护卫队迎击。"
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessRouteEventPanelTap",
+        "on_error": "ManualTwoCityBusinessTravelMonitor"
+    },
+    "ManualTwoCityBusinessRouteEventPanelTap": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "敌方等级",
+                    "应对方式",
+                    "请选择"
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    1009,
+                    251
+                ]
+            }
+        },
+        "post_delay": 1500,
+        "next": [
+            "ManualTwoCityBusinessFightStartButton",
+            "ManualTwoCityBusinessFightStartByOcr",
+            "ManualTwoCityBusinessFightFormationReady",
+            "ManualTwoCityBusinessFightAutoButton",
+            "ManualTwoCityBusinessTravelMonitor"
+        ],
+        "on_error": "ManualTwoCityBusinessTravelMonitor"
+    },
+    "ManualTwoCityBusinessRouteEventContinue": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "经过了一番休整之后",
+                    "休整之后",
+                    "经过了一番"
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_stage",
+                "custom_action_param": {
+                    "stage": "行车事件",
+                    "detail": "识别到道中事件继续文本，准备点击继续。"
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessRouteEventContinueTap",
+        "on_error": "ManualTwoCityBusinessTravelMonitor"
+    },
+    "ManualTwoCityBusinessRouteEventContinueTap": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "经过了一番休整之后",
+                    "休整之后",
+                    "经过了一番"
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    640,
+                    520
+                ]
+            }
+        },
+        "post_delay": 1200,
+        "next": "ManualTwoCityBusinessTravelMonitor",
+        "on_error": "ManualTwoCityBusinessTravelMonitor"
+    },
+    "ManualTwoCityBusinessRouteImpactDrillEnabled": {
+        "recognition": "Custom",
+        "custom_recognition": "manual_two_city_business_route_item_available",
+        "custom_recognition_param": {
+            "item": "impact_drill"
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 1200,
+        "next": "ManualTwoCityBusinessRouteImpactDrillUsed",
+        "on_error": "ManualTwoCityBusinessTravelMonitor"
+    },
+    "ManualTwoCityBusinessRouteImpactDrillButton": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "撞击脱离",
+                    "撞击准备"
+                ],
+                "roi": [
+                    820,
+                    250,
+                    460,
+                    300
+                ]
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 1200,
+        "next": "ManualTwoCityBusinessRouteImpactDrillUsed",
+        "on_error": "ManualTwoCityBusinessTravelMonitor"
+    },
+    "ManualTwoCityBusinessRouteImpactDrillUsed": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_route_item_used",
+                "custom_action_param": {
+                    "item": "impact_drill"
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessTravelMonitor",
+        "on_error": "ManualTwoCityBusinessTravelMonitor"
+    },
+    "ManualTwoCityBusinessRouteSpeedProjectileEnabled": {
+        "recognition": "Custom",
+        "custom_recognition": "manual_two_city_business_route_item_available",
+        "custom_recognition_param": {
+            "item": "speed_projectile"
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 900,
+        "next": "ManualTwoCityBusinessRouteSpeedProjectileUsed",
+        "on_error": "ManualTwoCityBusinessTravelMonitor"
+    },
+    "ManualTwoCityBusinessRouteSpeedProjectileIcon": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "stations/speed_up.png",
+                "roi": [
+                    0,
+                    540,
+                    1280,
+                    180
+                ],
+                "threshold": 0.82
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 900,
+        "next": "ManualTwoCityBusinessRouteSpeedProjectileUsed",
+        "on_error": "ManualTwoCityBusinessTravelMonitor"
+    },
+    "ManualTwoCityBusinessRouteSpeedProjectileUsed": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_route_item_used",
+                "custom_action_param": {
+                    "item": "speed_projectile"
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessTravelMonitor"
+    },
+    "ManualTwoCityBusinessRouteLossReport": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "遇袭损失报告",
+                    "LOSS REPORT",
+                    "铁盟币损失",
+                    "列车耐久度"
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_stage",
+                "custom_action_param": {
+                    "stage": "遇袭损失报告",
+                    "detail": "识别到遇袭损失报告，准备点击继续。"
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessRouteLossReportTap",
+        "on_error": "ManualTwoCityBusinessTravelMonitor"
+    },
+    "ManualTwoCityBusinessRouteLossReportTap": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "遇袭损失报告",
+                    "LOSS REPORT",
+                    "铁盟币损失",
+                    "列车耐久度"
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    727,
+                    541
+                ]
+            }
+        },
+        "post_delay": 1200,
+        "next": "ManualTwoCityBusinessTravelMonitor",
+        "on_error": "ManualTwoCityBusinessTravelMonitor"
+    },
+    "ManualTwoCityBusinessFightStartButton": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "开始战斗",
+                    "开始作战",
+                    "进入战斗",
+                    "START BATTLE"
+                ],
+                "roi": [
+                    1120,
+                    300,
+                    150,
+                    150
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    1198,
+                    371
+                ]
+            }
+        },
+        "post_delay": 2500,
+        "next": "ManualTwoCityBusinessFightMonitor",
+        "on_error": "ManualTwoCityBusinessTravelMonitor"
+    },
+    "ManualTwoCityBusinessFightStartByOcr": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "开始战斗",
+                    "开始作战",
+                    "进入战斗",
+                    "START BATTLE"
+                ],
+                "roi": [
+                    1120,
+                    300,
+                    150,
+                    150
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    1198,
+                    371
+                ]
+            }
+        },
+        "post_delay": 2500,
+        "next": "ManualTwoCityBusinessFightMonitor",
+        "on_error": "ManualTwoCityBusinessTravelMonitor"
+    },
+    "ManualTwoCityBusinessFightAutoButton": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": "自动战斗"
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 2500,
+        "next": "ManualTwoCityBusinessFightMonitor",
+        "on_error": "ManualTwoCityBusinessFightMonitor"
+    },
+    "ManualTwoCityBusinessFightMonitor": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "rate_limit": 3000,
+        "timeout": 180000,
+        "next": [
+            "ManualTwoCityBusinessFightClearTeamPopupCancel",
+            "ManualTwoCityBusinessFightEndButton",
+            "ManualTwoCityBusinessFightStartByOcr",
+            "ManualTwoCityBusinessFightFormationReady",
+            "ManualTwoCityBusinessFightAutoButton",
+            "ManualTwoCityBusinessFightActive",
+            "ManualTwoCityBusinessTravelStallWatchdog",
+            "ManualTwoCityBusinessTravelInProgress",
+            "ManualTwoCityBusinessArrivedVisitCity",
+            "ManualTwoCityBusinessArrivedMainMap",
+            "ManualTwoCityBusinessTravelGenericPopup"
+        ],
+        "on_error": "ManualTwoCityBusinessTravelMonitor"
+    },
+    "ManualTwoCityBusinessFightFormationReady": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "编队",
+                    "队伍",
+                    "清空",
+                    "出战"
+                ],
+                "roi": [
+                    0,
+                    0,
+                    1280,
+                    720
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "post_delay": 300,
+        "next": [
+            "ManualTwoCityBusinessFightClearTeamPopupCancel",
+            "ManualTwoCityBusinessFightStartByOcr",
+            "ManualTwoCityBusinessFightStartButton",
+            "ManualTwoCityBusinessFightAutoButton",
+            "ManualTwoCityBusinessTravelMonitor"
+        ],
+        "on_error": "ManualTwoCityBusinessTravelMonitor"
+    },
+    "ManualTwoCityBusinessFightClearTeamPopupCancel": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "是否清空当前编队",
+                    "清空当前编队"
+                ],
+                "roi": [
+                    440,
+                    300,
+                    420,
+                    110
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    346,
+                    503
+                ]
+            }
+        },
+        "post_delay": 900,
+        "next": [
+            "ManualTwoCityBusinessFightFormationReady",
+            "ManualTwoCityBusinessFightStartByOcr",
+            "ManualTwoCityBusinessFightStartButton",
+            "ManualTwoCityBusinessTravelMonitor"
+        ],
+        "on_error": "ManualTwoCityBusinessTravelMonitor"
+    },
+    "ManualTwoCityBusinessFightEndButton": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "fight/end_fight.png",
+                "threshold": 0.93
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 2000,
+        "next": "ManualTwoCityBusinessTravelMonitor",
+        "on_error": "ManualTwoCityBusinessFightMonitor"
+    },
+    "ManualTwoCityBusinessBuyGoodsMissing": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_buy_goods_missing"
+            }
+        },
+        "post_delay": 300,
+        "next": "ManualTwoCityBusinessBuySelectionResetTop001",
+        "on_error": "RunManualTwoCityBusinessDone"
+    },
+    "ManualTwoCityBusinessSellGoodsMissing": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_sell_goods_missing"
+            }
+        },
+        "post_delay": 300,
+        "next": "ManualTwoCityBusinessBuyPageReady",
+        "on_error": "RunManualTwoCityBusinessDone"
+    },
+    "ManualTwoCityBusinessDepartFailed": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_stage",
+                "custom_action_param": {
+                    "stage": "买入后出发失败",
+                    "detail": "已完成买入，但未能关闭报告、打开路线图、定位目标城市或确认出发。",
+                    "terminal_status": "failed",
+                    "level": "error"
+                }
+            }
+        },
+        "next": "RunManualTwoCityBusinessDone"
+    },
+    "ManualTwoCityBusinessTravelFailed": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_stage",
+                "custom_action_param": {
+                    "stage": "行车监听失败",
+                    "detail": "买入后已出发，但行车途中长时间无法识别 HUD、到站按钮或可处理事件。",
+                    "terminal_status": "failed",
+                    "level": "error"
+                }
+            }
+        },
+        "next": "RunManualTwoCityBusinessDone"
+    },
+    "ManualTwoCityBusinessTradeEntryFailed": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_stage",
+                "custom_action_param": {
+                    "stage": "跑商入口失败",
+                    "detail": "未能进入当前城市交易所或买入页。",
+                    "terminal_status": "failed",
+                    "level": "error"
+                }
+            }
+        },
+        "next": "RunManualTwoCityBusinessDone"
+    },
+    "RunManualTwoCityBusinessDone": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_done"
+            }
+        }
+    },
+    "ManualTwoCityBusinessFightActive": {
+        "recognition": "Custom",
+        "custom_recognition": "manual_two_city_business_fight_active",
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_stage",
+                "custom_action_param": {
+                    "stage": "战斗中",
+                    "detail": "检测到战斗仍在进行，继续等待战斗结束。"
+                }
+            }
+        },
+        "post_delay": 3000,
+        "next": "ManualTwoCityBusinessFightMonitor",
+        "on_error": "ManualTwoCityBusinessTravelMonitor"
+    }
+}

@@ -1,0 +1,255 @@
+{
+    "AccountProfilePrestigeStart": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "main_map.png",
+                "threshold": 0.96
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    155,
+                    675
+                ]
+            }
+        },
+        "post_delay": 600,
+        "next": "AccountProfilePrestigePanelReady",
+        "on_error": "StateRecoveryStart"
+    },
+    "AccountProfilePrestigePanelReady": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "查看更多信息",
+                    "运营总览",
+                    "营运总览",
+                    "导航手册"
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "next": "AccountProfilePrestigeTapMoreInfo"
+    },
+    "AccountProfilePrestigeTapMoreInfo": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": "查看更多信息"
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 400,
+        "next": "AccountProfilePrestigeTapEye"
+    },
+    "AccountProfilePrestigeTapEye": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "profile/prestige_eye.png",
+                "roi": [
+                    330,
+                    390,
+                    90,
+                    50
+                ],
+                "threshold": 0.85
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 400,
+        "next": "AccountProfilePrestigeDialogPage1Ready"
+    },
+    "AccountProfilePrestigeDialogPage1Ready": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "所有城市声望",
+                    "声望总和",
+                    "声望等级",
+                    "声望"
+                ],
+                "roi": [
+                    700,
+                    245,
+                    490,
+                    430
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_prestige_read",
+                "custom_action_param": {
+                    "page_index": 1
+                }
+            }
+        },
+        "next": "AccountProfilePrestigeScrollToPage2"
+    },
+    "AccountProfilePrestigeScrollToPage2": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "所有城市声望",
+                    "声望总和",
+                    "声望等级",
+                    "声望"
+                ],
+                "roi": [
+                    700,
+                    245,
+                    490,
+                    430
+                ]
+            }
+        },
+        "action": {
+            "type": "Swipe",
+            "param": {
+                "begin": [
+                    960,
+                    600
+                ],
+                "end": [
+                    960,
+                    325
+                ],
+                "duration": 700
+            }
+        },
+        "post_delay": 600,
+        "next": "AccountProfilePrestigeDialogPage2Ready"
+    },
+    "AccountProfilePrestigeDialogPage2Ready": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "所有城市声望",
+                    "声望总和",
+                    "声望等级",
+                    "声望"
+                ],
+                "roi": [
+                    700,
+                    245,
+                    490,
+                    430
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_prestige_read",
+                "custom_action_param": {
+                    "page_index": 2
+                }
+            }
+        },
+        "next": "AccountProfilePrestigeComplete"
+    },
+    "AccountProfilePrestigeComplete": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_prestige_complete"
+            }
+        },
+        "next": "AccountProfilePrestigeCloseDialog"
+    },
+    "AccountProfilePrestigeCloseDialog": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "确认",
+                    "确定"
+                ],
+                "roi": [
+                    820,
+                    585,
+                    260,
+                    100
+                ]
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 300,
+        "next": "AccountProfilePrestigeClosePanel",
+        "on_error": "AccountProfilePrestigeDone"
+    },
+    "AccountProfilePrestigeClosePanel": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "查看更多信息",
+                    "运营总览",
+                    "营运总览",
+                    "导航手册",
+                    "收起",
+                    "资产",
+                    "贸易等级",
+                    "客运等级",
+                    "声望总和",
+                    "环保声望",
+                    "列车长形象"
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    1020,
+                    520
+                ]
+            }
+        },
+        "post_delay": 400,
+        "next": "AccountProfilePrestigeMainMapReady",
+        "on_error": "AccountProfilePrestigeDone"
+    },
+    "AccountProfilePrestigeMainMapReady": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "main_map.png",
+                "threshold": 0.96
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "next": "AccountProfilePrestigeDone",
+        "on_error": "AccountProfilePrestigeDone"
+    },
+    "AccountProfilePrestigeDone": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "DoNothing"
+        }
+    }
+}

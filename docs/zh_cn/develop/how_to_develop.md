@@ -18,7 +18,7 @@
 
 ## 开发步骤
 
-0. 使用[本项目主页](https://github.com/MaaXYZ/MaaPracticeBoilerplate)右上角 `Use this template` - `Create a new repository` 来基于本模板创建您自己的项目。  
+0. 本项目基于 MaaFramework 项目模板演进，当前测试包以前端 MXU 和安卓模拟器控制器为主。  
     _（如果你找不到这个按钮，说明你没有登录 GitHub 账号）_
 
 1. 克隆你的项目（地址请修改为您基于本模板创建的新项目地址）。
@@ -27,10 +27,10 @@
     git clone https://github.com/<你的用户名>/<你的项目名称>.git
     ```
 
-2. 下载 OCR（文字识别）资源文件 [ppocr_v5.zip](https://download.maafw.xyz/MaaCommonAssets/OCR/ppocr_v5/ppocr_v5-zh_cn.zip) 解压到 `assets/resource/model/ocr/` 目录下，确保路径如下：
+2. 下载 OCR（文字识别）资源文件 [ppocr_v5.zip](https://download.maafw.xyz/MaaCommonAssets/OCR/ppocr_v5/ppocr_v5-zh_cn.zip) 解压到 `assets/resource/base/model/ocr/` 目录下，确保路径如下：
 
     ```tree
-    assets/resource/model/ocr/
+    assets/resource/base/model/ocr/
     ├── det.onnx
     ├── keys.txt
     └── rec.onnx
@@ -58,7 +58,7 @@
 
 5. 发布您的版本
 
-    本模板附带 GitHub Actions 工作流的[配置文件](/.github/workflows/install.yml)，CI 检测到 tag 会自动进行打包和发布。默认的配置文件会将 [MFAAvalonia](https://github.com/SweetSmellFox/MFAAvalonia) 与你的项目一同打包和发版。
+    本项目附带 GitHub Actions 工作流的[配置文件](/.github/workflows/install.yml)，CI 检测到 tag 会自动进行打包和发布。当前配置会将 [MXU](https://github.com/MistEO/MXU) 与项目资源一同打包。
 
     > [!NOTE]
     > 第一次操作前，需要**先**修改 GitHub 仓库设置 `Settings` - `Actions` - `General` - `Read and write permissions` - `Save`

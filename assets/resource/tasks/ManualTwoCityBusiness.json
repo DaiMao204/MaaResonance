@@ -1,0 +1,1240 @@
+{
+    "task": [
+        {
+            "name": "ManualTwoCityBusiness",
+            "label": "手动双城跑商",
+            "entry": "RunManualTwoCityBusiness",
+            "group": [
+                "trade"
+            ],
+            "resource": [
+                "official"
+            ],
+            "controller": [
+                "ADB"
+            ],
+            "pipeline_override": {
+                "StateRecoveryComplete": {
+                    "next": "ManualTwoCityBusinessStateRecoveryCompleteDispatch"
+                },
+                "StateRecoveryFailed": {
+                    "next": "ManualTwoCityBusinessTradeEntryFailed"
+                },
+                "CityTradeOutletOpenDone": {
+                    "next": "ManualTwoCityBusinessTradeOutletOpenDoneDispatch"
+                },
+                "CityTradeOutletOpenFailed": {
+                    "next": "ManualTwoCityBusinessTradeOutletOpenFailedDispatch"
+                },
+                "AccountProfileReadStart": {
+                    "next": "AccountProfileUidRead"
+                },
+                "AccountProfileUidRead": {
+                    "next": "AccountProfileCargoInit",
+                    "on_error": "AccountProfileCargoInit"
+                },
+                "AccountProfileCargoDone": {
+                    "next": "AccountProfilePrestigeStart"
+                },
+                "AccountProfilePrestigeStart": {
+                    "recognition": {
+                        "type": "TemplateMatch",
+                        "param": {
+                            "template": "main_map.png",
+                            "threshold": 0.95
+                        }
+                    }
+                },
+                "AccountProfilePrestigeDone": {
+                    "next": "AccountProfileCityUnlockStart"
+                },
+                "AccountProfileCityUnlockDone": {
+                    "next": "AccountProfileRoleResonanceStart"
+                },
+                "AccountProfileRoleResonanceStart": {
+                    "recognition": "TemplateMatch",
+                    "template": "main_map.png",
+                    "threshold": 0.95
+                },
+                "AccountProfileRoleResonanceDone": {
+                    "next": "ManualTwoCityBusinessAccountProfileWarmupDone"
+                }
+            },
+            "option": [
+                "ManualTwoCityStartCity",
+                "ManualTwoCityStartParams",
+                "ManualTwoCityTargetCity",
+                "ManualTwoCityTargetParams",
+                "ManualTwoCityRunMode",
+                "ManualTwoCityAccountProfileReadMode",
+                "ManualTwoCityAutoImpactDrill",
+                "ManualTwoCityAutoSpeedProjectile",
+                "ManualTwoCityAutoDrink",
+                "ManualTwoCityAutoBento",
+                "ManualTwoCityUseMedicine"
+            ]
+        }
+    ],
+    "option": {
+        "ManualTwoCityStartCity": {
+            "type": "select",
+            "label": "起始城市 - 城市名称",
+            "default_case": "修格里城",
+            "cases": [
+                {
+                    "name": "7号自由港",
+                    "label": "7号自由港",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetOutboundCity": {
+                            "custom_action_param": {
+                                "manual_start_city": "7号自由港"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "云岫桥基地",
+                    "label": "云岫桥基地",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetOutboundCity": {
+                            "custom_action_param": {
+                                "manual_start_city": "云岫桥基地"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "修格里城",
+                    "label": "修格里城",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetOutboundCity": {
+                            "custom_action_param": {
+                                "manual_start_city": "修格里城"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "塔图站",
+                    "label": "塔图站",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetOutboundCity": {
+                            "custom_action_param": {
+                                "manual_start_city": "塔图站"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "岚心城",
+                    "label": "岚心城",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetOutboundCity": {
+                            "custom_action_param": {
+                                "manual_start_city": "岚心城"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "曼德矿场",
+                    "label": "曼德矿场",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetOutboundCity": {
+                            "custom_action_param": {
+                                "manual_start_city": "曼德矿场"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "栖羽站",
+                    "label": "栖羽站",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetOutboundCity": {
+                            "custom_action_param": {
+                                "manual_start_city": "栖羽站"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "武林源",
+                    "label": "武林源",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetOutboundCity": {
+                            "custom_action_param": {
+                                "manual_start_city": "武林源"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "汇流塔",
+                    "label": "汇流塔",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetOutboundCity": {
+                            "custom_action_param": {
+                                "manual_start_city": "汇流塔"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "海角城",
+                    "label": "海角城",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetOutboundCity": {
+                            "custom_action_param": {
+                                "manual_start_city": "海角城"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "淘金乐园",
+                    "label": "淘金乐园",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetOutboundCity": {
+                            "custom_action_param": {
+                                "manual_start_city": "淘金乐园"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "澄明数据中心",
+                    "label": "澄明数据中心",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetOutboundCity": {
+                            "custom_action_param": {
+                                "manual_start_city": "澄明数据中心"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "维蒂林场",
+                    "label": "维蒂林场",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetOutboundCity": {
+                            "custom_action_param": {
+                                "manual_start_city": "维蒂林场"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "荒原站",
+                    "label": "荒原站",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetOutboundCity": {
+                            "custom_action_param": {
+                                "manual_start_city": "荒原站"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "贡露城",
+                    "label": "贡露城",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetOutboundCity": {
+                            "custom_action_param": {
+                                "manual_start_city": "贡露城"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "远星大桥",
+                    "label": "远星大桥",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetOutboundCity": {
+                            "custom_action_param": {
+                                "manual_start_city": "远星大桥"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "铁盟哨站",
+                    "label": "铁盟哨站",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetOutboundCity": {
+                            "custom_action_param": {
+                                "manual_start_city": "铁盟哨站"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "阿妮塔发射中心",
+                    "label": "阿妮塔发射中心",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetOutboundCity": {
+                            "custom_action_param": {
+                                "manual_start_city": "阿妮塔发射中心"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "阿妮塔战备工厂",
+                    "label": "阿妮塔战备工厂",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetOutboundCity": {
+                            "custom_action_param": {
+                                "manual_start_city": "阿妮塔战备工厂"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "阿妮塔能源研究所",
+                    "label": "阿妮塔能源研究所",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetOutboundCity": {
+                            "custom_action_param": {
+                                "manual_start_city": "阿妮塔能源研究所"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "黑月游乐城",
+                    "label": "黑月游乐城",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetOutboundCity": {
+                            "custom_action_param": {
+                                "manual_start_city": "黑月游乐城"
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "ManualTwoCityStartParams": {
+            "type": "input",
+            "label": "去程设置 - 跑商参数",
+            "inputs": [
+                {
+                    "name": "start_book",
+                    "label": "进货书数量",
+                    "default": "4",
+                    "pipeline_type": "int"
+                },
+                {
+                    "name": "start_bargain_percent",
+                    "label": "砍价百分比",
+                    "default": "20",
+                    "pipeline_type": "int"
+                },
+                {
+                    "name": "start_raise_percent",
+                    "label": "抬价百分比",
+                    "default": "20",
+                    "pipeline_type": "int"
+                }
+            ],
+            "pipeline_override": {
+                "ManualTwoCityBusinessSetOutboundParams": {
+                    "custom_action_param": {
+                        "start_book": "{start_book}",
+                        "start_bargain_percent": "{start_bargain_percent}",
+                        "start_raise_percent": "{start_raise_percent}"
+                    }
+                }
+            }
+        },
+        "ManualTwoCityTargetCity": {
+            "type": "select",
+            "label": "目标城市 - 城市名称",
+            "default_case": "7号自由港",
+            "cases": [
+                {
+                    "name": "7号自由港",
+                    "label": "7号自由港",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetReturnCity": {
+                            "custom_action_param": {
+                                "manual_target_city": "7号自由港"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "云岫桥基地",
+                    "label": "云岫桥基地",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetReturnCity": {
+                            "custom_action_param": {
+                                "manual_target_city": "云岫桥基地"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "修格里城",
+                    "label": "修格里城",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetReturnCity": {
+                            "custom_action_param": {
+                                "manual_target_city": "修格里城"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "塔图站",
+                    "label": "塔图站",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetReturnCity": {
+                            "custom_action_param": {
+                                "manual_target_city": "塔图站"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "岚心城",
+                    "label": "岚心城",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetReturnCity": {
+                            "custom_action_param": {
+                                "manual_target_city": "岚心城"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "曼德矿场",
+                    "label": "曼德矿场",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetReturnCity": {
+                            "custom_action_param": {
+                                "manual_target_city": "曼德矿场"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "栖羽站",
+                    "label": "栖羽站",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetReturnCity": {
+                            "custom_action_param": {
+                                "manual_target_city": "栖羽站"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "武林源",
+                    "label": "武林源",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetReturnCity": {
+                            "custom_action_param": {
+                                "manual_target_city": "武林源"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "汇流塔",
+                    "label": "汇流塔",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetReturnCity": {
+                            "custom_action_param": {
+                                "manual_target_city": "汇流塔"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "海角城",
+                    "label": "海角城",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetReturnCity": {
+                            "custom_action_param": {
+                                "manual_target_city": "海角城"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "淘金乐园",
+                    "label": "淘金乐园",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetReturnCity": {
+                            "custom_action_param": {
+                                "manual_target_city": "淘金乐园"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "澄明数据中心",
+                    "label": "澄明数据中心",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetReturnCity": {
+                            "custom_action_param": {
+                                "manual_target_city": "澄明数据中心"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "维蒂林场",
+                    "label": "维蒂林场",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetReturnCity": {
+                            "custom_action_param": {
+                                "manual_target_city": "维蒂林场"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "荒原站",
+                    "label": "荒原站",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetReturnCity": {
+                            "custom_action_param": {
+                                "manual_target_city": "荒原站"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "贡露城",
+                    "label": "贡露城",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetReturnCity": {
+                            "custom_action_param": {
+                                "manual_target_city": "贡露城"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "远星大桥",
+                    "label": "远星大桥",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetReturnCity": {
+                            "custom_action_param": {
+                                "manual_target_city": "远星大桥"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "铁盟哨站",
+                    "label": "铁盟哨站",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetReturnCity": {
+                            "custom_action_param": {
+                                "manual_target_city": "铁盟哨站"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "阿妮塔发射中心",
+                    "label": "阿妮塔发射中心",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetReturnCity": {
+                            "custom_action_param": {
+                                "manual_target_city": "阿妮塔发射中心"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "阿妮塔战备工厂",
+                    "label": "阿妮塔战备工厂",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetReturnCity": {
+                            "custom_action_param": {
+                                "manual_target_city": "阿妮塔战备工厂"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "阿妮塔能源研究所",
+                    "label": "阿妮塔能源研究所",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetReturnCity": {
+                            "custom_action_param": {
+                                "manual_target_city": "阿妮塔能源研究所"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "黑月游乐城",
+                    "label": "黑月游乐城",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetReturnCity": {
+                            "custom_action_param": {
+                                "manual_target_city": "黑月游乐城"
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "ManualTwoCityTargetParams": {
+            "type": "input",
+            "label": "回程设置 - 跑商参数",
+            "inputs": [
+                {
+                    "name": "target_book",
+                    "label": "进货书数量",
+                    "default": "0",
+                    "pipeline_type": "int"
+                },
+                {
+                    "name": "target_bargain_percent",
+                    "label": "砍价百分比",
+                    "default": "0",
+                    "pipeline_type": "int"
+                },
+                {
+                    "name": "target_raise_percent",
+                    "label": "抬价百分比",
+                    "default": "0",
+                    "pipeline_type": "int"
+                }
+            ],
+            "pipeline_override": {
+                "ManualTwoCityBusinessSetReturnParams": {
+                    "custom_action_param": {
+                        "target_book": "{target_book}",
+                        "target_bargain_percent": "{target_bargain_percent}",
+                        "target_raise_percent": "{target_raise_percent}"
+                    }
+                }
+            }
+        },
+        "ManualTwoCityRunMode": {
+            "type": "select",
+            "label": "跑商执行方式",
+            "default_case": "one_round",
+            "cases": [
+                {
+                    "name": "one_round",
+                    "label": "跑 1 轮",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetRunMode": {
+                            "custom_action_param": {
+                                "run_mode": "one_round"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "until_fatigue_exhausted",
+                    "label": "跑到疲劳耗尽",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetRunMode": {
+                            "custom_action_param": {
+                                "run_mode": "until_fatigue_exhausted"
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "ManualTwoCityAccountProfileReadMode": {
+            "type": "select",
+            "label": "账号配置读取模式",
+            "description": "智能读取会在本轮第一次到达城市主界面后重新读取货仓容量，并只检查未解锁/缺失城市与缺失乘员；全部读取会强制全量读取一次，读取完成后自动改回智能读取；不读取会跳过读取，但仍优先使用本地已有配置，缺失时使用默认配置。",
+            "default_case": "smart",
+            "cases": [
+                {
+                    "name": "smart",
+                    "label": "智能读取",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetAccountProfileReadMode": {
+                            "custom_action_param": {
+                                "account_profile_read_mode": "smart"
+                            }
+                        },
+                        "AccountProfileCityUnlockZoomOut001": {
+                            "next": "AccountProfileCityUnlockProbe001MissingGate"
+                        },
+                        "AccountProfileCityUnlockProbe001CloseDetail": {
+                            "next": "AccountProfileCityUnlockProbe002MissingGate"
+                        },
+                        "AccountProfileCityUnlockProbe001Unknown": {
+                            "next": "AccountProfileCityUnlockProbe002MissingGate"
+                        },
+                        "AccountProfileCityUnlockProbe002CloseDetail": {
+                            "next": "AccountProfileCityUnlockProbe003MissingGate"
+                        },
+                        "AccountProfileCityUnlockProbe002Unknown": {
+                            "next": "AccountProfileCityUnlockProbe003MissingGate"
+                        },
+                        "AccountProfileCityUnlockProbe003CloseDetail": {
+                            "next": "AccountProfileCityUnlockProbe004MissingGate"
+                        },
+                        "AccountProfileCityUnlockProbe003Unknown": {
+                            "next": "AccountProfileCityUnlockProbe004MissingGate"
+                        },
+                        "AccountProfileCityUnlockProbe004CloseDetail": {
+                            "next": "AccountProfileCityUnlockProbe005MissingGate"
+                        },
+                        "AccountProfileCityUnlockProbe004Unknown": {
+                            "next": "AccountProfileCityUnlockProbe005MissingGate"
+                        },
+                        "AccountProfileCityUnlockProbe005CloseDetail": {
+                            "next": "AccountProfileCityUnlockProbe006MissingGate"
+                        },
+                        "AccountProfileCityUnlockProbe005Unknown": {
+                            "next": "AccountProfileCityUnlockProbe006MissingGate"
+                        },
+                        "AccountProfileCityUnlockProbe006CloseDetail": {
+                            "next": "AccountProfileCityUnlockProbe007MissingGate"
+                        },
+                        "AccountProfileCityUnlockProbe006Unknown": {
+                            "next": "AccountProfileCityUnlockProbe007MissingGate"
+                        },
+                        "AccountProfileCityUnlockProbe007CloseDetail": {
+                            "next": "AccountProfileCityUnlockProbe008MissingGate"
+                        },
+                        "AccountProfileCityUnlockProbe007Unknown": {
+                            "next": "AccountProfileCityUnlockProbe008MissingGate"
+                        },
+                        "AccountProfileCityUnlockProbe008CloseDetail": {
+                            "next": "AccountProfileCityUnlockProbe009MissingGate"
+                        },
+                        "AccountProfileCityUnlockProbe008Unknown": {
+                            "next": "AccountProfileCityUnlockProbe009MissingGate"
+                        },
+                        "AccountProfileCityUnlockProbe009CloseDetail": {
+                            "next": "AccountProfileCityUnlockProbe010MissingGate"
+                        },
+                        "AccountProfileCityUnlockProbe009Unknown": {
+                            "next": "AccountProfileCityUnlockProbe010MissingGate"
+                        },
+                        "AccountProfileCityUnlockProbe010CloseDetail": {
+                            "next": "AccountProfileCityUnlockProbe011MissingGate"
+                        },
+                        "AccountProfileCityUnlockProbe010Unknown": {
+                            "next": "AccountProfileCityUnlockProbe011MissingGate"
+                        },
+                        "AccountProfileCityUnlockProbe011CloseDetail": {
+                            "next": "AccountProfileCityUnlockProbe012MissingGate"
+                        },
+                        "AccountProfileCityUnlockProbe011Unknown": {
+                            "next": "AccountProfileCityUnlockProbe012MissingGate"
+                        },
+                        "AccountProfileCityUnlockProbe012CloseDetail": {
+                            "next": "AccountProfileCityUnlockProbe013MissingGate"
+                        },
+                        "AccountProfileCityUnlockProbe012Unknown": {
+                            "next": "AccountProfileCityUnlockProbe013MissingGate"
+                        },
+                        "AccountProfileCityUnlockProbe013CloseDetail": {
+                            "next": "AccountProfileCityUnlockProbe014MissingGate"
+                        },
+                        "AccountProfileCityUnlockProbe013Unknown": {
+                            "next": "AccountProfileCityUnlockProbe014MissingGate"
+                        },
+                        "AccountProfileCityUnlockProbe014CloseDetail": {
+                            "next": "AccountProfileCityUnlockProbe015MissingGate"
+                        },
+                        "AccountProfileCityUnlockProbe014Unknown": {
+                            "next": "AccountProfileCityUnlockProbe015MissingGate"
+                        },
+                        "AccountProfileCityUnlockProbe015CloseDetail": {
+                            "next": "AccountProfileCityUnlockProbe016MissingGate"
+                        },
+                        "AccountProfileCityUnlockProbe015Unknown": {
+                            "next": "AccountProfileCityUnlockProbe016MissingGate"
+                        },
+                        "AccountProfileCityUnlockProbe016CloseDetail": {
+                            "next": "AccountProfileCityUnlockProbe017MissingGate"
+                        },
+                        "AccountProfileCityUnlockProbe016Unknown": {
+                            "next": "AccountProfileCityUnlockProbe017MissingGate"
+                        },
+                        "AccountProfileCityUnlockProbe017CloseDetail": {
+                            "next": "AccountProfileCityUnlockProbe018MissingGate"
+                        },
+                        "AccountProfileCityUnlockProbe017Unknown": {
+                            "next": "AccountProfileCityUnlockProbe018MissingGate"
+                        },
+                        "AccountProfileCityUnlockProbe001MoveToCity": {
+                            "action": {
+                                "type": "Custom",
+                                "param": {
+                                    "custom_action": "profile_city_unlock_move_to_city",
+                                    "custom_action_param": {
+                                        "city": "7号自由港",
+                                        "max_steps": 4,
+                                        "drag_distance": 520,
+                                        "drag_duration": 900,
+                                        "drag_delay": 200,
+                                        "click_count": 3,
+                                        "click_delay": 200,
+                                        "panel_settle_delay": 400,
+                                        "reset": false
+                                    }
+                                }
+                            }
+                        },
+                        "AccountProfileCityUnlockProbe001MissingGate": {
+                            "action": {
+                                "type": "Custom",
+                                "param": {
+                                    "custom_action": "profile_city_unlock_should_probe",
+                                    "custom_action_param": {
+                                        "city": "7号自由港",
+                                        "reset": true,
+                                        "probe_mode": "unavailable_missing"
+                                    }
+                                }
+                            }
+                        },
+                        "AccountProfileCityUnlockProbe002MissingGate": {
+                            "action": {
+                                "type": "Custom",
+                                "param": {
+                                    "custom_action": "profile_city_unlock_should_probe",
+                                    "custom_action_param": {
+                                        "city": "武林源",
+                                        "probe_mode": "unavailable_missing"
+                                    }
+                                }
+                            }
+                        },
+                        "AccountProfileCityUnlockProbe003MissingGate": {
+                            "action": {
+                                "type": "Custom",
+                                "param": {
+                                    "custom_action": "profile_city_unlock_should_probe",
+                                    "custom_action_param": {
+                                        "city": "阿妮塔战备工厂",
+                                        "probe_mode": "unavailable_missing"
+                                    }
+                                }
+                            }
+                        },
+                        "AccountProfileCityUnlockProbe004MissingGate": {
+                            "action": {
+                                "type": "Custom",
+                                "param": {
+                                    "custom_action": "profile_city_unlock_should_probe",
+                                    "custom_action_param": {
+                                        "city": "阿妮塔能源研究所",
+                                        "probe_mode": "unavailable_missing"
+                                    }
+                                }
+                            }
+                        },
+                        "AccountProfileCityUnlockProbe005MissingGate": {
+                            "action": {
+                                "type": "Custom",
+                                "param": {
+                                    "custom_action": "profile_city_unlock_should_probe",
+                                    "custom_action_param": {
+                                        "city": "阿妮塔发射中心",
+                                        "probe_mode": "unavailable_missing"
+                                    }
+                                }
+                            }
+                        },
+                        "AccountProfileCityUnlockProbe006MissingGate": {
+                            "action": {
+                                "type": "Custom",
+                                "param": {
+                                    "custom_action": "profile_city_unlock_should_probe",
+                                    "custom_action_param": {
+                                        "city": "汇流塔",
+                                        "probe_mode": "unavailable_missing"
+                                    }
+                                }
+                            }
+                        },
+                        "AccountProfileCityUnlockProbe007MissingGate": {
+                            "action": {
+                                "type": "Custom",
+                                "param": {
+                                    "custom_action": "profile_city_unlock_should_probe",
+                                    "custom_action_param": {
+                                        "city": "海角城",
+                                        "probe_mode": "unavailable_missing"
+                                    }
+                                }
+                            }
+                        },
+                        "AccountProfileCityUnlockProbe008MissingGate": {
+                            "action": {
+                                "type": "Custom",
+                                "param": {
+                                    "custom_action": "profile_city_unlock_should_probe",
+                                    "custom_action_param": {
+                                        "city": "远星大桥",
+                                        "probe_mode": "unavailable_missing"
+                                    }
+                                }
+                            }
+                        },
+                        "AccountProfileCityUnlockProbe009MissingGate": {
+                            "action": {
+                                "type": "Custom",
+                                "param": {
+                                    "custom_action": "profile_city_unlock_should_probe",
+                                    "custom_action_param": {
+                                        "city": "贡露城",
+                                        "probe_mode": "unavailable_missing"
+                                    }
+                                }
+                            }
+                        },
+                        "AccountProfileCityUnlockProbe010MissingGate": {
+                            "action": {
+                                "type": "Custom",
+                                "param": {
+                                    "custom_action": "profile_city_unlock_should_probe",
+                                    "custom_action_param": {
+                                        "city": "澄明数据中心",
+                                        "probe_mode": "unavailable_missing"
+                                    }
+                                }
+                            }
+                        },
+                        "AccountProfileCityUnlockProbe011MissingGate": {
+                            "action": {
+                                "type": "Custom",
+                                "param": {
+                                    "custom_action": "profile_city_unlock_should_probe",
+                                    "custom_action_param": {
+                                        "city": "修格里城",
+                                        "probe_mode": "unavailable_missing"
+                                    }
+                                }
+                            }
+                        },
+                        "AccountProfileCityUnlockProbe012MissingGate": {
+                            "action": {
+                                "type": "Custom",
+                                "param": {
+                                    "custom_action": "profile_city_unlock_should_probe",
+                                    "custom_action_param": {
+                                        "city": "铁盟哨站",
+                                        "probe_mode": "unavailable_missing"
+                                    }
+                                }
+                            }
+                        },
+                        "AccountProfileCityUnlockProbe013MissingGate": {
+                            "action": {
+                                "type": "Custom",
+                                "param": {
+                                    "custom_action": "profile_city_unlock_should_probe",
+                                    "custom_action_param": {
+                                        "city": "曼德矿场",
+                                        "probe_mode": "unavailable_missing"
+                                    }
+                                }
+                            }
+                        },
+                        "AccountProfileCityUnlockProbe014MissingGate": {
+                            "action": {
+                                "type": "Custom",
+                                "param": {
+                                    "custom_action": "profile_city_unlock_should_probe",
+                                    "custom_action_param": {
+                                        "city": "淘金乐园",
+                                        "probe_mode": "unavailable_missing"
+                                    }
+                                }
+                            }
+                        },
+                        "AccountProfileCityUnlockProbe015MissingGate": {
+                            "action": {
+                                "type": "Custom",
+                                "param": {
+                                    "custom_action": "profile_city_unlock_should_probe",
+                                    "custom_action_param": {
+                                        "city": "荒原站",
+                                        "probe_mode": "unavailable_missing"
+                                    }
+                                }
+                            }
+                        },
+                        "AccountProfileCityUnlockProbe016MissingGate": {
+                            "action": {
+                                "type": "Custom",
+                                "param": {
+                                    "custom_action": "profile_city_unlock_should_probe",
+                                    "custom_action_param": {
+                                        "city": "云岫桥基地",
+                                        "probe_mode": "unavailable_missing"
+                                    }
+                                }
+                            }
+                        },
+                        "AccountProfileCityUnlockProbe017MissingGate": {
+                            "action": {
+                                "type": "Custom",
+                                "param": {
+                                    "custom_action": "profile_city_unlock_should_probe",
+                                    "custom_action_param": {
+                                        "city": "栖羽站",
+                                        "probe_mode": "unavailable_missing"
+                                    }
+                                }
+                            }
+                        },
+                        "AccountProfileCityUnlockProbe018MissingGate": {
+                            "action": {
+                                "type": "Custom",
+                                "param": {
+                                    "custom_action": "profile_city_unlock_should_probe",
+                                    "custom_action_param": {
+                                        "city": "岚心城",
+                                        "probe_mode": "unavailable_missing"
+                                    }
+                                }
+                            }
+                        },
+                        "AccountProfileRoleResonanceContinue001": {
+                            "custom_action_param": {
+                                "page_index": 1,
+                                "role_targets": [],
+                                "stale_limit": 2,
+                                "max_pages": 24,
+                                "scan_mode": "missing_roles"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "full",
+                    "label": "全部读取",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetAccountProfileReadMode": {
+                            "custom_action_param": {
+                                "account_profile_read_mode": "full"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "none",
+                    "label": "不读取",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetAccountProfileReadMode": {
+                            "custom_action_param": {
+                                "account_profile_read_mode": "none"
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "ManualTwoCityAutoDrink": {
+            "type": "switch",
+            "label": "自动喝酒",
+            "description": "开启后，跑商途中在交易所检测到疲劳值高于 300 时，会进入疲劳页并喝完本轮可用次数。",
+            "default_case": "No",
+            "cases": [
+                {
+                    "name": "No",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetAutoDrink": {
+                            "custom_action_param": {
+                                "auto_drink": false,
+                                "drink_fatigue_threshold": 300
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Yes",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetAutoDrink": {
+                            "custom_action_param": {
+                                "auto_drink": true,
+                                "drink_fatigue_threshold": 300
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "ManualTwoCityAutoImpactDrill": {
+            "type": "switch",
+            "label": "自动使用撞击钻头",
+            "description": "开启后，行车途中识别到“撞击脱离”时会自动使用撞击钻头。",
+            "default_case": "No",
+            "cases": [
+                {
+                    "name": "No",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetAutoImpactDrill": {
+                            "custom_action_param": {
+                                "auto_use_impact_drill": false
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Yes",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetAutoImpactDrill": {
+                            "custom_action_param": {
+                                "auto_use_impact_drill": true
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "ManualTwoCityAutoSpeedProjectile": {
+            "type": "switch",
+            "label": "自动使用加速弹丸",
+            "description": "开启后，行车途中识别到底部加速弹丸图标时会自动点击使用。",
+            "default_case": "No",
+            "cases": [
+                {
+                    "name": "No",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetAutoSpeedProjectile": {
+                            "custom_action_param": {
+                                "auto_use_speed_projectile": false
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Yes",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetAutoSpeedProjectile": {
+                            "custom_action_param": {
+                                "auto_use_speed_projectile": true
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "ManualTwoCityAutoBento": {
+            "type": "switch",
+            "label": "自动吃便当",
+            "description": "开启后，跑商途中疲劳不足时会优先使用便当；便当可在同一轮中反复使用，直到没有可用便当或疲劳足够。",
+            "default_case": "No",
+            "cases": [
+                {
+                    "name": "No",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetAutoBento": {
+                            "custom_action_param": {
+                                "use_bento": false
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Yes",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetAutoBento": {
+                            "custom_action_param": {
+                                "use_bento": true
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "ManualTwoCityUseMedicine": {
+            "type": "switch",
+            "label": "使用疲劳药/桦石",
+            "description": "开启后才会显示下方使用次数。次数含义：-1 为无限制，0 为不使用，正数为本轮剩余可用次数；桦石最高 8 次。",
+            "default_case": "No",
+            "cases": [
+                {
+                    "name": "No",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetMedicineSwitch": {
+                            "custom_action_param": {
+                                "use_fatigue_medicine": false
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Yes",
+                    "option": [
+                        "ManualTwoCityMedicineLimits"
+                    ],
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetMedicineSwitch": {
+                            "custom_action_param": {
+                                "use_fatigue_medicine": true
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "ManualTwoCityMedicineLimits": {
+            "type": "input",
+            "label": "跑商疲劳药/桦石使用次数",
+            "description": "任务运行中每成功使用 1 次会扣减对应配置值；-1 不扣减，0 表示禁用该恢复手段。",
+            "inputs": [
+                {
+                    "name": "lollipop_use_limit",
+                    "label": "提神棒棒糖使用次数",
+                    "description": "-1 为无限制，0 为不使用，正数为本轮剩余可用次数。",
+                    "default": "0",
+                    "pipeline_type": "int",
+                    "verify": "^(-1|0|[1-9]\\d*)$",
+                    "pattern_msg": "请输入 -1、0 或正整数。"
+                },
+                {
+                    "name": "gum_use_limit",
+                    "label": "提神口香糖使用次数",
+                    "description": "-1 为无限制，0 为不使用，正数为本轮剩余可用次数。",
+                    "default": "0",
+                    "pipeline_type": "int",
+                    "verify": "^(-1|0|[1-9]\\d*)$",
+                    "pattern_msg": "请输入 -1、0 或正整数。"
+                },
+                {
+                    "name": "cactus_candy_use_limit",
+                    "label": "仙人掌提神跳糖使用次数",
+                    "description": "-1 为无限制，0 为不使用，正数为本轮剩余可用次数。",
+                    "default": "0",
+                    "pipeline_type": "int",
+                    "verify": "^(-1|0|[1-9]\\d*)$",
+                    "pattern_msg": "请输入 -1、0 或正整数。"
+                },
+                {
+                    "name": "huashi_use_limit",
+                    "label": "桦石使用次数（最高 8）",
+                    "description": "-1 为无限制，0 为不使用，1-8 为本轮剩余可用次数。",
+                    "default": "0",
+                    "pipeline_type": "int",
+                    "verify": "^(-1|[0-8])$",
+                    "pattern_msg": "请输入 -1 或 0-8。"
+                }
+            ],
+            "pipeline_override": {
+                "ManualTwoCityBusinessSetMedicineLimits": {
+                    "custom_action_param": {
+                        "lollipop_use_limit": "{lollipop_use_limit}",
+                        "gum_use_limit": "{gum_use_limit}",
+                        "cactus_candy_use_limit": "{cactus_candy_use_limit}",
+                        "huashi_use_limit": "{huashi_use_limit}"
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,36 @@
+{
+    "task": [
+        {
+            "name": "LaunchGame",
+            "label": "启动游戏",
+            "entry": "LaunchGameStart",
+            "description": "在安卓模拟器中打开游戏，并尝试进入主界面。",
+            "group": [
+                "system"
+            ],
+            "resource": [
+                "official"
+            ],
+            "controller": [
+                "ADB"
+            ],
+            "pipeline_override": {
+                "StateRecoveryComplete": {
+                    "next": "LaunchGameComplete"
+                },
+                "StateRecoveryFailed": {
+                    "next": "LaunchGameFailed"
+                },
+                "StateRecoveryTravelRouteEvent": {
+                    "next": "LaunchGameComplete"
+                },
+                "StateRecoveryTravelInProgress": {
+                    "next": "LaunchGameComplete"
+                },
+                "StateRecoveryFightActive": {
+                    "next": "LaunchGameComplete"
+                }
+            }
+        }
+    ]
+}

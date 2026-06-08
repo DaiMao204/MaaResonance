@@ -1,0 +1,1692 @@
+{
+  "schema_version": 1,
+  "resolution": [
+    1280,
+    720
+  ],
+  "coordinate_space": "viewport_screen_points_after_manual_map_sampling",
+  "status": "intermediate_calibration_data_not_final_world_coordinates",
+  "source_rows": [
+    "20260528_190604_origin_east",
+    "20260528_193126_south1_east",
+    "20260528_205514_anita_factory",
+    "20260528_210327_origin_reverify",
+    "20260528_210546_reverify_origin_east",
+    "20260528_211123_huangyuan_reverify",
+    "20260528_211811_xiugeli_reverify",
+    "20260528_212250_yuanxing_reverify",
+    "20260528_213113_gonglu_reverify"
+  ],
+  "city_count": 21,
+  "legacy_city_count": 16,
+  "missing_legacy_cities": [],
+  "sample_only_cities": [
+    "塔图站",
+    "武林源",
+    "维蒂林场",
+    "贡露城",
+    "黑月游乐城"
+  ],
+  "review_required": {},
+  "cities": {
+    "7号自由港": {
+      "best_sample": {
+        "row": "20260528_210327_origin_reverify",
+        "step": 0,
+        "image": "diagnostics/captures/20260528_210327_verify_origin_after_wulin_retry.png",
+        "manual_point": [
+          1032,
+          455
+        ],
+        "click_point": [
+          1031,
+          455
+        ],
+        "visibility": "panel_verified",
+        "confidence": "high",
+        "score": 359.67,
+        "marker_type": "yellow_or_orange_icon",
+        "candidate_distance": 1.0,
+        "candidate_count": 1,
+        "ocr_score": null,
+        "note": "点击后右侧面板确认：7号自由港。"
+      },
+      "sample_count": 2,
+      "samples": [
+        {
+          "row": "20260528_210327_origin_reverify",
+          "step": 0,
+          "image": "diagnostics/captures/20260528_210327_verify_origin_after_wulin_retry.png",
+          "manual_point": [
+            1032,
+            455
+          ],
+          "click_point": [
+            1031,
+            455
+          ],
+          "visibility": "panel_verified",
+          "confidence": "high",
+          "score": 359.67,
+          "marker_type": "yellow_or_orange_icon",
+          "candidate_distance": 1.0,
+          "candidate_count": 1,
+          "ocr_score": null,
+          "note": "点击后右侧面板确认：7号自由港。"
+        },
+        {
+          "row": "20260528_190604_origin_east",
+          "step": 0,
+          "image": "diagnostics/map_rows/20260528_190604_origin_east/step_00.png",
+          "manual_point": [
+            800,
+            600
+          ],
+          "click_point": [
+            838,
+            614
+          ],
+          "visibility": "visible",
+          "confidence": "medium",
+          "score": 161.5,
+          "marker_type": "yellow_or_orange_icon",
+          "candidate_distance": 40.5,
+          "candidate_count": 1,
+          "ocr_score": null,
+          "note": null
+        }
+      ]
+    },
+    "云岫桥基地": {
+      "best_sample": {
+        "row": "20260528_210546_reverify_origin_east",
+        "step": 1,
+        "image": "diagnostics/map_rows/20260528_210546_reverify_origin_east/step_01.png",
+        "manual_point": [
+          776,
+          184
+        ],
+        "click_point": [
+          776,
+          184
+        ],
+        "visibility": "panel_verified",
+        "confidence": "high",
+        "score": 360.0,
+        "marker_type": "cyan_or_blue_icon",
+        "candidate_distance": 0.0,
+        "candidate_count": 1,
+        "ocr_score": 0.9992507696151733,
+        "note": "点击后右侧面板确认，OCR 原文云桥基地，归一化为云岫桥基地。"
+      },
+      "sample_count": 4,
+      "samples": [
+        {
+          "row": "20260528_210546_reverify_origin_east",
+          "step": 1,
+          "image": "diagnostics/map_rows/20260528_210546_reverify_origin_east/step_01.png",
+          "manual_point": [
+            776,
+            184
+          ],
+          "click_point": [
+            776,
+            184
+          ],
+          "visibility": "panel_verified",
+          "confidence": "high",
+          "score": 360.0,
+          "marker_type": "cyan_or_blue_icon",
+          "candidate_distance": 0.0,
+          "candidate_count": 1,
+          "ocr_score": 0.9992507696151733,
+          "note": "点击后右侧面板确认，OCR 原文云桥基地，归一化为云岫桥基地。"
+        },
+        {
+          "row": "20260528_190604_origin_east",
+          "step": 3,
+          "image": "diagnostics/map_rows/20260528_190604_origin_east/step_03.png",
+          "manual_point": [
+            360,
+            480
+          ],
+          "click_point": [
+            392,
+            443
+          ],
+          "visibility": "visible",
+          "confidence": "medium",
+          "score": 183.69,
+          "marker_type": "cyan_or_blue_icon",
+          "candidate_distance": 48.92,
+          "candidate_count": 2,
+          "ocr_score": null,
+          "note": null
+        },
+        {
+          "row": "20260528_190604_origin_east",
+          "step": 1,
+          "image": "diagnostics/map_rows/20260528_190604_origin_east/step_01.png",
+          "manual_point": [
+            360,
+            400
+          ],
+          "click_point": [
+            422,
+            419
+          ],
+          "visibility": "visible",
+          "confidence": "medium",
+          "score": 178.38,
+          "marker_type": "cyan_or_blue_icon",
+          "candidate_distance": 64.85,
+          "candidate_count": 2,
+          "ocr_score": null,
+          "note": null
+        },
+        {
+          "row": "20260528_190604_origin_east",
+          "step": 2,
+          "image": "diagnostics/map_rows/20260528_190604_origin_east/step_02.png",
+          "manual_point": [
+            320,
+            480
+          ],
+          "click_point": [
+            391,
+            490
+          ],
+          "visibility": "visible",
+          "confidence": "low",
+          "score": 76.1,
+          "marker_type": "cyan_or_blue_icon",
+          "candidate_distance": 71.7,
+          "candidate_count": 2,
+          "ocr_score": null,
+          "note": null
+        }
+      ]
+    },
+    "修格里城": {
+      "best_sample": {
+        "row": "20260528_211811_xiugeli_reverify",
+        "step": 0,
+        "image": "diagnostics/captures/20260528_211811_verify_xiugeli_after_east_drag.png",
+        "manual_point": [
+          824,
+          557
+        ],
+        "click_point": [
+          825,
+          556
+        ],
+        "visibility": "panel_verified",
+        "confidence": "high",
+        "score": 359.53,
+        "marker_type": "yellow_or_orange_icon",
+        "candidate_distance": 1.41,
+        "candidate_count": 1,
+        "ocr_score": null,
+        "note": "点击后右侧面板确认：修格里城。"
+      },
+      "sample_count": 2,
+      "samples": [
+        {
+          "row": "20260528_211811_xiugeli_reverify",
+          "step": 0,
+          "image": "diagnostics/captures/20260528_211811_verify_xiugeli_after_east_drag.png",
+          "manual_point": [
+            824,
+            557
+          ],
+          "click_point": [
+            825,
+            556
+          ],
+          "visibility": "panel_verified",
+          "confidence": "high",
+          "score": 359.53,
+          "marker_type": "yellow_or_orange_icon",
+          "candidate_distance": 1.41,
+          "candidate_count": 1,
+          "ocr_score": null,
+          "note": "点击后右侧面板确认：修格里城。"
+        },
+        {
+          "row": "20260528_190604_origin_east",
+          "step": 0,
+          "image": "diagnostics/map_rows/20260528_190604_origin_east/step_00.png",
+          "manual_point": [
+            1120,
+            600
+          ],
+          "click_point": [
+            1172,
+            556
+          ],
+          "visibility": "occluded_by_task_panel",
+          "confidence": "low",
+          "score": 22.29,
+          "marker_type": "yellow_or_orange_icon",
+          "candidate_distance": 68.12,
+          "candidate_count": 5,
+          "ocr_score": null,
+          "note": null
+        }
+      ]
+    },
+    "塔图站": {
+      "best_sample": {
+        "row": "20260528_193126_south1_east",
+        "step": 3,
+        "image": "diagnostics/map_rows/20260528_193126_south1_east/step_03.png",
+        "manual_point": [
+          460,
+          240
+        ],
+        "click_point": [
+          441,
+          246
+        ],
+        "visibility": "manual",
+        "confidence": "high",
+        "score": 293.36,
+        "marker_type": "cyan_or_blue_icon",
+        "candidate_distance": 19.92,
+        "candidate_count": 7,
+        "ocr_score": null,
+        "note": null
+      },
+      "sample_count": 3,
+      "samples": [
+        {
+          "row": "20260528_193126_south1_east",
+          "step": 3,
+          "image": "diagnostics/map_rows/20260528_193126_south1_east/step_03.png",
+          "manual_point": [
+            460,
+            240
+          ],
+          "click_point": [
+            441,
+            246
+          ],
+          "visibility": "manual",
+          "confidence": "high",
+          "score": 293.36,
+          "marker_type": "cyan_or_blue_icon",
+          "candidate_distance": 19.92,
+          "candidate_count": 7,
+          "ocr_score": null,
+          "note": null
+        },
+        {
+          "row": "20260528_193126_south1_east",
+          "step": 1,
+          "image": "diagnostics/map_rows/20260528_193126_south1_east/step_01.png",
+          "manual_point": [
+            800,
+            240
+          ],
+          "click_point": [
+            832,
+            246
+          ],
+          "visibility": "manual",
+          "confidence": "high",
+          "score": 289.15,
+          "marker_type": "cyan_or_blue_icon",
+          "candidate_distance": 32.56,
+          "candidate_count": 6,
+          "ocr_score": null,
+          "note": null
+        },
+        {
+          "row": "20260528_193126_south1_east",
+          "step": 2,
+          "image": "diagnostics/map_rows/20260528_193126_south1_east/step_02.png",
+          "manual_point": [
+            400,
+            250
+          ],
+          "click_point": [
+            369,
+            222
+          ],
+          "visibility": "manual",
+          "confidence": "medium",
+          "score": 186.08,
+          "marker_type": "purple_icon",
+          "candidate_distance": 41.77,
+          "candidate_count": 6,
+          "ocr_score": null,
+          "note": null
+        }
+      ]
+    },
+    "岚心城": {
+      "best_sample": {
+        "row": "20260528_190604_origin_east",
+        "step": 1,
+        "image": "diagnostics/map_rows/20260528_190604_origin_east/step_01.png",
+        "manual_point": [
+          960,
+          240
+        ],
+        "click_point": [
+          972,
+          260
+        ],
+        "visibility": "locked_or_unopened",
+        "confidence": "high",
+        "score": 292.23,
+        "marker_type": "yellow_or_orange_icon",
+        "candidate_distance": 23.32,
+        "candidate_count": 1,
+        "ocr_score": null,
+        "note": "当前账号未开启，城市图标下方有红色提示。"
+      },
+      "sample_count": 4,
+      "samples": [
+        {
+          "row": "20260528_190604_origin_east",
+          "step": 1,
+          "image": "diagnostics/map_rows/20260528_190604_origin_east/step_01.png",
+          "manual_point": [
+            960,
+            240
+          ],
+          "click_point": [
+            972,
+            260
+          ],
+          "visibility": "locked_or_unopened",
+          "confidence": "high",
+          "score": 292.23,
+          "marker_type": "yellow_or_orange_icon",
+          "candidate_distance": 23.32,
+          "candidate_count": 1,
+          "ocr_score": null,
+          "note": "当前账号未开启，城市图标下方有红色提示。"
+        },
+        {
+          "row": "20260528_190604_origin_east",
+          "step": 2,
+          "image": "diagnostics/map_rows/20260528_190604_origin_east/step_02.png",
+          "manual_point": [
+            960,
+            360
+          ],
+          "click_point": [
+            941,
+            331
+          ],
+          "visibility": "locked_or_unopened",
+          "confidence": "high",
+          "score": 288.44,
+          "marker_type": "yellow_or_orange_icon",
+          "candidate_distance": 34.67,
+          "candidate_count": 1,
+          "ocr_score": null,
+          "note": "当前账号未开启，城市图标下方有红色提示。"
+        },
+        {
+          "row": "20260528_190604_origin_east",
+          "step": 4,
+          "image": "diagnostics/map_rows/20260528_190604_origin_east/step_04.png",
+          "manual_point": [
+            960,
+            360
+          ],
+          "click_point": [
+            941,
+            331
+          ],
+          "visibility": "locked_or_unopened",
+          "confidence": "high",
+          "score": 288.44,
+          "marker_type": "yellow_or_orange_icon",
+          "candidate_distance": 34.67,
+          "candidate_count": 1,
+          "ocr_score": null,
+          "note": "当前账号未开启，城市图标下方有红色提示。"
+        },
+        {
+          "row": "20260528_190604_origin_east",
+          "step": 3,
+          "image": "diagnostics/map_rows/20260528_190604_origin_east/step_03.png",
+          "manual_point": [
+            980,
+            300
+          ],
+          "click_point": [
+            941,
+            284
+          ],
+          "visibility": "locked_or_unopened",
+          "confidence": "medium",
+          "score": 185.95,
+          "marker_type": "yellow_or_orange_icon",
+          "candidate_distance": 42.15,
+          "candidate_count": 1,
+          "ocr_score": null,
+          "note": "当前账号未开启，城市图标下方有红色提示。"
+        }
+      ]
+    },
+    "曼德矿场": {
+      "best_sample": {
+        "row": "20260528_190604_origin_east",
+        "step": 1,
+        "image": "diagnostics/map_rows/20260528_190604_origin_east/step_01.png",
+        "manual_point": [
+          160,
+          600
+        ],
+        "click_point": [
+          147,
+          585
+        ],
+        "visibility": "visible",
+        "confidence": "high",
+        "score": 293.38,
+        "marker_type": "yellow_or_orange_icon",
+        "candidate_distance": 19.85,
+        "candidate_count": 2,
+        "ocr_score": null,
+        "note": null
+      },
+      "sample_count": 2,
+      "samples": [
+        {
+          "row": "20260528_190604_origin_east",
+          "step": 1,
+          "image": "diagnostics/map_rows/20260528_190604_origin_east/step_01.png",
+          "manual_point": [
+            160,
+            600
+          ],
+          "click_point": [
+            147,
+            585
+          ],
+          "visibility": "visible",
+          "confidence": "high",
+          "score": 293.38,
+          "marker_type": "yellow_or_orange_icon",
+          "candidate_distance": 19.85,
+          "candidate_count": 2,
+          "ocr_score": null,
+          "note": null
+        },
+        {
+          "row": "20260528_190604_origin_east",
+          "step": 4,
+          "image": "diagnostics/map_rows/20260528_190604_origin_east/step_04.png",
+          "manual_point": [
+            100,
+            650
+          ],
+          "click_point": [
+            115,
+            557
+          ],
+          "visibility": "bottom_edge",
+          "confidence": "low",
+          "score": 13.6,
+          "marker_type": "cyan_or_blue_icon",
+          "candidate_distance": 94.2,
+          "candidate_count": 4,
+          "ocr_score": null,
+          "note": null
+        }
+      ]
+    },
+    "栖羽站": {
+      "best_sample": {
+        "row": "20260528_190604_origin_east",
+        "step": 1,
+        "image": "diagnostics/map_rows/20260528_190604_origin_east/step_01.png",
+        "manual_point": [
+          800,
+          240
+        ],
+        "click_point": [
+          772,
+          261
+        ],
+        "visibility": "visible",
+        "confidence": "high",
+        "score": 288.33,
+        "marker_type": "cyan_or_blue_icon",
+        "candidate_distance": 35.0,
+        "candidate_count": 1,
+        "ocr_score": null,
+        "note": null
+      },
+      "sample_count": 4,
+      "samples": [
+        {
+          "row": "20260528_190604_origin_east",
+          "step": 1,
+          "image": "diagnostics/map_rows/20260528_190604_origin_east/step_01.png",
+          "manual_point": [
+            800,
+            240
+          ],
+          "click_point": [
+            772,
+            261
+          ],
+          "visibility": "visible",
+          "confidence": "high",
+          "score": 288.33,
+          "marker_type": "cyan_or_blue_icon",
+          "candidate_distance": 35.0,
+          "candidate_count": 1,
+          "ocr_score": null,
+          "note": null
+        },
+        {
+          "row": "20260528_190604_origin_east",
+          "step": 3,
+          "image": "diagnostics/map_rows/20260528_190604_origin_east/step_03.png",
+          "manual_point": [
+            700,
+            260
+          ],
+          "click_point": [
+            741,
+            284
+          ],
+          "visibility": "visible",
+          "confidence": "medium",
+          "score": 184.16,
+          "marker_type": "cyan_or_blue_icon",
+          "candidate_distance": 47.51,
+          "candidate_count": 5,
+          "ocr_score": null,
+          "note": null
+        },
+        {
+          "row": "20260528_190604_origin_east",
+          "step": 4,
+          "image": "diagnostics/map_rows/20260528_190604_origin_east/step_04.png",
+          "manual_point": [
+            700,
+            360
+          ],
+          "click_point": [
+            742,
+            332
+          ],
+          "visibility": "visible",
+          "confidence": "medium",
+          "score": 183.17,
+          "marker_type": "cyan_or_blue_icon",
+          "candidate_distance": 50.48,
+          "candidate_count": 7,
+          "ocr_score": null,
+          "note": null
+        },
+        {
+          "row": "20260528_190604_origin_east",
+          "step": 2,
+          "image": "diagnostics/map_rows/20260528_190604_origin_east/step_02.png",
+          "manual_point": [
+            640,
+            360
+          ],
+          "click_point": [
+            578,
+            352
+          ],
+          "visibility": "visible",
+          "confidence": "medium",
+          "score": 179.16,
+          "marker_type": "other_colored_marker",
+          "candidate_distance": 62.51,
+          "candidate_count": 8,
+          "ocr_score": null,
+          "note": null
+        }
+      ]
+    },
+    "武林源": {
+      "best_sample": {
+        "row": "20260528_210327_origin_reverify",
+        "step": 0,
+        "image": "diagnostics/captures/20260528_210327_verify_origin_after_wulin_retry.png",
+        "manual_point": [
+          223,
+          381
+        ],
+        "click_point": [
+          223,
+          379
+        ],
+        "visibility": "current_station_panel_verified",
+        "confidence": "high",
+        "score": 359.33,
+        "marker_type": "yellow_or_orange_icon",
+        "candidate_distance": 2.0,
+        "candidate_count": 1,
+        "ocr_score": null,
+        "note": "点击后右侧面板确认：武林源。当前站点箭头会影响图标检测。"
+      },
+      "sample_count": 2,
+      "samples": [
+        {
+          "row": "20260528_210327_origin_reverify",
+          "step": 0,
+          "image": "diagnostics/captures/20260528_210327_verify_origin_after_wulin_retry.png",
+          "manual_point": [
+            223,
+            381
+          ],
+          "click_point": [
+            223,
+            379
+          ],
+          "visibility": "current_station_panel_verified",
+          "confidence": "high",
+          "score": 359.33,
+          "marker_type": "yellow_or_orange_icon",
+          "candidate_distance": 2.0,
+          "candidate_count": 1,
+          "ocr_score": null,
+          "note": "点击后右侧面板确认：武林源。当前站点箭头会影响图标检测。"
+        },
+        {
+          "row": "20260528_190604_origin_east",
+          "step": 0,
+          "image": "diagnostics/map_rows/20260528_190604_origin_east/step_00.png",
+          "manual_point": [
+            0,
+            600
+          ],
+          "click_point": [
+            30,
+            540
+          ],
+          "visibility": "edge",
+          "confidence": "low",
+          "score": -2.36,
+          "marker_type": "yellow_or_orange_icon",
+          "candidate_distance": 67.08,
+          "candidate_count": 1,
+          "ocr_score": null,
+          "note": null
+        }
+      ]
+    },
+    "汇流塔": {
+      "best_sample": {
+        "row": "20260528_193126_south1_east",
+        "step": 0,
+        "image": "diagnostics/map_rows/20260528_193126_south1_east/step_00.png",
+        "manual_point": [
+          800,
+          460
+        ],
+        "click_point": [
+          812,
+          429
+        ],
+        "visibility": "manual",
+        "confidence": "high",
+        "score": 288.92,
+        "marker_type": "cyan_or_blue_icon",
+        "candidate_distance": 33.24,
+        "candidate_count": 1,
+        "ocr_score": null,
+        "note": null
+      },
+      "sample_count": 1,
+      "samples": [
+        {
+          "row": "20260528_193126_south1_east",
+          "step": 0,
+          "image": "diagnostics/map_rows/20260528_193126_south1_east/step_00.png",
+          "manual_point": [
+            800,
+            460
+          ],
+          "click_point": [
+            812,
+            429
+          ],
+          "visibility": "manual",
+          "confidence": "high",
+          "score": 288.92,
+          "marker_type": "cyan_or_blue_icon",
+          "candidate_distance": 33.24,
+          "candidate_count": 1,
+          "ocr_score": null,
+          "note": null
+        }
+      ]
+    },
+    "海角城": {
+      "best_sample": {
+        "row": "20260528_193126_south1_east",
+        "step": 0,
+        "image": "diagnostics/map_rows/20260528_193126_south1_east/step_00.png",
+        "manual_point": [
+          960,
+          460
+        ],
+        "click_point": [
+          961,
+          424
+        ],
+        "visibility": "manual",
+        "confidence": "high",
+        "score": 288.0,
+        "marker_type": "yellow_or_orange_icon",
+        "candidate_distance": 36.01,
+        "candidate_count": 3,
+        "ocr_score": null,
+        "note": null
+      },
+      "sample_count": 1,
+      "samples": [
+        {
+          "row": "20260528_193126_south1_east",
+          "step": 0,
+          "image": "diagnostics/map_rows/20260528_193126_south1_east/step_00.png",
+          "manual_point": [
+            960,
+            460
+          ],
+          "click_point": [
+            961,
+            424
+          ],
+          "visibility": "manual",
+          "confidence": "high",
+          "score": 288.0,
+          "marker_type": "yellow_or_orange_icon",
+          "candidate_distance": 36.01,
+          "candidate_count": 3,
+          "ocr_score": null,
+          "note": null
+        }
+      ]
+    },
+    "淘金乐园": {
+      "best_sample": {
+        "row": "20260528_193126_south1_east",
+        "step": 4,
+        "image": "diagnostics/map_rows/20260528_193126_south1_east/step_04.png",
+        "manual_point": [
+          166,
+          124
+        ],
+        "click_point": [
+          166,
+          124
+        ],
+        "visibility": "auto_probe",
+        "confidence": "high",
+        "score": 335.0,
+        "marker_type": "cyan_or_blue_icon",
+        "candidate_distance": 0.0,
+        "candidate_count": 2,
+        "ocr_score": 0.9989301562309265,
+        "note": null
+      },
+      "sample_count": 4,
+      "samples": [
+        {
+          "row": "20260528_193126_south1_east",
+          "step": 4,
+          "image": "diagnostics/map_rows/20260528_193126_south1_east/step_04.png",
+          "manual_point": [
+            166,
+            124
+          ],
+          "click_point": [
+            166,
+            124
+          ],
+          "visibility": "auto_probe",
+          "confidence": "high",
+          "score": 335.0,
+          "marker_type": "cyan_or_blue_icon",
+          "candidate_distance": 0.0,
+          "candidate_count": 2,
+          "ocr_score": 0.9989301562309265,
+          "note": null
+        },
+        {
+          "row": "20260528_193126_south1_east",
+          "step": 3,
+          "image": "diagnostics/map_rows/20260528_193126_south1_east/step_03.png",
+          "manual_point": [
+            160,
+            120
+          ],
+          "click_point": [
+            166,
+            121
+          ],
+          "visibility": "manual",
+          "confidence": "high",
+          "score": 297.97,
+          "marker_type": "cyan_or_blue_icon",
+          "candidate_distance": 6.08,
+          "candidate_count": 3,
+          "ocr_score": null,
+          "note": null
+        },
+        {
+          "row": "20260528_193126_south1_east",
+          "step": 1,
+          "image": "diagnostics/map_rows/20260528_193126_south1_east/step_01.png",
+          "manual_point": [
+            550,
+            120
+          ],
+          "click_point": [
+            557,
+            121
+          ],
+          "visibility": "manual",
+          "confidence": "high",
+          "score": 297.64,
+          "marker_type": "cyan_or_blue_icon",
+          "candidate_distance": 7.07,
+          "candidate_count": 3,
+          "ocr_score": null,
+          "note": null
+        },
+        {
+          "row": "20260528_193126_south1_east",
+          "step": 2,
+          "image": "diagnostics/map_rows/20260528_193126_south1_east/step_02.png",
+          "manual_point": [
+            160,
+            130
+          ],
+          "click_point": [
+            166,
+            136
+          ],
+          "visibility": "manual",
+          "confidence": "high",
+          "score": 297.17,
+          "marker_type": "cyan_or_blue_icon",
+          "candidate_distance": 8.49,
+          "candidate_count": 3,
+          "ocr_score": null,
+          "note": null
+        }
+      ]
+    },
+    "澄明数据中心": {
+      "best_sample": {
+        "row": "20260528_190604_origin_east",
+        "step": 0,
+        "image": "diagnostics/map_rows/20260528_190604_origin_east/step_00.png",
+        "manual_point": [
+          1000,
+          480
+        ],
+        "click_point": [
+          1030,
+          498
+        ],
+        "visibility": "visible",
+        "confidence": "high",
+        "score": 288.34,
+        "marker_type": "yellow_or_orange_icon",
+        "candidate_distance": 34.99,
+        "candidate_count": 6,
+        "ocr_score": null,
+        "note": null
+      },
+      "sample_count": 1,
+      "samples": [
+        {
+          "row": "20260528_190604_origin_east",
+          "step": 0,
+          "image": "diagnostics/map_rows/20260528_190604_origin_east/step_00.png",
+          "manual_point": [
+            1000,
+            480
+          ],
+          "click_point": [
+            1030,
+            498
+          ],
+          "visibility": "visible",
+          "confidence": "high",
+          "score": 288.34,
+          "marker_type": "yellow_or_orange_icon",
+          "candidate_distance": 34.99,
+          "candidate_count": 6,
+          "ocr_score": null,
+          "note": null
+        }
+      ]
+    },
+    "维蒂林场": {
+      "best_sample": {
+        "row": "20260528_193126_south1_east",
+        "step": 1,
+        "image": "diagnostics/map_rows/20260528_193126_south1_east/step_01.png",
+        "manual_point": [
+          400,
+          240
+        ],
+        "click_point": [
+          415,
+          229
+        ],
+        "visibility": "manual",
+        "confidence": "high",
+        "score": 293.8,
+        "marker_type": "cyan_or_blue_icon",
+        "candidate_distance": 18.6,
+        "candidate_count": 6,
+        "ocr_score": null,
+        "note": null
+      },
+      "sample_count": 3,
+      "samples": [
+        {
+          "row": "20260528_193126_south1_east",
+          "step": 1,
+          "image": "diagnostics/map_rows/20260528_193126_south1_east/step_01.png",
+          "manual_point": [
+            400,
+            240
+          ],
+          "click_point": [
+            415,
+            229
+          ],
+          "visibility": "manual",
+          "confidence": "high",
+          "score": 293.8,
+          "marker_type": "cyan_or_blue_icon",
+          "candidate_distance": 18.6,
+          "candidate_count": 6,
+          "ocr_score": null,
+          "note": null
+        },
+        {
+          "row": "20260528_193126_south1_east",
+          "step": 2,
+          "image": "diagnostics/map_rows/20260528_193126_south1_east/step_02.png",
+          "manual_point": [
+            0,
+            240
+          ],
+          "click_point": [
+            24,
+            244
+          ],
+          "visibility": "edge",
+          "confidence": "low",
+          "score": 11.89,
+          "marker_type": "cyan_or_blue_icon",
+          "candidate_distance": 24.33,
+          "candidate_count": 3,
+          "ocr_score": null,
+          "note": null
+        },
+        {
+          "row": "20260528_193126_south1_east",
+          "step": 3,
+          "image": "diagnostics/map_rows/20260528_193126_south1_east/step_03.png",
+          "manual_point": [
+            0,
+            240
+          ],
+          "click_point": [
+            24,
+            229
+          ],
+          "visibility": "edge",
+          "confidence": "low",
+          "score": 11.2,
+          "marker_type": "cyan_or_blue_icon",
+          "candidate_distance": 26.4,
+          "candidate_count": 6,
+          "ocr_score": null,
+          "note": null
+        }
+      ]
+    },
+    "荒原站": {
+      "best_sample": {
+        "row": "20260528_211123_huangyuan_reverify",
+        "step": 0,
+        "image": "diagnostics/captures/20260528_211123_verify_after_huangyuan_attempt.png",
+        "manual_point": [
+          192,
+          556
+        ],
+        "click_point": [
+          192,
+          556
+        ],
+        "visibility": "panel_verified",
+        "confidence": "high",
+        "score": 360.0,
+        "marker_type": "red_hint",
+        "candidate_distance": 0.0,
+        "candidate_count": 1,
+        "ocr_score": null,
+        "note": "点击后右侧面板确认：荒原站。"
+      },
+      "sample_count": 5,
+      "samples": [
+        {
+          "row": "20260528_211123_huangyuan_reverify",
+          "step": 0,
+          "image": "diagnostics/captures/20260528_211123_verify_after_huangyuan_attempt.png",
+          "manual_point": [
+            192,
+            556
+          ],
+          "click_point": [
+            192,
+            556
+          ],
+          "visibility": "panel_verified",
+          "confidence": "high",
+          "score": 360.0,
+          "marker_type": "red_hint",
+          "candidate_distance": 0.0,
+          "candidate_count": 1,
+          "ocr_score": null,
+          "note": "点击后右侧面板确认：荒原站。"
+        },
+        {
+          "row": "20260528_190604_origin_east",
+          "step": 4,
+          "image": "diagnostics/map_rows/20260528_190604_origin_east/step_04.png",
+          "manual_point": [
+            160,
+            550
+          ],
+          "click_point": [
+            115,
+            557
+          ],
+          "visibility": "visible",
+          "confidence": "medium",
+          "score": 184.82,
+          "marker_type": "cyan_or_blue_icon",
+          "candidate_distance": 45.54,
+          "candidate_count": 4,
+          "ocr_score": null,
+          "note": null
+        },
+        {
+          "row": "20260528_190604_origin_east",
+          "step": 1,
+          "image": "diagnostics/map_rows/20260528_190604_origin_east/step_01.png",
+          "manual_point": [
+            200,
+            480
+          ],
+          "click_point": [
+            145,
+            486
+          ],
+          "visibility": "visible",
+          "confidence": "medium",
+          "score": 181.56,
+          "marker_type": "cyan_or_blue_icon",
+          "candidate_distance": 55.33,
+          "candidate_count": 5,
+          "ocr_score": null,
+          "note": null
+        },
+        {
+          "row": "20260528_190604_origin_east",
+          "step": 2,
+          "image": "diagnostics/map_rows/20260528_190604_origin_east/step_02.png",
+          "manual_point": [
+            160,
+            600
+          ],
+          "click_point": [
+            115,
+            557
+          ],
+          "visibility": "visible",
+          "confidence": "medium",
+          "score": 179.25,
+          "marker_type": "cyan_or_blue_icon",
+          "candidate_distance": 62.24,
+          "candidate_count": 4,
+          "ocr_score": null,
+          "note": null
+        },
+        {
+          "row": "20260528_190604_origin_east",
+          "step": 3,
+          "image": "diagnostics/map_rows/20260528_190604_origin_east/step_03.png",
+          "manual_point": [
+            160,
+            480
+          ],
+          "click_point": [
+            253,
+            488
+          ],
+          "visibility": "visible",
+          "confidence": "low",
+          "score": 68.89,
+          "marker_type": "purple_icon",
+          "candidate_distance": 93.34,
+          "candidate_count": 3,
+          "ocr_score": null,
+          "note": null
+        }
+      ]
+    },
+    "贡露城": {
+      "best_sample": {
+        "row": "20260528_213113_gonglu_reverify",
+        "step": 0,
+        "image": "diagnostics/captures/20260528_213113_verify_gonglu_further_east.png",
+        "manual_point": [
+          506,
+          303
+        ],
+        "click_point": [
+          505,
+          302
+        ],
+        "visibility": "panel_verified",
+        "confidence": "high",
+        "score": 359.53,
+        "marker_type": "yellow_or_orange_icon",
+        "candidate_distance": 1.41,
+        "candidate_count": 1,
+        "ocr_score": null,
+        "note": "点击后右侧面板确认：贡露城。"
+      },
+      "sample_count": 4,
+      "samples": [
+        {
+          "row": "20260528_213113_gonglu_reverify",
+          "step": 0,
+          "image": "diagnostics/captures/20260528_213113_verify_gonglu_further_east.png",
+          "manual_point": [
+            506,
+            303
+          ],
+          "click_point": [
+            505,
+            302
+          ],
+          "visibility": "panel_verified",
+          "confidence": "high",
+          "score": 359.53,
+          "marker_type": "yellow_or_orange_icon",
+          "candidate_distance": 1.41,
+          "candidate_count": 1,
+          "ocr_score": null,
+          "note": "点击后右侧面板确认：贡露城。"
+        },
+        {
+          "row": "20260528_193126_south1_east",
+          "step": 4,
+          "image": "diagnostics/map_rows/20260528_193126_south1_east/step_04.png",
+          "manual_point": [
+            36,
+            308
+          ],
+          "click_point": [
+            36,
+            308
+          ],
+          "visibility": "auto_probe",
+          "confidence": "high",
+          "score": 310.0,
+          "marker_type": "yellow_or_orange_icon",
+          "candidate_distance": 0.0,
+          "candidate_count": 3,
+          "ocr_score": 0.9988565444946289,
+          "note": null
+        },
+        {
+          "row": "20260528_193126_south1_east",
+          "step": 1,
+          "image": "diagnostics/map_rows/20260528_193126_south1_east/step_01.png",
+          "manual_point": [
+            200,
+            300
+          ],
+          "click_point": [
+            249,
+            296
+          ],
+          "visibility": "manual",
+          "confidence": "medium",
+          "score": 183.61,
+          "marker_type": "yellow_or_orange_icon",
+          "candidate_distance": 49.16,
+          "candidate_count": 2,
+          "ocr_score": null,
+          "note": null
+        },
+        {
+          "row": "20260528_193126_south1_east",
+          "step": 0,
+          "image": "diagnostics/map_rows/20260528_193126_south1_east/step_00.png",
+          "manual_point": [
+            1200,
+            300
+          ],
+          "click_point": [
+            1263,
+            296
+          ],
+          "visibility": "manual",
+          "confidence": "medium",
+          "score": 153.96,
+          "marker_type": "yellow_or_orange_icon",
+          "candidate_distance": 63.13,
+          "candidate_count": 2,
+          "ocr_score": null,
+          "note": null
+        }
+      ]
+    },
+    "远星大桥": {
+      "best_sample": {
+        "row": "20260528_212250_yuanxing_reverify",
+        "step": 0,
+        "image": "diagnostics/captures/20260528_212250_verify_south_band_start.png",
+        "manual_point": [
+          1138,
+          296
+        ],
+        "click_point": [
+          1138,
+          296
+        ],
+        "visibility": "panel_verified",
+        "confidence": "high",
+        "score": 360.0,
+        "marker_type": "red_hint",
+        "candidate_distance": 0.0,
+        "candidate_count": 1,
+        "ocr_score": null,
+        "note": "点击后右侧面板确认：远星大桥。"
+      },
+      "sample_count": 3,
+      "samples": [
+        {
+          "row": "20260528_212250_yuanxing_reverify",
+          "step": 0,
+          "image": "diagnostics/captures/20260528_212250_verify_south_band_start.png",
+          "manual_point": [
+            1138,
+            296
+          ],
+          "click_point": [
+            1138,
+            296
+          ],
+          "visibility": "panel_verified",
+          "confidence": "high",
+          "score": 360.0,
+          "marker_type": "red_hint",
+          "candidate_distance": 0.0,
+          "candidate_count": 1,
+          "ocr_score": null,
+          "note": "点击后右侧面板确认：远星大桥。"
+        },
+        {
+          "row": "20260528_193126_south1_east",
+          "step": 0,
+          "image": "diagnostics/map_rows/20260528_193126_south1_east/step_00.png",
+          "manual_point": [
+            1120,
+            300
+          ],
+          "click_point": [
+            1162,
+            296
+          ],
+          "visibility": "manual",
+          "confidence": "medium",
+          "score": 150.94,
+          "marker_type": "red_hint",
+          "candidate_distance": 42.19,
+          "candidate_count": 1,
+          "ocr_score": null,
+          "note": null
+        },
+        {
+          "row": "20260528_193126_south1_east",
+          "step": 1,
+          "image": "diagnostics/map_rows/20260528_193126_south1_east/step_01.png",
+          "manual_point": [
+            160,
+            300
+          ],
+          "click_point": [
+            249,
+            296
+          ],
+          "visibility": "manual",
+          "confidence": "low",
+          "score": 70.3,
+          "marker_type": "yellow_or_orange_icon",
+          "candidate_distance": 89.09,
+          "candidate_count": 2,
+          "ocr_score": null,
+          "note": null
+        }
+      ]
+    },
+    "铁盟哨站": {
+      "best_sample": {
+        "row": "20260528_190604_origin_east",
+        "step": 1,
+        "image": "diagnostics/map_rows/20260528_190604_origin_east/step_01.png",
+        "manual_point": [
+          80,
+          480
+        ],
+        "click_point": [
+          75,
+          488
+        ],
+        "visibility": "visible",
+        "confidence": "high",
+        "score": 296.86,
+        "marker_type": "yellow_or_orange_icon",
+        "candidate_distance": 9.43,
+        "candidate_count": 4,
+        "ocr_score": null,
+        "note": null
+      },
+      "sample_count": 4,
+      "samples": [
+        {
+          "row": "20260528_190604_origin_east",
+          "step": 1,
+          "image": "diagnostics/map_rows/20260528_190604_origin_east/step_01.png",
+          "manual_point": [
+            80,
+            480
+          ],
+          "click_point": [
+            75,
+            488
+          ],
+          "visibility": "visible",
+          "confidence": "high",
+          "score": 296.86,
+          "marker_type": "yellow_or_orange_icon",
+          "candidate_distance": 9.43,
+          "candidate_count": 4,
+          "ocr_score": null,
+          "note": null
+        },
+        {
+          "row": "20260528_190604_origin_east",
+          "step": 3,
+          "image": "diagnostics/map_rows/20260528_190604_origin_east/step_03.png",
+          "manual_point": [
+            0,
+            500
+          ],
+          "click_point": [
+            44,
+            513
+          ],
+          "visibility": "edge",
+          "confidence": "low",
+          "score": 4.71,
+          "marker_type": "yellow_or_orange_icon",
+          "candidate_distance": 45.88,
+          "candidate_count": 2,
+          "ocr_score": null,
+          "note": null
+        },
+        {
+          "row": "20260528_190604_origin_east",
+          "step": 4,
+          "image": "diagnostics/map_rows/20260528_190604_origin_east/step_04.png",
+          "manual_point": [
+            0,
+            580
+          ],
+          "click_point": [
+            44,
+            559
+          ],
+          "visibility": "edge",
+          "confidence": "low",
+          "score": 3.75,
+          "marker_type": "yellow_or_orange_icon",
+          "candidate_distance": 48.75,
+          "candidate_count": 3,
+          "ocr_score": null,
+          "note": null
+        },
+        {
+          "row": "20260528_190604_origin_east",
+          "step": 2,
+          "image": "diagnostics/map_rows/20260528_190604_origin_east/step_02.png",
+          "manual_point": [
+            0,
+            600
+          ],
+          "click_point": [
+            44,
+            559
+          ],
+          "visibility": "edge",
+          "confidence": "low",
+          "score": -0.05,
+          "marker_type": "yellow_or_orange_icon",
+          "candidate_distance": 60.14,
+          "candidate_count": 3,
+          "ocr_score": null,
+          "note": null
+        }
+      ]
+    },
+    "阿妮塔发射中心": {
+      "best_sample": {
+        "row": "20260528_193126_south1_east",
+        "step": 0,
+        "image": "diagnostics/map_rows/20260528_193126_south1_east/step_00.png",
+        "manual_point": [
+          800,
+          120
+        ],
+        "click_point": [
+          779,
+          146
+        ],
+        "visibility": "manual",
+        "confidence": "high",
+        "score": 288.86,
+        "marker_type": "yellow_or_orange_icon",
+        "candidate_distance": 33.42,
+        "candidate_count": 1,
+        "ocr_score": null,
+        "note": null
+      },
+      "sample_count": 1,
+      "samples": [
+        {
+          "row": "20260528_193126_south1_east",
+          "step": 0,
+          "image": "diagnostics/map_rows/20260528_193126_south1_east/step_00.png",
+          "manual_point": [
+            800,
+            120
+          ],
+          "click_point": [
+            779,
+            146
+          ],
+          "visibility": "manual",
+          "confidence": "high",
+          "score": 288.86,
+          "marker_type": "yellow_or_orange_icon",
+          "candidate_distance": 33.42,
+          "candidate_count": 1,
+          "ocr_score": null,
+          "note": null
+        }
+      ]
+    },
+    "阿妮塔战备工厂": {
+      "best_sample": {
+        "row": "20260528_205514_anita_factory",
+        "step": 0,
+        "image": "diagnostics/captures/20260528_205514_anita_area_current.png",
+        "manual_point": [
+          642,
+          457
+        ],
+        "click_point": [
+          642,
+          457
+        ],
+        "visibility": "panel_verified",
+        "confidence": "high",
+        "score": 360.0,
+        "marker_type": "cyan_or_blue_icon",
+        "candidate_distance": 0.0,
+        "candidate_count": 1,
+        "ocr_score": null,
+        "note": "右侧城市面板确认：阿妮塔战备工厂。"
+      },
+      "sample_count": 1,
+      "samples": [
+        {
+          "row": "20260528_205514_anita_factory",
+          "step": 0,
+          "image": "diagnostics/captures/20260528_205514_anita_area_current.png",
+          "manual_point": [
+            642,
+            457
+          ],
+          "click_point": [
+            642,
+            457
+          ],
+          "visibility": "panel_verified",
+          "confidence": "high",
+          "score": 360.0,
+          "marker_type": "cyan_or_blue_icon",
+          "candidate_distance": 0.0,
+          "candidate_count": 1,
+          "ocr_score": null,
+          "note": "右侧城市面板确认：阿妮塔战备工厂。"
+        }
+      ]
+    },
+    "阿妮塔能源研究所": {
+      "best_sample": {
+        "row": "20260528_193126_south1_east",
+        "step": 0,
+        "image": "diagnostics/map_rows/20260528_193126_south1_east/step_00.png",
+        "manual_point": [
+          1000,
+          150
+        ],
+        "click_point": [
+          1004,
+          163
+        ],
+        "visibility": "manual",
+        "confidence": "high",
+        "score": 295.47,
+        "marker_type": "cyan_or_blue_icon",
+        "candidate_distance": 13.6,
+        "candidate_count": 4,
+        "ocr_score": null,
+        "note": null
+      },
+      "sample_count": 1,
+      "samples": [
+        {
+          "row": "20260528_193126_south1_east",
+          "step": 0,
+          "image": "diagnostics/map_rows/20260528_193126_south1_east/step_00.png",
+          "manual_point": [
+            1000,
+            150
+          ],
+          "click_point": [
+            1004,
+            163
+          ],
+          "visibility": "manual",
+          "confidence": "high",
+          "score": 295.47,
+          "marker_type": "cyan_or_blue_icon",
+          "candidate_distance": 13.6,
+          "candidate_count": 4,
+          "ocr_score": null,
+          "note": null
+        }
+      ]
+    },
+    "黑月游乐城": {
+      "best_sample": {
+        "row": "20260528_190604_origin_east",
+        "step": 0,
+        "image": "diagnostics/map_rows/20260528_190604_origin_east/step_00.png",
+        "manual_point": [
+          850,
+          360
+        ],
+        "click_point": [
+          872,
+          373
+        ],
+        "visibility": "visible",
+        "confidence": "high",
+        "score": 291.48,
+        "marker_type": "cyan_or_blue_icon",
+        "candidate_distance": 25.55,
+        "candidate_count": 1,
+        "ocr_score": null,
+        "note": null
+      },
+      "sample_count": 1,
+      "samples": [
+        {
+          "row": "20260528_190604_origin_east",
+          "step": 0,
+          "image": "diagnostics/map_rows/20260528_190604_origin_east/step_00.png",
+          "manual_point": [
+            850,
+            360
+          ],
+          "click_point": [
+            872,
+            373
+          ],
+          "visibility": "visible",
+          "confidence": "high",
+          "score": 291.48,
+          "marker_type": "cyan_or_blue_icon",
+          "candidate_distance": 25.55,
+          "candidate_count": 1,
+          "ocr_score": null,
+          "note": null
+        }
+      ]
+    }
+  }
+}

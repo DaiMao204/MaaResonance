@@ -1,0 +1,4348 @@
+{
+    "AccountProfileCityUnlockStart": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "启程",
+                    "START ENGINE",
+                    "STARTENGINE"
+                ]
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 200,
+        "next": "AccountProfileCityUnlockMapReady",
+        "on_error": "StateRecoveryStart"
+    },
+    "AccountProfileCityUnlockMapReady": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "路线图",
+                    "前往目的地",
+                    "当前站点",
+                    "当前城市",
+                    "图示",
+                    "导航至",
+                    "主线任务车站",
+                    "7号自由港",
+                    "武林源",
+                    "阿妮塔战备工厂",
+                    "阿妮塔能源研究所",
+                    "阿妮塔发射中心",
+                    "汇流塔",
+                    "海角城",
+                    "远星大桥",
+                    "贡露城",
+                    "澄明数据中心",
+                    "修格里城",
+                    "铁盟哨站",
+                    "曼德矿场",
+                    "淘金乐园",
+                    "荒原站",
+                    "云岫桥基地",
+                    "栖羽站",
+                    "岚心城"
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "next": "AccountProfileCityUnlockZoomOut001"
+    },
+    "AccountProfileCityUnlockZoomOut001": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    1152,
+                    584
+                ]
+            }
+        },
+        "post_delay": 500,
+        "next": "AccountProfileCityUnlockProbe001MoveToCity"
+    },
+    "AccountProfileCityUnlockProbe001MoveToCity": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_move_to_city",
+                "custom_action_param": {
+                    "city": "7号自由港",
+                    "max_steps": 4,
+                    "drag_distance": 520,
+                    "drag_duration": 900,
+                    "drag_delay": 200,
+                    "click_count": 3,
+                    "click_delay": 200,
+                    "panel_settle_delay": 400,
+                    "reset": true
+                }
+            }
+        },
+        "next": [
+            "AccountProfileCityUnlockProbe001ExistingPanelTitle",
+            "AccountProfileCityUnlockProbe001PanelOcr",
+            "AccountProfileCityUnlockProbe001SelectByTemplate",
+            "AccountProfileCityUnlockProbe001SelectByText",
+            "AccountProfileCityUnlockProbe001Unknown"
+        ]
+    },
+    "AccountProfileCityUnlockProbe001ExistingPanelTitle": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "7号自由港"
+                ],
+                "roi": [
+                    690,
+                    80,
+                    560,
+                    95
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 1200,
+        "next": "AccountProfileCityUnlockProbe001PanelOcr",
+        "on_error": "AccountProfileCityUnlockProbe001PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe001SelectByTemplate": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "stations/qhzyg.png",
+                "threshold": 0.82,
+                "roi": [
+                    80,
+                    100,
+                    1040,
+                    500
+                ],
+                "order_by": "Score"
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    0,
+                    -18,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 200,
+        "timeout": 1200,
+        "next": [
+            "AccountProfileCityUnlockProbe001PanelTitle",
+            "AccountProfileCityUnlockProbe001PanelOcr",
+            "AccountProfileCityUnlockProbe001Unknown"
+        ],
+        "on_error": "AccountProfileCityUnlockProbe001SelectByText"
+    },
+    "AccountProfileCityUnlockProbe001SelectByText": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "7号自由港"
+                ],
+                "roi": [
+                    0,
+                    80,
+                    1280,
+                    520
+                ],
+                "order_by": "Expected"
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    0,
+                    -18,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 200,
+        "timeout": 1200,
+        "next": [
+            "AccountProfileCityUnlockProbe001PanelTitle",
+            "AccountProfileCityUnlockProbe001PanelOcr",
+            "AccountProfileCityUnlockProbe001Unknown"
+        ],
+        "on_error": "AccountProfileCityUnlockProbe001Unknown"
+    },
+    "AccountProfileCityUnlockProbe001PanelTitle": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "7号自由港"
+                ],
+                "roi": [
+                    690,
+                    80,
+                    560,
+                    95
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 1200,
+        "next": "AccountProfileCityUnlockProbe001PanelOcr",
+        "on_error": "AccountProfileCityUnlockProbe001PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe001PanelOcr": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "前往目的地",
+                    "立即出发",
+                    "访问城市",
+                    "进入城市",
+                    "当前站点",
+                    "当前城市",
+                    "列车所在站",
+                    "路程",
+                    "发展度",
+                    "声望",
+                    "交易品",
+                    "推荐等级",
+                    "未开放",
+                    "暂未开放",
+                    "未解锁",
+                    "无法前往",
+                    "前往条件",
+                    "尚未开放"
+                ],
+                "roi": [
+                    680,
+                    80,
+                    580,
+                    620
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "7号自由港"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe001CloseDetail",
+        "on_error": "AccountProfileCityUnlockProbe001PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe001PanelUnknown": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "7号自由港"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe001CloseDetail"
+    },
+    "AccountProfileCityUnlockProbe001CloseDetail": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    80,
+                    360
+                ]
+            }
+        },
+        "post_delay": 400,
+        "next": "AccountProfileCityUnlockProbe002MoveToCity"
+    },
+    "AccountProfileCityUnlockProbe001Unknown": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "7号自由港"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe002MoveToCity"
+    },
+    "AccountProfileCityUnlockProbe002MoveToCity": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_move_to_city",
+                "custom_action_param": {
+                    "city": "武林源",
+                    "max_steps": 4,
+                    "drag_distance": 520,
+                    "drag_duration": 900,
+                    "drag_delay": 200,
+                    "click_count": 3,
+                    "click_delay": 200,
+                    "panel_settle_delay": 400
+                }
+            }
+        },
+        "next": [
+            "AccountProfileCityUnlockProbe002ExistingPanelTitle",
+            "AccountProfileCityUnlockProbe002PanelOcr",
+            "AccountProfileCityUnlockProbe002SelectByText",
+            "AccountProfileCityUnlockProbe002Unknown"
+        ]
+    },
+    "AccountProfileCityUnlockProbe002ExistingPanelTitle": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "武林源"
+                ],
+                "roi": [
+                    690,
+                    80,
+                    560,
+                    95
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 1200,
+        "next": "AccountProfileCityUnlockProbe002PanelOcr",
+        "on_error": "AccountProfileCityUnlockProbe002PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe002SelectByText": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "武林源"
+                ],
+                "roi": [
+                    0,
+                    80,
+                    1280,
+                    520
+                ],
+                "order_by": "Expected"
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    0,
+                    -18,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 200,
+        "timeout": 1200,
+        "next": [
+            "AccountProfileCityUnlockProbe002PanelTitle",
+            "AccountProfileCityUnlockProbe002PanelOcr",
+            "AccountProfileCityUnlockProbe002Unknown"
+        ],
+        "on_error": "AccountProfileCityUnlockProbe002Unknown"
+    },
+    "AccountProfileCityUnlockProbe002PanelTitle": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "武林源"
+                ],
+                "roi": [
+                    690,
+                    80,
+                    560,
+                    95
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 1200,
+        "next": "AccountProfileCityUnlockProbe002PanelOcr",
+        "on_error": "AccountProfileCityUnlockProbe002PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe002PanelOcr": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "前往目的地",
+                    "立即出发",
+                    "访问城市",
+                    "进入城市",
+                    "当前站点",
+                    "当前城市",
+                    "列车所在站",
+                    "路程",
+                    "发展度",
+                    "声望",
+                    "交易品",
+                    "推荐等级",
+                    "未开放",
+                    "暂未开放",
+                    "未解锁",
+                    "无法前往",
+                    "前往条件",
+                    "尚未开放"
+                ],
+                "roi": [
+                    680,
+                    80,
+                    580,
+                    620
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "武林源"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe002CloseDetail",
+        "on_error": "AccountProfileCityUnlockProbe002PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe002PanelUnknown": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "武林源"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe002CloseDetail"
+    },
+    "AccountProfileCityUnlockProbe002CloseDetail": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    80,
+                    360
+                ]
+            }
+        },
+        "post_delay": 400,
+        "next": "AccountProfileCityUnlockProbe003MoveToCity"
+    },
+    "AccountProfileCityUnlockProbe002Unknown": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "武林源"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe003MoveToCity"
+    },
+    "AccountProfileCityUnlockProbe003MoveToCity": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_move_to_city",
+                "custom_action_param": {
+                    "city": "阿妮塔战备工厂",
+                    "max_steps": 4,
+                    "drag_distance": 520,
+                    "drag_duration": 900,
+                    "drag_delay": 200,
+                    "click_count": 3,
+                    "click_delay": 200,
+                    "panel_settle_delay": 400
+                }
+            }
+        },
+        "next": [
+            "AccountProfileCityUnlockProbe003ExistingPanelTitle",
+            "AccountProfileCityUnlockProbe003PanelOcr",
+            "AccountProfileCityUnlockProbe003SelectByTemplate",
+            "AccountProfileCityUnlockProbe003SelectByText",
+            "AccountProfileCityUnlockProbe003Unknown"
+        ]
+    },
+    "AccountProfileCityUnlockProbe003ExistingPanelTitle": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "阿妮塔战备工厂",
+                    "战备工厂",
+                    "阿妮塔战备"
+                ],
+                "roi": [
+                    690,
+                    80,
+                    560,
+                    95
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 1200,
+        "next": "AccountProfileCityUnlockProbe003PanelOcr",
+        "on_error": "AccountProfileCityUnlockProbe003PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe003SelectByTemplate": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "stations/antzbgc.png",
+                "threshold": 0.82,
+                "roi": [
+                    80,
+                    100,
+                    1040,
+                    500
+                ],
+                "order_by": "Score"
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    0,
+                    -18,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 200,
+        "timeout": 1200,
+        "next": [
+            "AccountProfileCityUnlockProbe003PanelTitle",
+            "AccountProfileCityUnlockProbe003PanelOcr",
+            "AccountProfileCityUnlockProbe003Unknown"
+        ],
+        "on_error": "AccountProfileCityUnlockProbe003SelectByText"
+    },
+    "AccountProfileCityUnlockProbe003SelectByText": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "阿妮塔战备工厂",
+                    "战备工厂",
+                    "阿妮塔战备"
+                ],
+                "roi": [
+                    0,
+                    80,
+                    1280,
+                    520
+                ],
+                "order_by": "Expected"
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    0,
+                    -18,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 200,
+        "timeout": 1200,
+        "next": [
+            "AccountProfileCityUnlockProbe003PanelTitle",
+            "AccountProfileCityUnlockProbe003PanelOcr",
+            "AccountProfileCityUnlockProbe003Unknown"
+        ],
+        "on_error": "AccountProfileCityUnlockProbe003Unknown"
+    },
+    "AccountProfileCityUnlockProbe003PanelTitle": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "阿妮塔战备工厂",
+                    "战备工厂",
+                    "阿妮塔战备"
+                ],
+                "roi": [
+                    690,
+                    80,
+                    560,
+                    95
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 1200,
+        "next": "AccountProfileCityUnlockProbe003PanelOcr",
+        "on_error": "AccountProfileCityUnlockProbe003PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe003PanelOcr": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "前往目的地",
+                    "立即出发",
+                    "访问城市",
+                    "进入城市",
+                    "当前站点",
+                    "当前城市",
+                    "列车所在站",
+                    "路程",
+                    "发展度",
+                    "声望",
+                    "交易品",
+                    "推荐等级",
+                    "未开放",
+                    "暂未开放",
+                    "未解锁",
+                    "无法前往",
+                    "前往条件",
+                    "尚未开放"
+                ],
+                "roi": [
+                    680,
+                    80,
+                    580,
+                    620
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "阿妮塔战备工厂"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe003CloseDetail",
+        "on_error": "AccountProfileCityUnlockProbe003PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe003PanelUnknown": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "阿妮塔战备工厂"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe003CloseDetail"
+    },
+    "AccountProfileCityUnlockProbe003CloseDetail": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    80,
+                    360
+                ]
+            }
+        },
+        "post_delay": 400,
+        "next": "AccountProfileCityUnlockProbe004MoveToCity"
+    },
+    "AccountProfileCityUnlockProbe003Unknown": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "阿妮塔战备工厂"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe004MoveToCity"
+    },
+    "AccountProfileCityUnlockProbe004MoveToCity": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_move_to_city",
+                "custom_action_param": {
+                    "city": "阿妮塔能源研究所",
+                    "max_steps": 4,
+                    "drag_distance": 520,
+                    "drag_duration": 900,
+                    "drag_delay": 200,
+                    "click_count": 3,
+                    "click_delay": 200,
+                    "panel_settle_delay": 400
+                }
+            }
+        },
+        "next": [
+            "AccountProfileCityUnlockProbe004ExistingPanelTitle",
+            "AccountProfileCityUnlockProbe004PanelOcr",
+            "AccountProfileCityUnlockProbe004SelectByTemplate",
+            "AccountProfileCityUnlockProbe004SelectByText",
+            "AccountProfileCityUnlockProbe004Unknown"
+        ]
+    },
+    "AccountProfileCityUnlockProbe004ExistingPanelTitle": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "阿妮塔能源研究所",
+                    "能源研究所",
+                    "阿妮塔能源"
+                ],
+                "roi": [
+                    690,
+                    80,
+                    560,
+                    95
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 1200,
+        "next": "AccountProfileCityUnlockProbe004PanelOcr",
+        "on_error": "AccountProfileCityUnlockProbe004PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe004SelectByTemplate": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "stations/antnyyjs.png",
+                "threshold": 0.82,
+                "roi": [
+                    80,
+                    100,
+                    1040,
+                    500
+                ],
+                "order_by": "Score"
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    0,
+                    -18,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 200,
+        "timeout": 1200,
+        "next": [
+            "AccountProfileCityUnlockProbe004PanelTitle",
+            "AccountProfileCityUnlockProbe004PanelOcr",
+            "AccountProfileCityUnlockProbe004Unknown"
+        ],
+        "on_error": "AccountProfileCityUnlockProbe004SelectByText"
+    },
+    "AccountProfileCityUnlockProbe004SelectByText": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "阿妮塔能源研究所",
+                    "能源研究所",
+                    "阿妮塔能源"
+                ],
+                "roi": [
+                    0,
+                    80,
+                    1280,
+                    520
+                ],
+                "order_by": "Expected"
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    0,
+                    -18,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 200,
+        "timeout": 1200,
+        "next": [
+            "AccountProfileCityUnlockProbe004PanelTitle",
+            "AccountProfileCityUnlockProbe004PanelOcr",
+            "AccountProfileCityUnlockProbe004Unknown"
+        ],
+        "on_error": "AccountProfileCityUnlockProbe004Unknown"
+    },
+    "AccountProfileCityUnlockProbe004PanelTitle": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "阿妮塔能源研究所",
+                    "能源研究所",
+                    "阿妮塔能源"
+                ],
+                "roi": [
+                    690,
+                    80,
+                    560,
+                    95
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 1200,
+        "next": "AccountProfileCityUnlockProbe004PanelOcr",
+        "on_error": "AccountProfileCityUnlockProbe004PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe004PanelOcr": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "前往目的地",
+                    "立即出发",
+                    "访问城市",
+                    "进入城市",
+                    "当前站点",
+                    "当前城市",
+                    "列车所在站",
+                    "路程",
+                    "发展度",
+                    "声望",
+                    "交易品",
+                    "推荐等级",
+                    "未开放",
+                    "暂未开放",
+                    "未解锁",
+                    "无法前往",
+                    "前往条件",
+                    "尚未开放"
+                ],
+                "roi": [
+                    680,
+                    80,
+                    580,
+                    620
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "阿妮塔能源研究所"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe004CloseDetail",
+        "on_error": "AccountProfileCityUnlockProbe004PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe004PanelUnknown": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "阿妮塔能源研究所"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe004CloseDetail"
+    },
+    "AccountProfileCityUnlockProbe004CloseDetail": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    80,
+                    360
+                ]
+            }
+        },
+        "post_delay": 400,
+        "next": "AccountProfileCityUnlockProbe005MoveToCity"
+    },
+    "AccountProfileCityUnlockProbe004Unknown": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "阿妮塔能源研究所"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe005MoveToCity"
+    },
+    "AccountProfileCityUnlockProbe005MoveToCity": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_move_to_city",
+                "custom_action_param": {
+                    "city": "阿妮塔发射中心",
+                    "max_steps": 4,
+                    "drag_distance": 520,
+                    "drag_duration": 900,
+                    "drag_delay": 200,
+                    "click_count": 3,
+                    "click_delay": 200,
+                    "panel_settle_delay": 400
+                }
+            }
+        },
+        "next": [
+            "AccountProfileCityUnlockProbe005ExistingPanelTitle",
+            "AccountProfileCityUnlockProbe005PanelOcr",
+            "AccountProfileCityUnlockProbe005SelectByTemplate",
+            "AccountProfileCityUnlockProbe005SelectByText",
+            "AccountProfileCityUnlockProbe005Unknown"
+        ]
+    },
+    "AccountProfileCityUnlockProbe005ExistingPanelTitle": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "阿妮塔发射中心",
+                    "发射中心",
+                    "阿妮塔发射"
+                ],
+                "roi": [
+                    690,
+                    80,
+                    560,
+                    95
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 1200,
+        "next": "AccountProfileCityUnlockProbe005PanelOcr",
+        "on_error": "AccountProfileCityUnlockProbe005PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe005SelectByTemplate": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "stations/antfszx.png",
+                "threshold": 0.82,
+                "roi": [
+                    80,
+                    100,
+                    1040,
+                    500
+                ],
+                "order_by": "Score"
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    0,
+                    -18,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 200,
+        "timeout": 1200,
+        "next": [
+            "AccountProfileCityUnlockProbe005PanelTitle",
+            "AccountProfileCityUnlockProbe005PanelOcr",
+            "AccountProfileCityUnlockProbe005Unknown"
+        ],
+        "on_error": "AccountProfileCityUnlockProbe005SelectByText"
+    },
+    "AccountProfileCityUnlockProbe005SelectByText": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "阿妮塔发射中心",
+                    "发射中心",
+                    "阿妮塔发射"
+                ],
+                "roi": [
+                    0,
+                    80,
+                    1280,
+                    520
+                ],
+                "order_by": "Expected"
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    0,
+                    -18,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 200,
+        "timeout": 1200,
+        "next": [
+            "AccountProfileCityUnlockProbe005PanelTitle",
+            "AccountProfileCityUnlockProbe005PanelOcr",
+            "AccountProfileCityUnlockProbe005Unknown"
+        ],
+        "on_error": "AccountProfileCityUnlockProbe005Unknown"
+    },
+    "AccountProfileCityUnlockProbe005PanelTitle": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "阿妮塔发射中心",
+                    "发射中心",
+                    "阿妮塔发射"
+                ],
+                "roi": [
+                    690,
+                    80,
+                    560,
+                    95
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 1200,
+        "next": "AccountProfileCityUnlockProbe005PanelOcr",
+        "on_error": "AccountProfileCityUnlockProbe005PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe005PanelOcr": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "前往目的地",
+                    "立即出发",
+                    "访问城市",
+                    "进入城市",
+                    "当前站点",
+                    "当前城市",
+                    "列车所在站",
+                    "路程",
+                    "发展度",
+                    "声望",
+                    "交易品",
+                    "推荐等级",
+                    "未开放",
+                    "暂未开放",
+                    "未解锁",
+                    "无法前往",
+                    "前往条件",
+                    "尚未开放"
+                ],
+                "roi": [
+                    680,
+                    80,
+                    580,
+                    620
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "阿妮塔发射中心"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe005CloseDetail",
+        "on_error": "AccountProfileCityUnlockProbe005PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe005PanelUnknown": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "阿妮塔发射中心"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe005CloseDetail"
+    },
+    "AccountProfileCityUnlockProbe005CloseDetail": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    80,
+                    360
+                ]
+            }
+        },
+        "post_delay": 400,
+        "next": "AccountProfileCityUnlockProbe006MoveToCity"
+    },
+    "AccountProfileCityUnlockProbe005Unknown": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "阿妮塔发射中心"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe006MoveToCity"
+    },
+    "AccountProfileCityUnlockProbe006MoveToCity": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_move_to_city",
+                "custom_action_param": {
+                    "city": "汇流塔",
+                    "max_steps": 4,
+                    "drag_distance": 520,
+                    "drag_duration": 900,
+                    "drag_delay": 200,
+                    "click_count": 3,
+                    "click_delay": 200,
+                    "panel_settle_delay": 400
+                }
+            }
+        },
+        "next": [
+            "AccountProfileCityUnlockProbe006ExistingPanelTitle",
+            "AccountProfileCityUnlockProbe006PanelOcr",
+            "AccountProfileCityUnlockProbe006SelectByTemplate",
+            "AccountProfileCityUnlockProbe006SelectByText",
+            "AccountProfileCityUnlockProbe006Unknown"
+        ]
+    },
+    "AccountProfileCityUnlockProbe006ExistingPanelTitle": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "汇流塔"
+                ],
+                "roi": [
+                    690,
+                    80,
+                    560,
+                    95
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 1200,
+        "next": "AccountProfileCityUnlockProbe006PanelOcr",
+        "on_error": "AccountProfileCityUnlockProbe006PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe006SelectByTemplate": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "stations/hlt.png",
+                "threshold": 0.82,
+                "roi": [
+                    80,
+                    100,
+                    1040,
+                    500
+                ],
+                "order_by": "Score"
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    0,
+                    -18,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 200,
+        "timeout": 1200,
+        "next": [
+            "AccountProfileCityUnlockProbe006PanelTitle",
+            "AccountProfileCityUnlockProbe006PanelOcr",
+            "AccountProfileCityUnlockProbe006Unknown"
+        ],
+        "on_error": "AccountProfileCityUnlockProbe006SelectByText"
+    },
+    "AccountProfileCityUnlockProbe006SelectByText": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "汇流塔"
+                ],
+                "roi": [
+                    0,
+                    80,
+                    1280,
+                    520
+                ],
+                "order_by": "Expected"
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    0,
+                    -18,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 200,
+        "timeout": 1200,
+        "next": [
+            "AccountProfileCityUnlockProbe006PanelTitle",
+            "AccountProfileCityUnlockProbe006PanelOcr",
+            "AccountProfileCityUnlockProbe006Unknown"
+        ],
+        "on_error": "AccountProfileCityUnlockProbe006Unknown"
+    },
+    "AccountProfileCityUnlockProbe006PanelTitle": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "汇流塔"
+                ],
+                "roi": [
+                    690,
+                    80,
+                    560,
+                    95
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 1200,
+        "next": "AccountProfileCityUnlockProbe006PanelOcr",
+        "on_error": "AccountProfileCityUnlockProbe006PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe006PanelOcr": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "前往目的地",
+                    "立即出发",
+                    "访问城市",
+                    "进入城市",
+                    "当前站点",
+                    "当前城市",
+                    "列车所在站",
+                    "路程",
+                    "发展度",
+                    "声望",
+                    "交易品",
+                    "推荐等级",
+                    "未开放",
+                    "暂未开放",
+                    "未解锁",
+                    "无法前往",
+                    "前往条件",
+                    "尚未开放"
+                ],
+                "roi": [
+                    680,
+                    80,
+                    580,
+                    620
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "汇流塔"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe006CloseDetail",
+        "on_error": "AccountProfileCityUnlockProbe006PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe006PanelUnknown": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "汇流塔"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe006CloseDetail"
+    },
+    "AccountProfileCityUnlockProbe006CloseDetail": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    80,
+                    360
+                ]
+            }
+        },
+        "post_delay": 400,
+        "next": "AccountProfileCityUnlockProbe007MoveToCity"
+    },
+    "AccountProfileCityUnlockProbe006Unknown": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "汇流塔"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe007MoveToCity"
+    },
+    "AccountProfileCityUnlockProbe007MoveToCity": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_move_to_city",
+                "custom_action_param": {
+                    "city": "海角城",
+                    "max_steps": 4,
+                    "drag_distance": 520,
+                    "drag_duration": 900,
+                    "drag_delay": 200,
+                    "click_count": 3,
+                    "click_delay": 200,
+                    "panel_settle_delay": 400
+                }
+            }
+        },
+        "next": [
+            "AccountProfileCityUnlockProbe007ExistingPanelTitle",
+            "AccountProfileCityUnlockProbe007PanelOcr",
+            "AccountProfileCityUnlockProbe007SelectByTemplate",
+            "AccountProfileCityUnlockProbe007SelectByText",
+            "AccountProfileCityUnlockProbe007Unknown"
+        ]
+    },
+    "AccountProfileCityUnlockProbe007ExistingPanelTitle": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "海角城"
+                ],
+                "roi": [
+                    690,
+                    80,
+                    560,
+                    95
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 1200,
+        "next": "AccountProfileCityUnlockProbe007PanelOcr",
+        "on_error": "AccountProfileCityUnlockProbe007PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe007SelectByTemplate": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "stations/hjc.png",
+                "threshold": 0.82,
+                "roi": [
+                    80,
+                    100,
+                    1040,
+                    500
+                ],
+                "order_by": "Score"
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    0,
+                    -18,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 200,
+        "timeout": 1200,
+        "next": [
+            "AccountProfileCityUnlockProbe007PanelTitle",
+            "AccountProfileCityUnlockProbe007PanelOcr",
+            "AccountProfileCityUnlockProbe007Unknown"
+        ],
+        "on_error": "AccountProfileCityUnlockProbe007SelectByText"
+    },
+    "AccountProfileCityUnlockProbe007SelectByText": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "海角城"
+                ],
+                "roi": [
+                    0,
+                    80,
+                    1280,
+                    520
+                ],
+                "order_by": "Expected"
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    0,
+                    -18,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 200,
+        "timeout": 1200,
+        "next": [
+            "AccountProfileCityUnlockProbe007PanelTitle",
+            "AccountProfileCityUnlockProbe007PanelOcr",
+            "AccountProfileCityUnlockProbe007Unknown"
+        ],
+        "on_error": "AccountProfileCityUnlockProbe007Unknown"
+    },
+    "AccountProfileCityUnlockProbe007PanelTitle": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "海角城"
+                ],
+                "roi": [
+                    690,
+                    80,
+                    560,
+                    95
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 1200,
+        "next": "AccountProfileCityUnlockProbe007PanelOcr",
+        "on_error": "AccountProfileCityUnlockProbe007PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe007PanelOcr": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "前往目的地",
+                    "立即出发",
+                    "访问城市",
+                    "进入城市",
+                    "当前站点",
+                    "当前城市",
+                    "列车所在站",
+                    "路程",
+                    "发展度",
+                    "声望",
+                    "交易品",
+                    "推荐等级",
+                    "未开放",
+                    "暂未开放",
+                    "未解锁",
+                    "无法前往",
+                    "前往条件",
+                    "尚未开放"
+                ],
+                "roi": [
+                    680,
+                    80,
+                    580,
+                    620
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "海角城"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe007CloseDetail",
+        "on_error": "AccountProfileCityUnlockProbe007PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe007PanelUnknown": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "海角城"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe007CloseDetail"
+    },
+    "AccountProfileCityUnlockProbe007CloseDetail": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    80,
+                    360
+                ]
+            }
+        },
+        "post_delay": 400,
+        "next": "AccountProfileCityUnlockProbe008MoveToCity"
+    },
+    "AccountProfileCityUnlockProbe007Unknown": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "海角城"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe008MoveToCity"
+    },
+    "AccountProfileCityUnlockProbe008MoveToCity": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_move_to_city",
+                "custom_action_param": {
+                    "city": "远星大桥",
+                    "max_steps": 4,
+                    "drag_distance": 520,
+                    "drag_duration": 900,
+                    "drag_delay": 200,
+                    "click_count": 3,
+                    "click_delay": 200,
+                    "panel_settle_delay": 400
+                }
+            }
+        },
+        "next": [
+            "AccountProfileCityUnlockProbe008ExistingPanelTitle",
+            "AccountProfileCityUnlockProbe008PanelOcr",
+            "AccountProfileCityUnlockProbe008SelectByTemplate",
+            "AccountProfileCityUnlockProbe008SelectByText",
+            "AccountProfileCityUnlockProbe008Unknown"
+        ]
+    },
+    "AccountProfileCityUnlockProbe008ExistingPanelTitle": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "远星大桥"
+                ],
+                "roi": [
+                    690,
+                    80,
+                    560,
+                    95
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 1200,
+        "next": "AccountProfileCityUnlockProbe008PanelOcr",
+        "on_error": "AccountProfileCityUnlockProbe008PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe008SelectByTemplate": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "stations/yxdq.png",
+                "threshold": 0.82,
+                "roi": [
+                    80,
+                    100,
+                    1040,
+                    500
+                ],
+                "order_by": "Score"
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    0,
+                    -18,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 200,
+        "timeout": 1200,
+        "next": [
+            "AccountProfileCityUnlockProbe008PanelTitle",
+            "AccountProfileCityUnlockProbe008PanelOcr",
+            "AccountProfileCityUnlockProbe008Unknown"
+        ],
+        "on_error": "AccountProfileCityUnlockProbe008SelectByText"
+    },
+    "AccountProfileCityUnlockProbe008SelectByText": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "远星大桥"
+                ],
+                "roi": [
+                    0,
+                    80,
+                    1280,
+                    520
+                ],
+                "order_by": "Expected"
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    0,
+                    -18,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 200,
+        "timeout": 1200,
+        "next": [
+            "AccountProfileCityUnlockProbe008PanelTitle",
+            "AccountProfileCityUnlockProbe008PanelOcr",
+            "AccountProfileCityUnlockProbe008Unknown"
+        ],
+        "on_error": "AccountProfileCityUnlockProbe008Unknown"
+    },
+    "AccountProfileCityUnlockProbe008PanelTitle": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "远星大桥"
+                ],
+                "roi": [
+                    690,
+                    80,
+                    560,
+                    95
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 1200,
+        "next": "AccountProfileCityUnlockProbe008PanelOcr",
+        "on_error": "AccountProfileCityUnlockProbe008PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe008PanelOcr": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "前往目的地",
+                    "立即出发",
+                    "访问城市",
+                    "进入城市",
+                    "当前站点",
+                    "当前城市",
+                    "列车所在站",
+                    "路程",
+                    "发展度",
+                    "声望",
+                    "交易品",
+                    "推荐等级",
+                    "未开放",
+                    "暂未开放",
+                    "未解锁",
+                    "无法前往",
+                    "前往条件",
+                    "尚未开放"
+                ],
+                "roi": [
+                    680,
+                    80,
+                    580,
+                    620
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "远星大桥"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe008CloseDetail",
+        "on_error": "AccountProfileCityUnlockProbe008PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe008PanelUnknown": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "远星大桥"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe008CloseDetail"
+    },
+    "AccountProfileCityUnlockProbe008CloseDetail": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    80,
+                    360
+                ]
+            }
+        },
+        "post_delay": 400,
+        "next": "AccountProfileCityUnlockProbe009MoveToCity"
+    },
+    "AccountProfileCityUnlockProbe008Unknown": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "远星大桥"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe009MoveToCity"
+    },
+    "AccountProfileCityUnlockProbe009MoveToCity": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_move_to_city",
+                "custom_action_param": {
+                    "city": "贡露城",
+                    "max_steps": 4,
+                    "drag_distance": 520,
+                    "drag_duration": 900,
+                    "drag_delay": 200,
+                    "click_count": 3,
+                    "click_delay": 200,
+                    "panel_settle_delay": 400
+                }
+            }
+        },
+        "next": [
+            "AccountProfileCityUnlockProbe009ExistingPanelTitle",
+            "AccountProfileCityUnlockProbe009PanelOcr",
+            "AccountProfileCityUnlockProbe009SelectByTemplate",
+            "AccountProfileCityUnlockProbe009SelectByText",
+            "AccountProfileCityUnlockProbe009Unknown"
+        ]
+    },
+    "AccountProfileCityUnlockProbe009ExistingPanelTitle": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "贡露城"
+                ],
+                "roi": [
+                    690,
+                    80,
+                    560,
+                    95
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 1200,
+        "next": "AccountProfileCityUnlockProbe009PanelOcr",
+        "on_error": "AccountProfileCityUnlockProbe009PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe009SelectByTemplate": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "stations/glc.png",
+                "threshold": 0.82,
+                "roi": [
+                    80,
+                    100,
+                    1040,
+                    500
+                ],
+                "order_by": "Score"
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    0,
+                    -18,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 200,
+        "timeout": 1200,
+        "next": [
+            "AccountProfileCityUnlockProbe009PanelTitle",
+            "AccountProfileCityUnlockProbe009PanelOcr",
+            "AccountProfileCityUnlockProbe009Unknown"
+        ],
+        "on_error": "AccountProfileCityUnlockProbe009SelectByText"
+    },
+    "AccountProfileCityUnlockProbe009SelectByText": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "贡露城"
+                ],
+                "roi": [
+                    0,
+                    80,
+                    1280,
+                    520
+                ],
+                "order_by": "Expected"
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    0,
+                    -18,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 200,
+        "timeout": 1200,
+        "next": [
+            "AccountProfileCityUnlockProbe009PanelTitle",
+            "AccountProfileCityUnlockProbe009PanelOcr",
+            "AccountProfileCityUnlockProbe009Unknown"
+        ],
+        "on_error": "AccountProfileCityUnlockProbe009Unknown"
+    },
+    "AccountProfileCityUnlockProbe009PanelTitle": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "贡露城"
+                ],
+                "roi": [
+                    690,
+                    80,
+                    560,
+                    95
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 1200,
+        "next": "AccountProfileCityUnlockProbe009PanelOcr",
+        "on_error": "AccountProfileCityUnlockProbe009PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe009PanelOcr": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "前往目的地",
+                    "立即出发",
+                    "访问城市",
+                    "进入城市",
+                    "当前站点",
+                    "当前城市",
+                    "列车所在站",
+                    "路程",
+                    "发展度",
+                    "声望",
+                    "交易品",
+                    "推荐等级",
+                    "未开放",
+                    "暂未开放",
+                    "未解锁",
+                    "无法前往",
+                    "前往条件",
+                    "尚未开放"
+                ],
+                "roi": [
+                    680,
+                    80,
+                    580,
+                    620
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "贡露城"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe009CloseDetail",
+        "on_error": "AccountProfileCityUnlockProbe009PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe009PanelUnknown": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "贡露城"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe009CloseDetail"
+    },
+    "AccountProfileCityUnlockProbe009CloseDetail": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    80,
+                    360
+                ]
+            }
+        },
+        "post_delay": 400,
+        "next": "AccountProfileCityUnlockProbe010MoveToCity"
+    },
+    "AccountProfileCityUnlockProbe009Unknown": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "贡露城"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe010MoveToCity"
+    },
+    "AccountProfileCityUnlockProbe010MoveToCity": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_move_to_city",
+                "custom_action_param": {
+                    "city": "澄明数据中心",
+                    "max_steps": 4,
+                    "drag_distance": 520,
+                    "drag_duration": 900,
+                    "drag_delay": 200,
+                    "click_count": 3,
+                    "click_delay": 200,
+                    "panel_settle_delay": 400
+                }
+            }
+        },
+        "next": [
+            "AccountProfileCityUnlockProbe010ExistingPanelTitle",
+            "AccountProfileCityUnlockProbe010PanelOcr",
+            "AccountProfileCityUnlockProbe010SelectByTemplate",
+            "AccountProfileCityUnlockProbe010SelectByText",
+            "AccountProfileCityUnlockProbe010Unknown"
+        ]
+    },
+    "AccountProfileCityUnlockProbe010ExistingPanelTitle": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "澄明数据中心",
+                    "澄明数据",
+                    "数据中心",
+                    "澄明",
+                    "澄明数"
+                ],
+                "roi": [
+                    690,
+                    80,
+                    560,
+                    95
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 1200,
+        "next": "AccountProfileCityUnlockProbe010PanelOcr",
+        "on_error": "AccountProfileCityUnlockProbe010PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe010SelectByTemplate": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "stations/cmsjzx.png",
+                "threshold": 0.82,
+                "roi": [
+                    80,
+                    100,
+                    1040,
+                    500
+                ],
+                "order_by": "Score"
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    0,
+                    -18,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 200,
+        "timeout": 1200,
+        "next": [
+            "AccountProfileCityUnlockProbe010PanelTitle",
+            "AccountProfileCityUnlockProbe010PanelOcr",
+            "AccountProfileCityUnlockProbe010Unknown"
+        ],
+        "on_error": "AccountProfileCityUnlockProbe010SelectByText"
+    },
+    "AccountProfileCityUnlockProbe010SelectByText": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "澄明数据中心",
+                    "澄明数据",
+                    "数据中心",
+                    "澄明",
+                    "澄明数"
+                ],
+                "roi": [
+                    0,
+                    80,
+                    1280,
+                    520
+                ],
+                "order_by": "Expected"
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    0,
+                    -18,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 200,
+        "timeout": 1200,
+        "next": [
+            "AccountProfileCityUnlockProbe010PanelTitle",
+            "AccountProfileCityUnlockProbe010PanelOcr",
+            "AccountProfileCityUnlockProbe010Unknown"
+        ],
+        "on_error": "AccountProfileCityUnlockProbe010Unknown"
+    },
+    "AccountProfileCityUnlockProbe010PanelTitle": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "澄明数据中心",
+                    "澄明数据",
+                    "数据中心",
+                    "澄明",
+                    "澄明数"
+                ],
+                "roi": [
+                    690,
+                    80,
+                    560,
+                    95
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 1200,
+        "next": "AccountProfileCityUnlockProbe010PanelOcr",
+        "on_error": "AccountProfileCityUnlockProbe010PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe010PanelOcr": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "前往目的地",
+                    "立即出发",
+                    "访问城市",
+                    "进入城市",
+                    "当前站点",
+                    "当前城市",
+                    "列车所在站",
+                    "路程",
+                    "发展度",
+                    "声望",
+                    "交易品",
+                    "推荐等级",
+                    "未开放",
+                    "暂未开放",
+                    "未解锁",
+                    "无法前往",
+                    "前往条件",
+                    "尚未开放"
+                ],
+                "roi": [
+                    680,
+                    80,
+                    580,
+                    620
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "澄明数据中心"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe010CloseDetail",
+        "on_error": "AccountProfileCityUnlockProbe010PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe010PanelUnknown": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "澄明数据中心"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe010CloseDetail"
+    },
+    "AccountProfileCityUnlockProbe010CloseDetail": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    80,
+                    360
+                ]
+            }
+        },
+        "post_delay": 400,
+        "next": "AccountProfileCityUnlockProbe011MoveToCity"
+    },
+    "AccountProfileCityUnlockProbe010Unknown": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "澄明数据中心"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe011MoveToCity"
+    },
+    "AccountProfileCityUnlockProbe011MoveToCity": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_move_to_city",
+                "custom_action_param": {
+                    "city": "修格里城",
+                    "max_steps": 4,
+                    "drag_distance": 520,
+                    "drag_duration": 900,
+                    "drag_delay": 200,
+                    "click_count": 3,
+                    "click_delay": 200,
+                    "panel_settle_delay": 400
+                }
+            }
+        },
+        "next": [
+            "AccountProfileCityUnlockProbe011ExistingPanelTitle",
+            "AccountProfileCityUnlockProbe011PanelOcr",
+            "AccountProfileCityUnlockProbe011SelectByTemplate",
+            "AccountProfileCityUnlockProbe011SelectByText",
+            "AccountProfileCityUnlockProbe011Unknown"
+        ]
+    },
+    "AccountProfileCityUnlockProbe011ExistingPanelTitle": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "修格里城"
+                ],
+                "roi": [
+                    690,
+                    80,
+                    560,
+                    95
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 1200,
+        "next": "AccountProfileCityUnlockProbe011PanelOcr",
+        "on_error": "AccountProfileCityUnlockProbe011PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe011SelectByTemplate": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "stations/xglc.png",
+                "threshold": 0.82,
+                "roi": [
+                    80,
+                    100,
+                    1040,
+                    500
+                ],
+                "order_by": "Score"
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    0,
+                    -18,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 200,
+        "timeout": 1200,
+        "next": [
+            "AccountProfileCityUnlockProbe011PanelTitle",
+            "AccountProfileCityUnlockProbe011PanelOcr",
+            "AccountProfileCityUnlockProbe011Unknown"
+        ],
+        "on_error": "AccountProfileCityUnlockProbe011SelectByText"
+    },
+    "AccountProfileCityUnlockProbe011SelectByText": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "修格里城"
+                ],
+                "roi": [
+                    0,
+                    80,
+                    1280,
+                    520
+                ],
+                "order_by": "Expected"
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    0,
+                    -18,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 200,
+        "timeout": 1200,
+        "next": [
+            "AccountProfileCityUnlockProbe011PanelTitle",
+            "AccountProfileCityUnlockProbe011PanelOcr",
+            "AccountProfileCityUnlockProbe011Unknown"
+        ],
+        "on_error": "AccountProfileCityUnlockProbe011Unknown"
+    },
+    "AccountProfileCityUnlockProbe011PanelTitle": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "修格里城"
+                ],
+                "roi": [
+                    690,
+                    80,
+                    560,
+                    95
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 1200,
+        "next": "AccountProfileCityUnlockProbe011PanelOcr",
+        "on_error": "AccountProfileCityUnlockProbe011PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe011PanelOcr": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "前往目的地",
+                    "立即出发",
+                    "访问城市",
+                    "进入城市",
+                    "当前站点",
+                    "当前城市",
+                    "列车所在站",
+                    "路程",
+                    "发展度",
+                    "声望",
+                    "交易品",
+                    "推荐等级",
+                    "未开放",
+                    "暂未开放",
+                    "未解锁",
+                    "无法前往",
+                    "前往条件",
+                    "尚未开放"
+                ],
+                "roi": [
+                    680,
+                    80,
+                    580,
+                    620
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "修格里城"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe011CloseDetail",
+        "on_error": "AccountProfileCityUnlockProbe011PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe011PanelUnknown": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "修格里城"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe011CloseDetail"
+    },
+    "AccountProfileCityUnlockProbe011CloseDetail": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    80,
+                    360
+                ]
+            }
+        },
+        "post_delay": 400,
+        "next": "AccountProfileCityUnlockProbe012MoveToCity"
+    },
+    "AccountProfileCityUnlockProbe011Unknown": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "修格里城"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe012MoveToCity"
+    },
+    "AccountProfileCityUnlockProbe012MoveToCity": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_move_to_city",
+                "custom_action_param": {
+                    "city": "铁盟哨站",
+                    "max_steps": 4,
+                    "drag_distance": 520,
+                    "drag_duration": 900,
+                    "drag_delay": 200,
+                    "click_count": 3,
+                    "click_delay": 200,
+                    "panel_settle_delay": 400
+                }
+            }
+        },
+        "next": [
+            "AccountProfileCityUnlockProbe012ExistingPanelTitle",
+            "AccountProfileCityUnlockProbe012PanelOcr",
+            "AccountProfileCityUnlockProbe012SelectByTemplate",
+            "AccountProfileCityUnlockProbe012SelectByText",
+            "AccountProfileCityUnlockProbe012Unknown"
+        ]
+    },
+    "AccountProfileCityUnlockProbe012ExistingPanelTitle": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "铁盟哨站"
+                ],
+                "roi": [
+                    690,
+                    80,
+                    560,
+                    95
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 1200,
+        "next": "AccountProfileCityUnlockProbe012PanelOcr",
+        "on_error": "AccountProfileCityUnlockProbe012PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe012SelectByTemplate": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "stations/tmsz.png",
+                "threshold": 0.82,
+                "roi": [
+                    80,
+                    100,
+                    1040,
+                    500
+                ],
+                "order_by": "Score"
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    0,
+                    -18,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 200,
+        "timeout": 1200,
+        "next": [
+            "AccountProfileCityUnlockProbe012PanelTitle",
+            "AccountProfileCityUnlockProbe012PanelOcr",
+            "AccountProfileCityUnlockProbe012Unknown"
+        ],
+        "on_error": "AccountProfileCityUnlockProbe012SelectByText"
+    },
+    "AccountProfileCityUnlockProbe012SelectByText": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "铁盟哨站"
+                ],
+                "roi": [
+                    0,
+                    80,
+                    1280,
+                    520
+                ],
+                "order_by": "Expected"
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    0,
+                    -18,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 200,
+        "timeout": 1200,
+        "next": [
+            "AccountProfileCityUnlockProbe012PanelTitle",
+            "AccountProfileCityUnlockProbe012PanelOcr",
+            "AccountProfileCityUnlockProbe012Unknown"
+        ],
+        "on_error": "AccountProfileCityUnlockProbe012Unknown"
+    },
+    "AccountProfileCityUnlockProbe012PanelTitle": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "铁盟哨站"
+                ],
+                "roi": [
+                    690,
+                    80,
+                    560,
+                    95
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 1200,
+        "next": "AccountProfileCityUnlockProbe012PanelOcr",
+        "on_error": "AccountProfileCityUnlockProbe012PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe012PanelOcr": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "前往目的地",
+                    "立即出发",
+                    "访问城市",
+                    "进入城市",
+                    "当前站点",
+                    "当前城市",
+                    "列车所在站",
+                    "路程",
+                    "发展度",
+                    "声望",
+                    "交易品",
+                    "推荐等级",
+                    "未开放",
+                    "暂未开放",
+                    "未解锁",
+                    "无法前往",
+                    "前往条件",
+                    "尚未开放"
+                ],
+                "roi": [
+                    680,
+                    80,
+                    580,
+                    620
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "铁盟哨站"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe012CloseDetail",
+        "on_error": "AccountProfileCityUnlockProbe012PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe012PanelUnknown": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "铁盟哨站"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe012CloseDetail"
+    },
+    "AccountProfileCityUnlockProbe012CloseDetail": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    80,
+                    360
+                ]
+            }
+        },
+        "post_delay": 400,
+        "next": "AccountProfileCityUnlockProbe013MoveToCity"
+    },
+    "AccountProfileCityUnlockProbe012Unknown": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "铁盟哨站"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe013MoveToCity"
+    },
+    "AccountProfileCityUnlockProbe013MoveToCity": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_move_to_city",
+                "custom_action_param": {
+                    "city": "曼德矿场",
+                    "max_steps": 4,
+                    "drag_distance": 520,
+                    "drag_duration": 900,
+                    "drag_delay": 200,
+                    "click_count": 3,
+                    "click_delay": 200,
+                    "panel_settle_delay": 400
+                }
+            }
+        },
+        "next": [
+            "AccountProfileCityUnlockProbe013ExistingPanelTitle",
+            "AccountProfileCityUnlockProbe013PanelOcr",
+            "AccountProfileCityUnlockProbe013SelectByTemplate",
+            "AccountProfileCityUnlockProbe013SelectByText",
+            "AccountProfileCityUnlockProbe013Unknown"
+        ]
+    },
+    "AccountProfileCityUnlockProbe013ExistingPanelTitle": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "曼德矿场"
+                ],
+                "roi": [
+                    690,
+                    80,
+                    560,
+                    95
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 1200,
+        "next": "AccountProfileCityUnlockProbe013PanelOcr",
+        "on_error": "AccountProfileCityUnlockProbe013PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe013SelectByTemplate": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "stations/mdkc.png",
+                "threshold": 0.82,
+                "roi": [
+                    80,
+                    100,
+                    1040,
+                    500
+                ],
+                "order_by": "Score"
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    0,
+                    -18,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 200,
+        "timeout": 1200,
+        "next": [
+            "AccountProfileCityUnlockProbe013PanelTitle",
+            "AccountProfileCityUnlockProbe013PanelOcr",
+            "AccountProfileCityUnlockProbe013Unknown"
+        ],
+        "on_error": "AccountProfileCityUnlockProbe013SelectByText"
+    },
+    "AccountProfileCityUnlockProbe013SelectByText": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "曼德矿场"
+                ],
+                "roi": [
+                    0,
+                    80,
+                    1280,
+                    520
+                ],
+                "order_by": "Expected"
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    0,
+                    -18,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 200,
+        "timeout": 1200,
+        "next": [
+            "AccountProfileCityUnlockProbe013PanelTitle",
+            "AccountProfileCityUnlockProbe013PanelOcr",
+            "AccountProfileCityUnlockProbe013Unknown"
+        ],
+        "on_error": "AccountProfileCityUnlockProbe013Unknown"
+    },
+    "AccountProfileCityUnlockProbe013PanelTitle": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "曼德矿场"
+                ],
+                "roi": [
+                    690,
+                    80,
+                    560,
+                    95
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 1200,
+        "next": "AccountProfileCityUnlockProbe013PanelOcr",
+        "on_error": "AccountProfileCityUnlockProbe013PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe013PanelOcr": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "前往目的地",
+                    "立即出发",
+                    "访问城市",
+                    "进入城市",
+                    "当前站点",
+                    "当前城市",
+                    "列车所在站",
+                    "路程",
+                    "发展度",
+                    "声望",
+                    "交易品",
+                    "推荐等级",
+                    "未开放",
+                    "暂未开放",
+                    "未解锁",
+                    "无法前往",
+                    "前往条件",
+                    "尚未开放"
+                ],
+                "roi": [
+                    680,
+                    80,
+                    580,
+                    620
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "曼德矿场"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe013CloseDetail",
+        "on_error": "AccountProfileCityUnlockProbe013PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe013PanelUnknown": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "曼德矿场"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe013CloseDetail"
+    },
+    "AccountProfileCityUnlockProbe013CloseDetail": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    80,
+                    360
+                ]
+            }
+        },
+        "post_delay": 400,
+        "next": "AccountProfileCityUnlockProbe014MoveToCity"
+    },
+    "AccountProfileCityUnlockProbe013Unknown": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "曼德矿场"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe014MoveToCity"
+    },
+    "AccountProfileCityUnlockProbe014MoveToCity": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_move_to_city",
+                "custom_action_param": {
+                    "city": "淘金乐园",
+                    "max_steps": 4,
+                    "drag_distance": 520,
+                    "drag_duration": 900,
+                    "drag_delay": 200,
+                    "click_count": 3,
+                    "click_delay": 200,
+                    "panel_settle_delay": 400
+                }
+            }
+        },
+        "next": [
+            "AccountProfileCityUnlockProbe014ExistingPanelTitle",
+            "AccountProfileCityUnlockProbe014PanelOcr",
+            "AccountProfileCityUnlockProbe014SelectByTemplate",
+            "AccountProfileCityUnlockProbe014SelectByText",
+            "AccountProfileCityUnlockProbe014Unknown"
+        ]
+    },
+    "AccountProfileCityUnlockProbe014ExistingPanelTitle": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "淘金乐园"
+                ],
+                "roi": [
+                    690,
+                    80,
+                    560,
+                    95
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 1200,
+        "next": "AccountProfileCityUnlockProbe014PanelOcr",
+        "on_error": "AccountProfileCityUnlockProbe014PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe014SelectByTemplate": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "stations/tjly.png",
+                "threshold": 0.82,
+                "roi": [
+                    80,
+                    100,
+                    1040,
+                    500
+                ],
+                "order_by": "Score"
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    0,
+                    -18,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 200,
+        "timeout": 1200,
+        "next": [
+            "AccountProfileCityUnlockProbe014PanelTitle",
+            "AccountProfileCityUnlockProbe014PanelOcr",
+            "AccountProfileCityUnlockProbe014Unknown"
+        ],
+        "on_error": "AccountProfileCityUnlockProbe014SelectByText"
+    },
+    "AccountProfileCityUnlockProbe014SelectByText": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "淘金乐园"
+                ],
+                "roi": [
+                    0,
+                    80,
+                    1280,
+                    520
+                ],
+                "order_by": "Expected"
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    0,
+                    -18,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 200,
+        "timeout": 1200,
+        "next": [
+            "AccountProfileCityUnlockProbe014PanelTitle",
+            "AccountProfileCityUnlockProbe014PanelOcr",
+            "AccountProfileCityUnlockProbe014Unknown"
+        ],
+        "on_error": "AccountProfileCityUnlockProbe014Unknown"
+    },
+    "AccountProfileCityUnlockProbe014PanelTitle": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "淘金乐园"
+                ],
+                "roi": [
+                    690,
+                    80,
+                    560,
+                    95
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 1200,
+        "next": "AccountProfileCityUnlockProbe014PanelOcr",
+        "on_error": "AccountProfileCityUnlockProbe014PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe014PanelOcr": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "前往目的地",
+                    "立即出发",
+                    "访问城市",
+                    "进入城市",
+                    "当前站点",
+                    "当前城市",
+                    "列车所在站",
+                    "路程",
+                    "发展度",
+                    "声望",
+                    "交易品",
+                    "推荐等级",
+                    "未开放",
+                    "暂未开放",
+                    "未解锁",
+                    "无法前往",
+                    "前往条件",
+                    "尚未开放"
+                ],
+                "roi": [
+                    680,
+                    80,
+                    580,
+                    620
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "淘金乐园"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe014CloseDetail",
+        "on_error": "AccountProfileCityUnlockProbe014PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe014PanelUnknown": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "淘金乐园"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe014CloseDetail"
+    },
+    "AccountProfileCityUnlockProbe014CloseDetail": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    80,
+                    360
+                ]
+            }
+        },
+        "post_delay": 400,
+        "next": "AccountProfileCityUnlockProbe015MoveToCity"
+    },
+    "AccountProfileCityUnlockProbe014Unknown": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "淘金乐园"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe015MoveToCity"
+    },
+    "AccountProfileCityUnlockProbe015MoveToCity": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_move_to_city",
+                "custom_action_param": {
+                    "city": "荒原站",
+                    "max_steps": 4,
+                    "drag_distance": 520,
+                    "drag_duration": 900,
+                    "drag_delay": 200,
+                    "click_count": 3,
+                    "click_delay": 200,
+                    "panel_settle_delay": 400
+                }
+            }
+        },
+        "next": [
+            "AccountProfileCityUnlockProbe015ExistingPanelTitle",
+            "AccountProfileCityUnlockProbe015PanelOcr",
+            "AccountProfileCityUnlockProbe015SelectByTemplate",
+            "AccountProfileCityUnlockProbe015SelectByText",
+            "AccountProfileCityUnlockProbe015Unknown"
+        ]
+    },
+    "AccountProfileCityUnlockProbe015ExistingPanelTitle": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "荒原站"
+                ],
+                "roi": [
+                    690,
+                    80,
+                    560,
+                    95
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 1200,
+        "next": "AccountProfileCityUnlockProbe015PanelOcr",
+        "on_error": "AccountProfileCityUnlockProbe015PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe015SelectByTemplate": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "stations/hyz.png",
+                "threshold": 0.82,
+                "roi": [
+                    80,
+                    100,
+                    1040,
+                    500
+                ],
+                "order_by": "Score"
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    0,
+                    -18,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 200,
+        "timeout": 1200,
+        "next": [
+            "AccountProfileCityUnlockProbe015PanelTitle",
+            "AccountProfileCityUnlockProbe015PanelOcr",
+            "AccountProfileCityUnlockProbe015Unknown"
+        ],
+        "on_error": "AccountProfileCityUnlockProbe015SelectByText"
+    },
+    "AccountProfileCityUnlockProbe015SelectByText": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "荒原站"
+                ],
+                "roi": [
+                    0,
+                    80,
+                    1280,
+                    520
+                ],
+                "order_by": "Expected"
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    0,
+                    -18,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 200,
+        "timeout": 1200,
+        "next": [
+            "AccountProfileCityUnlockProbe015PanelTitle",
+            "AccountProfileCityUnlockProbe015PanelOcr",
+            "AccountProfileCityUnlockProbe015Unknown"
+        ],
+        "on_error": "AccountProfileCityUnlockProbe015Unknown"
+    },
+    "AccountProfileCityUnlockProbe015PanelTitle": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "荒原站"
+                ],
+                "roi": [
+                    690,
+                    80,
+                    560,
+                    95
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 1200,
+        "next": "AccountProfileCityUnlockProbe015PanelOcr",
+        "on_error": "AccountProfileCityUnlockProbe015PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe015PanelOcr": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "前往目的地",
+                    "立即出发",
+                    "访问城市",
+                    "进入城市",
+                    "当前站点",
+                    "当前城市",
+                    "列车所在站",
+                    "路程",
+                    "发展度",
+                    "声望",
+                    "交易品",
+                    "推荐等级",
+                    "未开放",
+                    "暂未开放",
+                    "未解锁",
+                    "无法前往",
+                    "前往条件",
+                    "尚未开放"
+                ],
+                "roi": [
+                    680,
+                    80,
+                    580,
+                    620
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "荒原站"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe015CloseDetail",
+        "on_error": "AccountProfileCityUnlockProbe015PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe015PanelUnknown": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "荒原站"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe015CloseDetail"
+    },
+    "AccountProfileCityUnlockProbe015CloseDetail": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    80,
+                    360
+                ]
+            }
+        },
+        "post_delay": 400,
+        "next": "AccountProfileCityUnlockProbe016MoveToCity"
+    },
+    "AccountProfileCityUnlockProbe015Unknown": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "荒原站"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe016MoveToCity"
+    },
+    "AccountProfileCityUnlockProbe016MoveToCity": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_move_to_city",
+                "custom_action_param": {
+                    "city": "云岫桥基地",
+                    "max_steps": 4,
+                    "drag_distance": 520,
+                    "drag_duration": 900,
+                    "drag_delay": 200,
+                    "click_count": 3,
+                    "click_delay": 200,
+                    "panel_settle_delay": 400
+                }
+            }
+        },
+        "next": [
+            "AccountProfileCityUnlockProbe016ExistingPanelTitle",
+            "AccountProfileCityUnlockProbe016PanelOcr",
+            "AccountProfileCityUnlockProbe016SelectByTemplate",
+            "AccountProfileCityUnlockProbe016SelectByText",
+            "AccountProfileCityUnlockProbe016Unknown"
+        ]
+    },
+    "AccountProfileCityUnlockProbe016ExistingPanelTitle": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "云岫桥基地",
+                    "云桥基地",
+                    "岫桥基地",
+                    "云岫桥"
+                ],
+                "roi": [
+                    690,
+                    80,
+                    560,
+                    95
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 1200,
+        "next": "AccountProfileCityUnlockProbe016PanelOcr",
+        "on_error": "AccountProfileCityUnlockProbe016PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe016SelectByTemplate": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "stations/yxqjd.png",
+                "threshold": 0.82,
+                "roi": [
+                    80,
+                    100,
+                    1040,
+                    500
+                ],
+                "order_by": "Score"
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    0,
+                    -18,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 200,
+        "timeout": 1200,
+        "next": [
+            "AccountProfileCityUnlockProbe016PanelTitle",
+            "AccountProfileCityUnlockProbe016PanelOcr",
+            "AccountProfileCityUnlockProbe016Unknown"
+        ],
+        "on_error": "AccountProfileCityUnlockProbe016SelectByText"
+    },
+    "AccountProfileCityUnlockProbe016SelectByText": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "云岫桥基地",
+                    "云桥基地",
+                    "岫桥基地",
+                    "云岫桥"
+                ],
+                "roi": [
+                    0,
+                    80,
+                    1280,
+                    520
+                ],
+                "order_by": "Expected"
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    0,
+                    -18,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 200,
+        "timeout": 1200,
+        "next": [
+            "AccountProfileCityUnlockProbe016PanelTitle",
+            "AccountProfileCityUnlockProbe016PanelOcr",
+            "AccountProfileCityUnlockProbe016Unknown"
+        ],
+        "on_error": "AccountProfileCityUnlockProbe016Unknown"
+    },
+    "AccountProfileCityUnlockProbe016PanelTitle": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "云岫桥基地",
+                    "云桥基地",
+                    "岫桥基地",
+                    "云岫桥"
+                ],
+                "roi": [
+                    690,
+                    80,
+                    560,
+                    95
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 1200,
+        "next": "AccountProfileCityUnlockProbe016PanelOcr",
+        "on_error": "AccountProfileCityUnlockProbe016PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe016PanelOcr": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "前往目的地",
+                    "立即出发",
+                    "访问城市",
+                    "进入城市",
+                    "当前站点",
+                    "当前城市",
+                    "列车所在站",
+                    "路程",
+                    "发展度",
+                    "声望",
+                    "交易品",
+                    "推荐等级",
+                    "未开放",
+                    "暂未开放",
+                    "未解锁",
+                    "无法前往",
+                    "前往条件",
+                    "尚未开放"
+                ],
+                "roi": [
+                    680,
+                    80,
+                    580,
+                    620
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "云岫桥基地"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe016CloseDetail",
+        "on_error": "AccountProfileCityUnlockProbe016PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe016PanelUnknown": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "云岫桥基地"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe016CloseDetail"
+    },
+    "AccountProfileCityUnlockProbe016CloseDetail": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    80,
+                    360
+                ]
+            }
+        },
+        "post_delay": 400,
+        "next": "AccountProfileCityUnlockProbe017MoveToCity"
+    },
+    "AccountProfileCityUnlockProbe016Unknown": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "云岫桥基地"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe017MoveToCity"
+    },
+    "AccountProfileCityUnlockProbe017MoveToCity": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_move_to_city",
+                "custom_action_param": {
+                    "city": "栖羽站",
+                    "max_steps": 4,
+                    "drag_distance": 520,
+                    "drag_duration": 900,
+                    "drag_delay": 200,
+                    "click_count": 3,
+                    "click_delay": 200,
+                    "panel_settle_delay": 400
+                }
+            }
+        },
+        "next": [
+            "AccountProfileCityUnlockProbe017ExistingPanelTitle",
+            "AccountProfileCityUnlockProbe017PanelOcr",
+            "AccountProfileCityUnlockProbe017SelectByTemplate",
+            "AccountProfileCityUnlockProbe017SelectByText",
+            "AccountProfileCityUnlockProbe017Unknown"
+        ]
+    },
+    "AccountProfileCityUnlockProbe017ExistingPanelTitle": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "栖羽站"
+                ],
+                "roi": [
+                    690,
+                    80,
+                    560,
+                    95
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 1200,
+        "next": "AccountProfileCityUnlockProbe017PanelOcr",
+        "on_error": "AccountProfileCityUnlockProbe017PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe017SelectByTemplate": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "stations/xyz.png",
+                "threshold": 0.82,
+                "roi": [
+                    80,
+                    100,
+                    1040,
+                    500
+                ],
+                "order_by": "Score"
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    0,
+                    -18,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 200,
+        "timeout": 1200,
+        "next": [
+            "AccountProfileCityUnlockProbe017PanelTitle",
+            "AccountProfileCityUnlockProbe017PanelOcr",
+            "AccountProfileCityUnlockProbe017Unknown"
+        ],
+        "on_error": "AccountProfileCityUnlockProbe017SelectByText"
+    },
+    "AccountProfileCityUnlockProbe017SelectByText": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "栖羽站"
+                ],
+                "roi": [
+                    0,
+                    80,
+                    1280,
+                    520
+                ],
+                "order_by": "Expected"
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    0,
+                    -18,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 200,
+        "timeout": 1200,
+        "next": [
+            "AccountProfileCityUnlockProbe017PanelTitle",
+            "AccountProfileCityUnlockProbe017PanelOcr",
+            "AccountProfileCityUnlockProbe017Unknown"
+        ],
+        "on_error": "AccountProfileCityUnlockProbe017Unknown"
+    },
+    "AccountProfileCityUnlockProbe017PanelTitle": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "栖羽站"
+                ],
+                "roi": [
+                    690,
+                    80,
+                    560,
+                    95
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 1200,
+        "next": "AccountProfileCityUnlockProbe017PanelOcr",
+        "on_error": "AccountProfileCityUnlockProbe017PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe017PanelOcr": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "前往目的地",
+                    "立即出发",
+                    "访问城市",
+                    "进入城市",
+                    "当前站点",
+                    "当前城市",
+                    "列车所在站",
+                    "路程",
+                    "发展度",
+                    "声望",
+                    "交易品",
+                    "推荐等级",
+                    "未开放",
+                    "暂未开放",
+                    "未解锁",
+                    "无法前往",
+                    "前往条件",
+                    "尚未开放"
+                ],
+                "roi": [
+                    680,
+                    80,
+                    580,
+                    620
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "栖羽站"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe017CloseDetail",
+        "on_error": "AccountProfileCityUnlockProbe017PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe017PanelUnknown": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "栖羽站"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe017CloseDetail"
+    },
+    "AccountProfileCityUnlockProbe017CloseDetail": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    80,
+                    360
+                ]
+            }
+        },
+        "post_delay": 400,
+        "next": "AccountProfileCityUnlockProbe018MoveToCity"
+    },
+    "AccountProfileCityUnlockProbe017Unknown": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "栖羽站"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe018MoveToCity"
+    },
+    "AccountProfileCityUnlockProbe018MoveToCity": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_move_to_city",
+                "custom_action_param": {
+                    "city": "岚心城",
+                    "max_steps": 4,
+                    "drag_distance": 520,
+                    "drag_duration": 900,
+                    "drag_delay": 200,
+                    "click_count": 3,
+                    "click_delay": 200,
+                    "panel_settle_delay": 400
+                }
+            }
+        },
+        "next": [
+            "AccountProfileCityUnlockProbe018ExistingPanelTitle",
+            "AccountProfileCityUnlockProbe018PanelOcr",
+            "AccountProfileCityUnlockProbe018SelectByTemplate",
+            "AccountProfileCityUnlockProbe018SelectByText",
+            "AccountProfileCityUnlockProbe018Unknown"
+        ]
+    },
+    "AccountProfileCityUnlockProbe018ExistingPanelTitle": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "岚心城"
+                ],
+                "roi": [
+                    690,
+                    80,
+                    560,
+                    95
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 1200,
+        "next": "AccountProfileCityUnlockProbe018PanelOcr",
+        "on_error": "AccountProfileCityUnlockProbe018PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe018SelectByTemplate": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "stations/lxc.png",
+                "threshold": 0.82,
+                "roi": [
+                    80,
+                    100,
+                    1040,
+                    500
+                ],
+                "order_by": "Score"
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    0,
+                    -18,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 200,
+        "timeout": 1200,
+        "next": [
+            "AccountProfileCityUnlockProbe018PanelTitle",
+            "AccountProfileCityUnlockProbe018PanelOcr",
+            "AccountProfileCityUnlockProbe018Unknown"
+        ],
+        "on_error": "AccountProfileCityUnlockProbe018SelectByText"
+    },
+    "AccountProfileCityUnlockProbe018SelectByText": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "岚心城"
+                ],
+                "roi": [
+                    0,
+                    80,
+                    1280,
+                    520
+                ],
+                "order_by": "Expected"
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    0,
+                    -18,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 200,
+        "timeout": 1200,
+        "next": [
+            "AccountProfileCityUnlockProbe018PanelTitle",
+            "AccountProfileCityUnlockProbe018PanelOcr",
+            "AccountProfileCityUnlockProbe018Unknown"
+        ],
+        "on_error": "AccountProfileCityUnlockProbe018Unknown"
+    },
+    "AccountProfileCityUnlockProbe018PanelTitle": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "岚心城"
+                ],
+                "roi": [
+                    690,
+                    80,
+                    560,
+                    95
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 1200,
+        "next": "AccountProfileCityUnlockProbe018PanelOcr",
+        "on_error": "AccountProfileCityUnlockProbe018PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe018PanelOcr": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "前往目的地",
+                    "立即出发",
+                    "访问城市",
+                    "进入城市",
+                    "当前站点",
+                    "当前城市",
+                    "列车所在站",
+                    "路程",
+                    "发展度",
+                    "声望",
+                    "交易品",
+                    "推荐等级",
+                    "未开放",
+                    "暂未开放",
+                    "未解锁",
+                    "无法前往",
+                    "前往条件",
+                    "尚未开放"
+                ],
+                "roi": [
+                    680,
+                    80,
+                    580,
+                    620
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "岚心城"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe018CloseDetail",
+        "on_error": "AccountProfileCityUnlockProbe018PanelUnknown"
+    },
+    "AccountProfileCityUnlockProbe018PanelUnknown": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "岚心城"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe018CloseDetail"
+    },
+    "AccountProfileCityUnlockProbe018CloseDetail": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    80,
+                    360
+                ]
+            }
+        },
+        "post_delay": 400,
+        "next": "AccountProfileCityUnlockComplete"
+    },
+    "AccountProfileCityUnlockProbe018Unknown": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_probe",
+                "custom_action_param": {
+                    "city": "岚心城"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockComplete"
+    },
+    "AccountProfileCityUnlockComplete": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_complete"
+            }
+        },
+        "next": "AccountProfileCityUnlockReturnHome"
+    },
+    "AccountProfileCityUnlockReturnHome": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "go_home.png",
+                "roi": [
+                    154,
+                    9,
+                    89,
+                    58
+                ],
+                "threshold": 0.9
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 1000,
+        "next": "AccountProfileCityUnlockMainMapReady",
+        "on_error": "AccountProfileCityUnlockReturnBack"
+    },
+    "AccountProfileCityUnlockReturnBack": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "page_back.png",
+                "roi": [
+                    0,
+                    0,
+                    170,
+                    80
+                ],
+                "threshold": 0.9
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 900,
+        "next": "AccountProfileCityUnlockMainMapReady",
+        "on_error": "AccountProfileCityUnlockDone"
+    },
+    "AccountProfileCityUnlockMainMapReady": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "main_map.png",
+                "threshold": 0.96
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "next": "AccountProfileCityUnlockDone",
+        "on_error": "AccountProfileCityUnlockDone"
+    },
+    "AccountProfileCityUnlockDone": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "DoNothing"
+        }
+    }
+}

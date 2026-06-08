@@ -1,0 +1,237 @@
+{
+    "AccountProfileCargoInit": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_cargo_start"
+            }
+        },
+        "next": "AccountProfileCargoCapacityStart"
+    },
+    "AccountProfileCargoCapacityStart": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "访问城市",
+                    "进入城市",
+                    "当前城市"
+                ],
+                "roi": [
+                    1000,
+                    360,
+                    280,
+                    260
+                ]
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 1800,
+        "next": "AccountProfileCargoCurrentCityReady",
+        "on_error": "AccountProfileCargoOpenCurrentCityFallback"
+    },
+    "AccountProfileCargoOpenCurrentCityFallback": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "main_map.png",
+                "threshold": 0.95
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    1270,
+                    494
+                ]
+            }
+        },
+        "post_delay": 1800,
+        "next": "AccountProfileCargoCurrentCityReady",
+        "on_error": "StateRecoveryStart"
+    },
+    "AccountProfileCargoCurrentCityReady": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "fame.png",
+                "roi": [
+                    25,
+                    634,
+                    74,
+                    73
+                ],
+                "threshold": 0.95
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "next": "CityTradeOutletOpenStart",
+        "on_error": "CityTradeOutletOpenStart"
+    },
+    "AccountProfileCargoTapTradeOutlet": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": "交易所"
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    0,
+                    65,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 1200,
+        "next": "AccountProfileCargoTradeMenuReady",
+        "on_error": "AccountProfileCargoReturnHome"
+    },
+    "AccountProfileCargoTradeMenuReady": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "我要买",
+                    "我要卖"
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "next": "AccountProfileCargoOpenBuyPage",
+        "on_error": "AccountProfileCargoReturnHome"
+    },
+    "AccountProfileCargoOpenBuyPage": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": "我要买"
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 1200,
+        "next": "AccountProfileCargoBuyPageReady",
+        "on_error": "AccountProfileCargoReturnHome"
+    },
+    "AccountProfileCargoBuyPageReady": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "预计买入",
+                    "全部买入",
+                    "全部取消"
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "next": "AccountProfileCargoCapacityOcr",
+        "on_error": "AccountProfileCargoCapacityOcrFallback"
+    },
+    "AccountProfileCargoCapacityOcr": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "载货量",
+                    "\\d+\\s*/\\s*\\d+",
+                    "\\d{3,8}"
+                ],
+                "roi": [
+                    850,
+                    360,
+                    410,
+                    85
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_cargo_read"
+            }
+        },
+        "next": "AccountProfileCargoReturnHome",
+        "on_error": "AccountProfileCargoCapacityOcrFallback"
+    },
+    "AccountProfileCargoCapacityOcrFallback": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "载货量",
+                    "\\d+\\s*/\\s*\\d+",
+                    "\\d{3,8}"
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_cargo_read"
+            }
+        },
+        "next": "AccountProfileCargoReturnHome",
+        "on_error": "AccountProfileCargoReturnHome"
+    },
+    "AccountProfileCargoReturnHome": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "go_home.png",
+                "roi": [
+                    154,
+                    9,
+                    89,
+                    58
+                ],
+                "threshold": 0.9
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 1000,
+        "next": "AccountProfileCargoMainMapReady",
+        "on_error": "AccountProfileCargoDone"
+    },
+    "AccountProfileCargoMainMapReady": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "main_map.png",
+                "threshold": 0.95
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "next": "AccountProfileCargoDone",
+        "on_error": "AccountProfileCargoDone"
+    },
+    "AccountProfileCargoDone": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "DoNothing"
+        }
+    }
+}

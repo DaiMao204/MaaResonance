@@ -1,0 +1,561 @@
+{
+    "CityTradeOutletOpenStart": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "next": [
+            "CityTradeOutletCloseSettlementReport",
+            "CityTradeOutletCloseStrengthPage",
+            "CityTradeOutletMenuReady",
+            "CityTradeOutletCityReady"
+        ]
+    },
+    "CityTradeOutletCloseSettlementReport": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "买入结算报告",
+                    "卖出结算报告",
+                    "出售结算报告",
+                    "触碰空白区域退出"
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    640,
+                    680
+                ]
+            }
+        },
+        "post_delay": 1000,
+        "next": "CityTradeOutletOpenStart"
+    },
+    "CityTradeOutletCloseStrengthPage": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "FATIGUE",
+                    "请选择恢复疲劳值方式",
+                    "前往便当柜",
+                    "列车长疲劳值"
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    83,
+                    36
+                ]
+            }
+        },
+        "post_delay": 1200,
+        "next": "CityTradeOutletOpenStart"
+    },
+    "CityTradeOutletMenuReady": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "我要买",
+                    "我要卖"
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "next": "CityTradeOutletOpenDone"
+    },
+    "CityTradeOutletCityReady": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "fame.png",
+                "roi": [
+                    25,
+                    634,
+                    74,
+                    73
+                ],
+                "threshold": 0.95
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "next": [
+            "CityTradeOutletTapByOcr001",
+            "CityTradeOutletSwipeSlight"
+        ],
+        "on_error": "CityTradeOutletOpenFailed"
+    },
+    "CityTradeOutletTapByOcr001": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": ".*交易所",
+                "roi": [
+                    0,
+                    80,
+                    1100,
+                    560
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    0,
+                    65,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 1200,
+        "next": "CityTradeOutletWaitMenuAfterTap001"
+    },
+    "CityTradeOutletWaitMenuAfterTap001": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "post_delay": 900,
+        "next": [
+            "CityTradeOutletMenuReadyAfterTap001",
+            "CityTradeOutletSwipeSlight"
+        ]
+    },
+    "CityTradeOutletMenuReadyAfterTap001": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "我要买",
+                    "我要卖"
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "next": [
+            "CityTradeOutletOpenDone",
+            "CityTradeOutletSwipeSlight"
+        ]
+    },
+    "CityTradeOutletSwipeSlight": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "fame.png",
+                "roi": [
+                    25,
+                    634,
+                    74,
+                    73
+                ],
+                "threshold": 0.95
+            }
+        },
+        "action": {
+            "type": "Swipe",
+            "param": {
+                "begin": [
+                    457,
+                    340
+                ],
+                "end": [
+                    457,
+                    369
+                ],
+                "duration": 500
+            }
+        },
+        "post_delay": 650,
+        "next": [
+            "CityTradeOutletTapByOcr002",
+            "CityTradeOutletSwipeLeft"
+        ],
+        "on_error": "CityTradeOutletOpenFailed"
+    },
+    "CityTradeOutletTapByOcr002": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": ".*交易所",
+                "roi": [
+                    0,
+                    80,
+                    1100,
+                    560
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    0,
+                    65,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 1200,
+        "next": "CityTradeOutletWaitMenuAfterTap002"
+    },
+    "CityTradeOutletWaitMenuAfterTap002": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "post_delay": 900,
+        "next": [
+            "CityTradeOutletMenuReadyAfterTap002",
+            "CityTradeOutletSwipeLeft"
+        ]
+    },
+    "CityTradeOutletMenuReadyAfterTap002": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "我要买",
+                    "我要卖"
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "next": [
+            "CityTradeOutletOpenDone",
+            "CityTradeOutletSwipeLeft"
+        ]
+    },
+    "CityTradeOutletSwipeLeft": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "fame.png",
+                "roi": [
+                    25,
+                    634,
+                    74,
+                    73
+                ],
+                "threshold": 0.95
+            }
+        },
+        "action": {
+            "type": "Swipe",
+            "param": {
+                "begin": [
+                    400,
+                    340
+                ],
+                "end": [
+                    457,
+                    340
+                ],
+                "duration": 500
+            }
+        },
+        "post_delay": 650,
+        "next": [
+            "CityTradeOutletTapByOcr003",
+            "CityTradeOutletSwipeRight"
+        ],
+        "on_error": "CityTradeOutletOpenFailed"
+    },
+    "CityTradeOutletTapByOcr003": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": ".*交易所",
+                "roi": [
+                    0,
+                    80,
+                    1100,
+                    560
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    0,
+                    65,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 1200,
+        "next": "CityTradeOutletWaitMenuAfterTap003"
+    },
+    "CityTradeOutletWaitMenuAfterTap003": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "post_delay": 900,
+        "next": [
+            "CityTradeOutletMenuReadyAfterTap003",
+            "CityTradeOutletSwipeRight"
+        ]
+    },
+    "CityTradeOutletMenuReadyAfterTap003": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "我要买",
+                    "我要卖"
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "next": [
+            "CityTradeOutletOpenDone",
+            "CityTradeOutletSwipeRight"
+        ]
+    },
+    "CityTradeOutletSwipeRight": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "fame.png",
+                "roi": [
+                    25,
+                    634,
+                    74,
+                    73
+                ],
+                "threshold": 0.95
+            }
+        },
+        "action": {
+            "type": "Swipe",
+            "param": {
+                "begin": [
+                    969,
+                    369
+                ],
+                "end": [
+                    457,
+                    340
+                ],
+                "duration": 500
+            }
+        },
+        "post_delay": 650,
+        "next": [
+            "CityTradeOutletTapByOcr004",
+            "CityTradeOutletSwipeDown"
+        ],
+        "on_error": "CityTradeOutletOpenFailed"
+    },
+    "CityTradeOutletTapByOcr004": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": ".*交易所",
+                "roi": [
+                    0,
+                    80,
+                    1100,
+                    560
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    0,
+                    65,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 1200,
+        "next": "CityTradeOutletWaitMenuAfterTap004"
+    },
+    "CityTradeOutletWaitMenuAfterTap004": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "post_delay": 900,
+        "next": [
+            "CityTradeOutletMenuReadyAfterTap004",
+            "CityTradeOutletSwipeDown"
+        ]
+    },
+    "CityTradeOutletMenuReadyAfterTap004": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "我要买",
+                    "我要卖"
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "next": [
+            "CityTradeOutletOpenDone",
+            "CityTradeOutletSwipeDown"
+        ]
+    },
+    "CityTradeOutletSwipeDown": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "fame.png",
+                "roi": [
+                    25,
+                    634,
+                    74,
+                    73
+                ],
+                "threshold": 0.95
+            }
+        },
+        "action": {
+            "type": "Swipe",
+            "param": {
+                "begin": [
+                    641,
+                    246
+                ],
+                "end": [
+                    637,
+                    615
+                ],
+                "duration": 500
+            }
+        },
+        "post_delay": 650,
+        "next": [
+            "CityTradeOutletTapByOcr005",
+            "CityTradeOutletOpenFailed"
+        ],
+        "on_error": "CityTradeOutletOpenFailed"
+    },
+    "CityTradeOutletTapByOcr005": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": ".*交易所",
+                "roi": [
+                    0,
+                    80,
+                    1100,
+                    560
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target_offset": [
+                    0,
+                    65,
+                    0,
+                    0
+                ]
+            }
+        },
+        "post_delay": 1200,
+        "next": "CityTradeOutletWaitMenuAfterTap005A"
+    },
+    "CityTradeOutletWaitMenuAfterTap005A": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "post_delay": 900,
+        "next": [
+            "CityTradeOutletMenuReadyAfterTap005",
+            "CityTradeOutletWaitMenuAfterTap005B"
+        ]
+    },
+    "CityTradeOutletWaitMenuAfterTap005B": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "post_delay": 900,
+        "next": [
+            "CityTradeOutletMenuReadyAfterTap005",
+            "CityTradeOutletOpenFailed"
+        ]
+    },
+    "CityTradeOutletMenuReadyAfterTap005": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "我要买",
+                    "我要卖"
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "next": [
+            "CityTradeOutletOpenDone",
+            "CityTradeOutletOpenFailed"
+        ]
+    },
+    "CityTradeOutletOpenDone": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "DoNothing"
+        }
+    },
+    "CityTradeOutletOpenFailed": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "DoNothing"
+        }
+    }
+}

@@ -172,6 +172,73 @@ def validate_file(file_path, validator):
         return False
 
 
+def collect_template_refs(data):
+    refs = []
+
+    def walk(value):
+        if isinstance(value, dict):
+            for key, child in value.items():
+                if key == "template":
+                    if isinstance(child, str):
+                        refs.append(child)
+                    elif isinstance(child, list):
+                        refs.extend(item for item in child if isinstance(item, str))
+                walk(child)
+        elif isinstance(value, list):
+            for item in value:
+                walk(item)
+
+    walk(data)
+    return refs
+
+
+def validate_template_refs(file_path, image_roots):
+    try:
+        data = load_jsonc(file_path)
+    except Exception as e:
+        print(f"\n❌ Error loading {file_path} for template validation: {e}")
+        print(f"::error file={file_path},title=Template Validation Error::{e}")
+        return False
+
+    ok = True
+    for ref in collect_template_refs(data):
+        normalized = ref.replace("\\", "/")
+        if normalized.startswith("./"):
+            normalized = normalized[2:]
+        if "{" in normalized or "}" in normalized:
+            continue
+
+        candidates = [normalized]
+        if not normalized.endswith(".png"):
+            candidates.append(f"{normalized}.png")
+
+        found = False
+        for image_root in image_roots:
+            for candidate in candidates:
+                if (image_root / candidate).exists():
+                    found = True
+                    break
+            if found:
+                break
+
+        if not found:
+            ok = False
+            line_num = find_line_number(file_path, "template")
+            message = f"template image not found: {ref}"
+            if line_num:
+                print(
+                    f"::error file={file_path},line={line_num},title=Template Validation Error::{message}"
+                )
+            else:
+                print(
+                    f"::error file={file_path},title=Template Validation Error::{message}"
+                )
+
+    if ok:
+        print(f"✓ templates {file_path}")
+    return ok
+
+
 def create_validator(schema, schema_store):
     """创建 validator，使用新的 referencing API 或回退到 RefResolver"""
     ValidatorClass = get_validator_class(schema)
@@ -242,8 +309,8 @@ def main():
         "--task-dirs",
         type=str,
         nargs="*",
-        default=[],
-        help="Directories containing task files to validate against interface_import.schema.json (default: none)",
+        default=["assets/resource/tasks"],
+        help="Directories containing task files to validate against interface_import.schema.json (default: assets/resource/tasks)",
     )
 
     args = parser.parse_args()
@@ -279,6 +346,7 @@ def main():
 
     # 准备排除目录列表
     exclude_paths = [Path(d).resolve() for d in args.exclude_dirs]
+    exclude_paths.extend(Path(d).resolve() for d in args.task_dirs)
 
     def is_excluded(file_path):
         """检查文件是否在排除目录中"""
@@ -363,6 +431,40 @@ def main():
             print(
                 f"Warning: Task schema {task_schema_path} does not exist, skipping task validation..."
             )
+
+    print("\nValidating template references...")
+    image_roots = []
+    for resource_dir in args.resource_dirs:
+        resource_path = Path(resource_dir)
+        image_roots.extend(
+            [
+                resource_path / "base" / "image",
+                resource_path / "base" / "template",
+                resource_path / "image",
+                resource_path / "template",
+            ]
+        )
+    image_roots = [path for path in image_roots if path.exists()]
+
+    template_files = []
+    for resource_dir in args.resource_dirs:
+        resource_path = Path(resource_dir)
+        if resource_path.exists():
+            template_files.extend(
+                path for path in resource_path.rglob("*.json") if not is_excluded(path)
+            )
+            template_files.extend(
+                path for path in resource_path.rglob("*.jsonc") if not is_excluded(path)
+            )
+    for task_dir in args.task_dirs:
+        task_path = Path(task_dir)
+        if task_path.exists():
+            template_files.extend(task_path.rglob("*.json"))
+            template_files.extend(task_path.rglob("*.jsonc"))
+
+    for file_path in sorted(set(template_files)):
+        if not validate_template_refs(file_path, image_roots):
+            all_valid = False
 
     if all_valid:
         print("\n✅ All validations passed!")

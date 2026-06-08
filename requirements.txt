@@ -1,0 +1,5 @@
+maafw
+numpy
+pydantic
+requests
+loguru

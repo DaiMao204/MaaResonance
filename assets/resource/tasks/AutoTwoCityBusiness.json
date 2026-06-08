@@ -1,0 +1,872 @@
+{
+    "task": [
+        {
+            "name": "AutoTwoCityBusiness",
+            "label": "自动双城跑商",
+            "entry": "RunAutoTwoCityBusiness",
+            "group": [
+                "trade"
+            ],
+            "resource": [
+                "official"
+            ],
+            "controller": [
+                "ADB"
+            ],
+            "pipeline_override": {
+                "StateRecoveryComplete": {
+                    "next": "ManualTwoCityBusinessStateRecoveryCompleteDispatch"
+                },
+                "StateRecoveryFailed": {
+                    "next": "ManualTwoCityBusinessTradeEntryFailed"
+                },
+                "CityTradeOutletOpenDone": {
+                    "next": "ManualTwoCityBusinessTradeOutletOpenDoneDispatch"
+                },
+                "CityTradeOutletOpenFailed": {
+                    "next": "ManualTwoCityBusinessTradeOutletOpenFailedDispatch"
+                },
+                "AccountProfileReadStart": {
+                    "next": "AccountProfileUidRead"
+                },
+                "AccountProfileUidRead": {
+                    "next": "AccountProfileCargoInit",
+                    "on_error": "AccountProfileCargoInit"
+                },
+                "AccountProfileCargoDone": {
+                    "next": "AccountProfilePrestigeStart"
+                },
+                "AccountProfilePrestigeStart": {
+                    "recognition": {
+                        "type": "TemplateMatch",
+                        "param": {
+                            "template": "main_map.png",
+                            "threshold": 0.95
+                        }
+                    }
+                },
+                "AccountProfilePrestigeDone": {
+                    "next": "AccountProfileCityUnlockStart"
+                },
+                "AccountProfileCityUnlockDone": {
+                    "next": "AccountProfileRoleResonanceStart"
+                },
+                "AccountProfileRoleResonanceStart": {
+                    "recognition": "TemplateMatch",
+                    "template": "main_map.png",
+                    "threshold": 0.95
+                },
+                "AccountProfileRoleResonanceDone": {
+                    "next": "ManualTwoCityBusinessAccountProfileWarmupDone"
+                },
+                "ManualTwoCityBusinessSetMedicineLimits": {
+                    "next": "AutoTwoCityBusinessCalculate"
+                }
+            },
+            "option": [
+                "AutoTwoCityPriorityCity1",
+                "AutoTwoCityPriorityCity2",
+                "AutoTwoCityExcludeCities",
+                "AutoTwoCityPlannerParams",
+                "AutoTwoCityWulinyuanPriority",
+                "ManualTwoCityRunMode",
+                "ManualTwoCityAccountProfileReadMode",
+                "ManualTwoCityAutoImpactDrill",
+                "ManualTwoCityAutoSpeedProjectile",
+                "ManualTwoCityAutoDrink",
+                "ManualTwoCityAutoBento",
+                "ManualTwoCityUseMedicine"
+            ]
+        }
+    ],
+    "option": {
+        "AutoTwoCityPriorityCity1": {
+            "type": "select",
+            "label": "优先城市一",
+            "description": "可选。自动规划出的双城线路必须包含选中的优先城市。",
+            "default_case": "none",
+            "cases": [
+                {
+                    "name": "none",
+                    "label": "无"
+                },
+                {
+                    "name": "7号自由港",
+                    "label": "7号自由港",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPriorityCities": {
+                            "custom_action_param": {
+                                "priority_city_slot_1": "7号自由港"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "云岫桥基地",
+                    "label": "云岫桥基地",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPriorityCities": {
+                            "custom_action_param": {
+                                "priority_city_slot_1": "云岫桥基地"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "修格里城",
+                    "label": "修格里城",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPriorityCities": {
+                            "custom_action_param": {
+                                "priority_city_slot_1": "修格里城"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "塔图站",
+                    "label": "塔图站",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPriorityCities": {
+                            "custom_action_param": {
+                                "priority_city_slot_1": "塔图站"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "岚心城",
+                    "label": "岚心城",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPriorityCities": {
+                            "custom_action_param": {
+                                "priority_city_slot_1": "岚心城"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "曼德矿场",
+                    "label": "曼德矿场",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPriorityCities": {
+                            "custom_action_param": {
+                                "priority_city_slot_1": "曼德矿场"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "栖羽站",
+                    "label": "栖羽站",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPriorityCities": {
+                            "custom_action_param": {
+                                "priority_city_slot_1": "栖羽站"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "武林源",
+                    "label": "武林源",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPriorityCities": {
+                            "custom_action_param": {
+                                "priority_city_slot_1": "武林源"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "汇流塔",
+                    "label": "汇流塔",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPriorityCities": {
+                            "custom_action_param": {
+                                "priority_city_slot_1": "汇流塔"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "海角城",
+                    "label": "海角城",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPriorityCities": {
+                            "custom_action_param": {
+                                "priority_city_slot_1": "海角城"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "淘金乐园",
+                    "label": "淘金乐园",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPriorityCities": {
+                            "custom_action_param": {
+                                "priority_city_slot_1": "淘金乐园"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "澄明数据中心",
+                    "label": "澄明数据中心",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPriorityCities": {
+                            "custom_action_param": {
+                                "priority_city_slot_1": "澄明数据中心"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "维蒂林场",
+                    "label": "维蒂林场",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPriorityCities": {
+                            "custom_action_param": {
+                                "priority_city_slot_1": "维蒂林场"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "荒原站",
+                    "label": "荒原站",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPriorityCities": {
+                            "custom_action_param": {
+                                "priority_city_slot_1": "荒原站"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "贡露城",
+                    "label": "贡露城",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPriorityCities": {
+                            "custom_action_param": {
+                                "priority_city_slot_1": "贡露城"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "远星大桥",
+                    "label": "远星大桥",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPriorityCities": {
+                            "custom_action_param": {
+                                "priority_city_slot_1": "远星大桥"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "铁盟哨站",
+                    "label": "铁盟哨站",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPriorityCities": {
+                            "custom_action_param": {
+                                "priority_city_slot_1": "铁盟哨站"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "阿妮塔发射中心",
+                    "label": "阿妮塔发射中心",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPriorityCities": {
+                            "custom_action_param": {
+                                "priority_city_slot_1": "阿妮塔发射中心"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "阿妮塔战备工厂",
+                    "label": "阿妮塔战备工厂",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPriorityCities": {
+                            "custom_action_param": {
+                                "priority_city_slot_1": "阿妮塔战备工厂"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "阿妮塔能源研究所",
+                    "label": "阿妮塔能源研究所",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPriorityCities": {
+                            "custom_action_param": {
+                                "priority_city_slot_1": "阿妮塔能源研究所"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "黑月游乐城",
+                    "label": "黑月游乐城",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPriorityCities": {
+                            "custom_action_param": {
+                                "priority_city_slot_1": "黑月游乐城"
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "AutoTwoCityPriorityCity2": {
+            "type": "select",
+            "label": "优先城市二",
+            "description": "可选。自动规划出的双城线路必须包含选中的优先城市。",
+            "default_case": "none",
+            "cases": [
+                {
+                    "name": "none",
+                    "label": "无"
+                },
+                {
+                    "name": "7号自由港",
+                    "label": "7号自由港",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPriorityCities": {
+                            "custom_action_param": {
+                                "priority_city_slot_2": "7号自由港"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "云岫桥基地",
+                    "label": "云岫桥基地",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPriorityCities": {
+                            "custom_action_param": {
+                                "priority_city_slot_2": "云岫桥基地"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "修格里城",
+                    "label": "修格里城",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPriorityCities": {
+                            "custom_action_param": {
+                                "priority_city_slot_2": "修格里城"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "塔图站",
+                    "label": "塔图站",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPriorityCities": {
+                            "custom_action_param": {
+                                "priority_city_slot_2": "塔图站"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "岚心城",
+                    "label": "岚心城",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPriorityCities": {
+                            "custom_action_param": {
+                                "priority_city_slot_2": "岚心城"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "曼德矿场",
+                    "label": "曼德矿场",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPriorityCities": {
+                            "custom_action_param": {
+                                "priority_city_slot_2": "曼德矿场"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "栖羽站",
+                    "label": "栖羽站",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPriorityCities": {
+                            "custom_action_param": {
+                                "priority_city_slot_2": "栖羽站"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "武林源",
+                    "label": "武林源",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPriorityCities": {
+                            "custom_action_param": {
+                                "priority_city_slot_2": "武林源"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "汇流塔",
+                    "label": "汇流塔",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPriorityCities": {
+                            "custom_action_param": {
+                                "priority_city_slot_2": "汇流塔"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "海角城",
+                    "label": "海角城",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPriorityCities": {
+                            "custom_action_param": {
+                                "priority_city_slot_2": "海角城"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "淘金乐园",
+                    "label": "淘金乐园",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPriorityCities": {
+                            "custom_action_param": {
+                                "priority_city_slot_2": "淘金乐园"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "澄明数据中心",
+                    "label": "澄明数据中心",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPriorityCities": {
+                            "custom_action_param": {
+                                "priority_city_slot_2": "澄明数据中心"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "维蒂林场",
+                    "label": "维蒂林场",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPriorityCities": {
+                            "custom_action_param": {
+                                "priority_city_slot_2": "维蒂林场"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "荒原站",
+                    "label": "荒原站",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPriorityCities": {
+                            "custom_action_param": {
+                                "priority_city_slot_2": "荒原站"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "贡露城",
+                    "label": "贡露城",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPriorityCities": {
+                            "custom_action_param": {
+                                "priority_city_slot_2": "贡露城"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "远星大桥",
+                    "label": "远星大桥",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPriorityCities": {
+                            "custom_action_param": {
+                                "priority_city_slot_2": "远星大桥"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "铁盟哨站",
+                    "label": "铁盟哨站",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPriorityCities": {
+                            "custom_action_param": {
+                                "priority_city_slot_2": "铁盟哨站"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "阿妮塔发射中心",
+                    "label": "阿妮塔发射中心",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPriorityCities": {
+                            "custom_action_param": {
+                                "priority_city_slot_2": "阿妮塔发射中心"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "阿妮塔战备工厂",
+                    "label": "阿妮塔战备工厂",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPriorityCities": {
+                            "custom_action_param": {
+                                "priority_city_slot_2": "阿妮塔战备工厂"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "阿妮塔能源研究所",
+                    "label": "阿妮塔能源研究所",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPriorityCities": {
+                            "custom_action_param": {
+                                "priority_city_slot_2": "阿妮塔能源研究所"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "黑月游乐城",
+                    "label": "黑月游乐城",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPriorityCities": {
+                            "custom_action_param": {
+                                "priority_city_slot_2": "黑月游乐城"
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "AutoTwoCityExcludeCities": {
+            "type": "checkbox",
+            "label": "排除城市选择",
+            "description": "选择后自动规划会避开这些城市。",
+            "default_case": [],
+            "cases": [
+                {
+                    "name": "7号自由港",
+                    "label": "7号自由港",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetExcludeCities": {
+                            "custom_action_param": {
+                                "exclude_city_001": "7号自由港"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "云岫桥基地",
+                    "label": "云岫桥基地",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetExcludeCities": {
+                            "custom_action_param": {
+                                "exclude_city_002": "云岫桥基地"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "修格里城",
+                    "label": "修格里城",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetExcludeCities": {
+                            "custom_action_param": {
+                                "exclude_city_003": "修格里城"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "塔图站",
+                    "label": "塔图站",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetExcludeCities": {
+                            "custom_action_param": {
+                                "exclude_city_004": "塔图站"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "岚心城",
+                    "label": "岚心城",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetExcludeCities": {
+                            "custom_action_param": {
+                                "exclude_city_005": "岚心城"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "曼德矿场",
+                    "label": "曼德矿场",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetExcludeCities": {
+                            "custom_action_param": {
+                                "exclude_city_006": "曼德矿场"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "栖羽站",
+                    "label": "栖羽站",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetExcludeCities": {
+                            "custom_action_param": {
+                                "exclude_city_007": "栖羽站"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "武林源",
+                    "label": "武林源",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetExcludeCities": {
+                            "custom_action_param": {
+                                "exclude_city_008": "武林源"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "汇流塔",
+                    "label": "汇流塔",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetExcludeCities": {
+                            "custom_action_param": {
+                                "exclude_city_009": "汇流塔"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "海角城",
+                    "label": "海角城",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetExcludeCities": {
+                            "custom_action_param": {
+                                "exclude_city_010": "海角城"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "淘金乐园",
+                    "label": "淘金乐园",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetExcludeCities": {
+                            "custom_action_param": {
+                                "exclude_city_011": "淘金乐园"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "澄明数据中心",
+                    "label": "澄明数据中心",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetExcludeCities": {
+                            "custom_action_param": {
+                                "exclude_city_012": "澄明数据中心"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "维蒂林场",
+                    "label": "维蒂林场",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetExcludeCities": {
+                            "custom_action_param": {
+                                "exclude_city_013": "维蒂林场"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "荒原站",
+                    "label": "荒原站",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetExcludeCities": {
+                            "custom_action_param": {
+                                "exclude_city_014": "荒原站"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "贡露城",
+                    "label": "贡露城",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetExcludeCities": {
+                            "custom_action_param": {
+                                "exclude_city_015": "贡露城"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "远星大桥",
+                    "label": "远星大桥",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetExcludeCities": {
+                            "custom_action_param": {
+                                "exclude_city_016": "远星大桥"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "铁盟哨站",
+                    "label": "铁盟哨站",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetExcludeCities": {
+                            "custom_action_param": {
+                                "exclude_city_017": "铁盟哨站"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "阿妮塔发射中心",
+                    "label": "阿妮塔发射中心",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetExcludeCities": {
+                            "custom_action_param": {
+                                "exclude_city_018": "阿妮塔发射中心"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "阿妮塔战备工厂",
+                    "label": "阿妮塔战备工厂",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetExcludeCities": {
+                            "custom_action_param": {
+                                "exclude_city_019": "阿妮塔战备工厂"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "阿妮塔能源研究所",
+                    "label": "阿妮塔能源研究所",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetExcludeCities": {
+                            "custom_action_param": {
+                                "exclude_city_020": "阿妮塔能源研究所"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "黑月游乐城",
+                    "label": "黑月游乐城",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetExcludeCities": {
+                            "custom_action_param": {
+                                "exclude_city_021": "黑月游乐城"
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "AutoTwoCityPlannerParams": {
+            "type": "input",
+            "label": "自动规划参数",
+            "inputs": [
+                {
+                    "name": "max_restock",
+                    "label": "全程进货书数量限制",
+                    "description": "限制每轮来回合计最多使用多少本进货书。",
+                    "default": "6",
+                    "pipeline_type": "int",
+                    "verify": "^(0|[1-9]\\d*)$",
+                    "pattern_msg": "请输入 0 或正整数"
+                }
+            ],
+            "pipeline_override": {
+                "AutoTwoCityBusinessSetPlannerParams": {
+                    "custom_action_param": {
+                        "max_restock": "{max_restock}"
+                    }
+                }
+            }
+        },
+        "AutoTwoCityWulinyuanPriority": {
+            "type": "select",
+            "label": "武林源配置优先级",
+            "description": "武林源参与规划时的收益倾向。默认综合。",
+            "default_case": "total",
+            "cases": [
+                {
+                    "name": "total",
+                    "label": "综合",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPlannerParams": {
+                            "custom_action_param": {
+                                "wulinyuan_priority": "total"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "jiaozi",
+                    "label": "交子优先",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPlannerParams": {
+                            "custom_action_param": {
+                                "wulinyuan_priority": "jiaozi"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "tiemeng",
+                    "label": "铁盟币优先",
+                    "pipeline_override": {
+                        "AutoTwoCityBusinessSetPlannerParams": {
+                            "custom_action_param": {
+                                "wulinyuan_priority": "tiemeng"
+                            }
+                        }
+                    }
+                }
+            ]
+        }
+    }
+}

@@ -1,0 +1,195 @@
+{
+    "LaunchGameStart": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "launch_game_start"
+            }
+        },
+        "next": [
+            "LaunchGameAlreadyRunningTravelEvent",
+            "LaunchGameAlreadyRunningTravelHud",
+            "LaunchGameAlreadyRunningFightActive",
+            "LaunchGameAlreadyRunningByTemplate",
+            "LaunchGameAlreadyRunningByOcr",
+            "LaunchGamePrepareStartApp"
+        ]
+    },
+    "LaunchGameAlreadyRunningTravelEvent": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "护卫队迎击",
+                    "敌方等级",
+                    "诱饵气球",
+                    "立即返航"
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "launch_game_already_running",
+                "custom_action_param": {
+                    "source": "travel_route_event"
+                }
+            }
+        },
+        "post_delay": 200,
+        "next": "LaunchGameComplete"
+    },
+    "LaunchGameAlreadyRunningTravelHud": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "目的地",
+                    "剩余行程",
+                    "巡航"
+                ],
+                "roi": [
+                    460,
+                    16,
+                    380,
+                    145
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "launch_game_already_running",
+                "custom_action_param": {
+                    "source": "travel_hud"
+                }
+            }
+        },
+        "post_delay": 200,
+        "next": "LaunchGameComplete"
+    },
+    "LaunchGameAlreadyRunningByTemplate": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "main_map.png",
+                "threshold": 0.95
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "launch_game_already_running",
+                "custom_action_param": {
+                    "source": "main_map_template"
+                }
+            }
+        },
+        "post_delay": 200,
+        "next": "StateRecoveryStart"
+    },
+    "LaunchGameAlreadyRunningByOcr": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "整备列车",
+                    "客运管理",
+                    "STARTENGINE",
+                    "START ENGINE",
+                    "点击屏幕进入游戏",
+                    "点击任意位置进入游戏",
+                    "下载已经完成",
+                    "每日签到",
+                    "签到",
+                    "公告",
+                    "活动公告",
+                    "进入城市",
+                    "进入站点",
+                    "交易所",
+                    "买入",
+                    "卖出",
+                    "FATIGUE",
+                    "疲劳值"
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "launch_game_already_running",
+                "custom_action_param": {
+                    "source": "game_screen_ocr"
+                }
+            }
+        },
+        "post_delay": 200,
+        "next": "StateRecoveryStart"
+    },
+    "LaunchGamePrepareStartApp": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "launch_game_start_app"
+            }
+        },
+        "next": "LaunchGameStartApp"
+    },
+    "LaunchGameStartApp": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "StartApp",
+            "param": {
+                "package": "com.hermes.goda"
+            }
+        },
+        "post_delay": 12000,
+        "next": "StateRecoveryStart",
+        "on_error": "LaunchGameFailed"
+    },
+    "LaunchGameComplete": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "launch_game_complete"
+            }
+        }
+    },
+    "LaunchGameFailed": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "launch_game_failed"
+            }
+        }
+    },
+    "LaunchGameAlreadyRunningFightActive": {
+        "recognition": "Custom",
+        "custom_recognition": "manual_two_city_business_fight_active",
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "launch_game_already_running",
+                "custom_action_param": {
+                    "source": "fight_active"
+                }
+            }
+        },
+        "post_delay": 200,
+        "next": "LaunchGameComplete"
+    }
+}

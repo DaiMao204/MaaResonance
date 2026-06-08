@@ -440,6 +440,7 @@ enc_temp_folder/*
 .nuke/temp/*
 
 # Build
+.codex_deps/
 deps/*
 !deps/tools/
 deps/tools/*
@@ -451,4 +452,7 @@ install
 tools/ImageCropper/**/*.png
 
 config
+!assets/config/
+!assets/config/**
 debug
+tmp/

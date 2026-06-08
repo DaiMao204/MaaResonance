@@ -1,0 +1,1 @@
+"""MaaResonance business logic helpers."""

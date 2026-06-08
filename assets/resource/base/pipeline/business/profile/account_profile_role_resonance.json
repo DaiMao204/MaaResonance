@@ -1,0 +1,1639 @@
+{
+    "AccountProfileRoleResonanceStart":  {
+                                             "recognition":  "TemplateMatch",
+                                             "template":  "main_map.png",
+                                             "threshold":  0.96,
+                                             "action":  "Click",
+                                             "target":  [
+                                                            1225,
+                                                            58
+                                                        ],
+                                             "post_delay":  600,
+                                             "next":  [
+                                                          "AccountProfileRoleResonanceWarehouseReady"
+                                                      ],
+                                             "on_error":  [
+                                                              "StateRecoveryStart"
+                                                          ]
+                                         },
+    "AccountProfileRoleResonanceWarehouseReady":  {
+                                                      "recognition":  "OCR",
+                                                      "expected":  [
+                                                                       "乘员仓库",
+                                                                       "获取时间",
+                                                                       "稀有度",
+                                                                       "共振",
+                                                                       "等级",
+                                                                       "筛选"
+                                                                   ],
+                                                      "action":  "Custom",
+                                                      "custom_action":  "profile_crew_warehouse_ready",
+                                                      "next":  [
+                                                                   "AccountProfileRoleResonanceSortReady001"
+                                                               ],
+                                                      "on_error":  [
+                                                                       "AccountProfileRoleResonanceConfirmPopup"
+                                                                   ]
+                                                  },
+    "AccountProfileRoleResonanceConfirmPopup":  {
+                                                    "recognition":  "OCR",
+                                                    "expected":  [
+                                                                     "确认",
+                                                                     "确定"
+                                                                 ],
+                                                    "roi":  [
+                                                                300,
+                                                                240,
+                                                                680,
+                                                                320
+                                                            ],
+                                                    "action":  "Click",
+                                                    "post_delay":  400,
+                                                    "next":  [
+                                                                 "AccountProfileRoleResonanceWarehouseReadyAfterConfirm"
+                                                             ]
+                                                },
+    "AccountProfileRoleResonanceWarehouseReadyAfterConfirm":  {
+                                                                  "recognition":  "OCR",
+                                                                  "expected":  [
+                                                                                   "乘员仓库",
+                                                                                   "获取时间",
+                                                                                   "稀有度",
+                                                                                   "共振",
+                                                                                   "等级",
+                                                                                   "筛选"
+                                                                               ],
+                                                                  "action":  "Custom",
+                                                                  "custom_action":  "profile_crew_warehouse_ready",
+                                                                  "next":  [
+                                                                               "AccountProfileRoleResonanceSortReady001"
+                                                                           ]
+                                                              },
+    "AccountProfileRoleResonanceSortReady001":  {
+                                                    "recognition":  "OCR",
+                                                    "expected":  [
+                                                                     "获取时间"
+                                                                 ],
+                                                    "roi":  [
+                                                                0,
+                                                                0,
+                                                                1260,
+                                                                140
+                                                            ],
+                                                    "action":  "Custom",
+                                                    "custom_action":  "profile_crew_sort_ready",
+                                                    "custom_action_param":  {
+                                                                                "attempt":  1,
+                                                                                "max_attempts":  3
+                                                                            },
+                                                    "post_delay":  500,
+                                                    "next":  [
+                                                                 "AccountProfileRoleResonancePageOcr001"
+                                                             ],
+                                                    "on_error":  [
+                                                                     "AccountProfileRoleResonanceSortWait001"
+                                                                 ]
+                                                },
+    "AccountProfileRoleResonanceSortWait001":  {
+                                                   "recognition":  "DirectHit",
+                                                   "action":  "DoNothing",
+                                                   "post_delay":  700,
+                                                   "next":  [
+                                                                "AccountProfileRoleResonanceSortReady002"
+                                                            ]
+                                               },
+    "AccountProfileRoleResonanceSortReady002":  {
+                                                    "recognition":  "OCR",
+                                                    "expected":  [
+                                                                     "获取时间"
+                                                                 ],
+                                                    "roi":  [
+                                                                0,
+                                                                0,
+                                                                1260,
+                                                                140
+                                                            ],
+                                                    "action":  "Custom",
+                                                    "custom_action":  "profile_crew_sort_ready",
+                                                    "custom_action_param":  {
+                                                                                "attempt":  2,
+                                                                                "max_attempts":  3
+                                                                            },
+                                                    "post_delay":  500,
+                                                    "next":  [
+                                                                 "AccountProfileRoleResonancePageOcr001"
+                                                             ],
+                                                    "on_error":  [
+                                                                     "AccountProfileRoleResonanceSortWait002"
+                                                                 ]
+                                                },
+    "AccountProfileRoleResonanceSortWait002":  {
+                                                   "recognition":  "DirectHit",
+                                                   "action":  "DoNothing",
+                                                   "post_delay":  700,
+                                                   "next":  [
+                                                                "AccountProfileRoleResonanceSortReady003"
+                                                            ]
+                                               },
+    "AccountProfileRoleResonanceSortReady003":  {
+                                                    "recognition":  "OCR",
+                                                    "expected":  [
+                                                                     "获取时间"
+                                                                 ],
+                                                    "roi":  [
+                                                                0,
+                                                                0,
+                                                                1260,
+                                                                140
+                                                            ],
+                                                    "action":  "Custom",
+                                                    "custom_action":  "profile_crew_sort_ready",
+                                                    "custom_action_param":  {
+                                                                                "attempt":  3,
+                                                                                "max_attempts":  3
+                                                                            },
+                                                    "post_delay":  500,
+                                                    "next":  [
+                                                                 "AccountProfileRoleResonancePageOcr001"
+                                                             ],
+                                                    "on_error":  [
+                                                                     "AccountProfileRoleResonancePageOcr001"
+                                                                 ]
+                                                },
+    "AccountProfileRoleResonancePageOcr001":  {
+                                                  "recognition":  "OCR",
+                                                  "roi":  [
+                                                              0,
+                                                              80,
+                                                              1260,
+                                                              615
+                                                          ],
+                                                  "action":  "Custom",
+                                                  "next":  [
+                                                               "AccountProfileRoleResonanceContinue001"
+                                                           ],
+                                                  "on_error":  [
+                                                                   "AccountProfileRoleResonanceContinue001"
+                                                               ],
+                                                  "timeout":  10000,
+                                                  "expected":  "",
+                                                  "custom_action":  "profile_role_resonance_page_read",
+                                                  "custom_action_param":  {
+                                                                              "page_index":  1,
+                                                                              "role_targets":  [
+
+                                                                                               ]
+                                                                          }
+                                              },
+    "AccountProfileRoleResonanceContinue001":  {
+                                                   "recognition":  "DirectHit",
+                                                   "action":  "Custom",
+                                                   "next":  [
+                                                                "AccountProfileRoleResonanceScroll001"
+                                                            ],
+                                                   "on_error":  [
+                                                                    "AccountProfileRoleResonanceComplete"
+                                                                ],
+                                                   "custom_action":  "profile_role_resonance_should_continue",
+                                                   "custom_action_param":  {
+                                                                               "page_index":  1,
+                                                                               "role_targets":  [
+
+                                                                                                ],
+                                                                               "stale_limit":  2,
+                                                                               "max_pages":  24
+                                                                           }
+                                               },
+    "AccountProfileRoleResonanceScroll001":  {
+                                                 "recognition":  "DirectHit",
+                                                 "action":  "Swipe",
+                                                 "begin":  [
+                                                               920,
+                                                               620
+                                                           ],
+                                                 "end":  [
+                                                             920,
+                                                             500
+                                                         ],
+                                                 "duration":  520,
+                                                 "post_delay":  500,
+                                                 "next":  [
+                                                              "AccountProfileRoleResonancePageOcr002"
+                                                          ]
+                                             },
+    "AccountProfileRoleResonancePageOcr002":  {
+                                                  "recognition":  "OCR",
+                                                  "roi":  [
+                                                              0,
+                                                              80,
+                                                              1260,
+                                                              615
+                                                          ],
+                                                  "action":  "Custom",
+                                                  "next":  [
+                                                               "AccountProfileRoleResonanceContinue002"
+                                                           ],
+                                                  "on_error":  [
+                                                                   "AccountProfileRoleResonanceContinue002"
+                                                               ],
+                                                  "timeout":  10000,
+                                                  "expected":  "",
+                                                  "custom_action":  "profile_role_resonance_page_read",
+                                                  "custom_action_param":  {
+                                                                              "page_index":  2,
+                                                                              "role_targets":  [
+
+                                                                                               ]
+                                                                          }
+                                              },
+    "AccountProfileRoleResonanceContinue002":  {
+                                                   "recognition":  "DirectHit",
+                                                   "action":  "Custom",
+                                                   "next":  [
+                                                                "AccountProfileRoleResonanceScroll002"
+                                                            ],
+                                                   "on_error":  [
+                                                                    "AccountProfileRoleResonanceComplete"
+                                                                ],
+                                                   "custom_action":  "profile_role_resonance_should_continue",
+                                                   "custom_action_param":  {
+                                                                               "page_index":  2,
+                                                                               "role_targets":  [
+
+                                                                                                ],
+                                                                               "stale_limit":  2,
+                                                                               "max_pages":  24
+                                                                           }
+                                               },
+    "AccountProfileRoleResonanceScroll002":  {
+                                                 "recognition":  "DirectHit",
+                                                 "action":  "Swipe",
+                                                 "begin":  [
+                                                               920,
+                                                               620
+                                                           ],
+                                                 "end":  [
+                                                             920,
+                                                             500
+                                                         ],
+                                                 "duration":  520,
+                                                 "post_delay":  500,
+                                                 "next":  [
+                                                              "AccountProfileRoleResonancePageOcr003"
+                                                          ]
+                                             },
+    "AccountProfileRoleResonancePageOcr003":  {
+                                                  "recognition":  "OCR",
+                                                  "roi":  [
+                                                              0,
+                                                              80,
+                                                              1260,
+                                                              615
+                                                          ],
+                                                  "action":  "Custom",
+                                                  "next":  [
+                                                               "AccountProfileRoleResonanceContinue003"
+                                                           ],
+                                                  "on_error":  [
+                                                                   "AccountProfileRoleResonanceContinue003"
+                                                               ],
+                                                  "timeout":  10000,
+                                                  "expected":  "",
+                                                  "custom_action":  "profile_role_resonance_page_read",
+                                                  "custom_action_param":  {
+                                                                              "page_index":  3,
+                                                                              "role_targets":  [
+
+                                                                                               ]
+                                                                          }
+                                              },
+    "AccountProfileRoleResonanceContinue003":  {
+                                                   "recognition":  "DirectHit",
+                                                   "action":  "Custom",
+                                                   "next":  [
+                                                                "AccountProfileRoleResonanceScroll003"
+                                                            ],
+                                                   "on_error":  [
+                                                                    "AccountProfileRoleResonanceComplete"
+                                                                ],
+                                                   "custom_action":  "profile_role_resonance_should_continue",
+                                                   "custom_action_param":  {
+                                                                               "page_index":  3,
+                                                                               "role_targets":  [
+
+                                                                                                ],
+                                                                               "stale_limit":  2,
+                                                                               "max_pages":  24
+                                                                           }
+                                               },
+    "AccountProfileRoleResonanceScroll003":  {
+                                                 "recognition":  "DirectHit",
+                                                 "action":  "Swipe",
+                                                 "begin":  [
+                                                               920,
+                                                               620
+                                                           ],
+                                                 "end":  [
+                                                             920,
+                                                             500
+                                                         ],
+                                                 "duration":  520,
+                                                 "post_delay":  500,
+                                                 "next":  [
+                                                              "AccountProfileRoleResonancePageOcr004"
+                                                          ]
+                                             },
+    "AccountProfileRoleResonancePageOcr004":  {
+                                                  "recognition":  "OCR",
+                                                  "roi":  [
+                                                              0,
+                                                              80,
+                                                              1260,
+                                                              615
+                                                          ],
+                                                  "action":  "Custom",
+                                                  "next":  [
+                                                               "AccountProfileRoleResonanceContinue004"
+                                                           ],
+                                                  "on_error":  [
+                                                                   "AccountProfileRoleResonanceContinue004"
+                                                               ],
+                                                  "timeout":  10000,
+                                                  "expected":  "",
+                                                  "custom_action":  "profile_role_resonance_page_read",
+                                                  "custom_action_param":  {
+                                                                              "page_index":  4,
+                                                                              "role_targets":  [
+
+                                                                                               ]
+                                                                          }
+                                              },
+    "AccountProfileRoleResonanceContinue004":  {
+                                                   "recognition":  "DirectHit",
+                                                   "action":  "Custom",
+                                                   "next":  [
+                                                                "AccountProfileRoleResonanceScroll004"
+                                                            ],
+                                                   "on_error":  [
+                                                                    "AccountProfileRoleResonanceComplete"
+                                                                ],
+                                                   "custom_action":  "profile_role_resonance_should_continue",
+                                                   "custom_action_param":  {
+                                                                               "page_index":  4,
+                                                                               "role_targets":  [
+
+                                                                                                ],
+                                                                               "stale_limit":  2,
+                                                                               "max_pages":  24
+                                                                           }
+                                               },
+    "AccountProfileRoleResonanceScroll004":  {
+                                                 "recognition":  "DirectHit",
+                                                 "action":  "Swipe",
+                                                 "begin":  [
+                                                               920,
+                                                               620
+                                                           ],
+                                                 "end":  [
+                                                             920,
+                                                             500
+                                                         ],
+                                                 "duration":  520,
+                                                 "post_delay":  500,
+                                                 "next":  [
+                                                              "AccountProfileRoleResonancePageOcr005"
+                                                          ]
+                                             },
+    "AccountProfileRoleResonancePageOcr005":  {
+                                                  "recognition":  "OCR",
+                                                  "roi":  [
+                                                              0,
+                                                              80,
+                                                              1260,
+                                                              615
+                                                          ],
+                                                  "action":  "Custom",
+                                                  "next":  [
+                                                               "AccountProfileRoleResonanceContinue005"
+                                                           ],
+                                                  "on_error":  [
+                                                                   "AccountProfileRoleResonanceContinue005"
+                                                               ],
+                                                  "timeout":  10000,
+                                                  "expected":  "",
+                                                  "custom_action":  "profile_role_resonance_page_read",
+                                                  "custom_action_param":  {
+                                                                              "page_index":  5,
+                                                                              "role_targets":  [
+
+                                                                                               ]
+                                                                          }
+                                              },
+    "AccountProfileRoleResonanceContinue005":  {
+                                                   "recognition":  "DirectHit",
+                                                   "action":  "Custom",
+                                                   "next":  [
+                                                                "AccountProfileRoleResonanceScroll005"
+                                                            ],
+                                                   "on_error":  [
+                                                                    "AccountProfileRoleResonanceComplete"
+                                                                ],
+                                                   "custom_action":  "profile_role_resonance_should_continue",
+                                                   "custom_action_param":  {
+                                                                               "page_index":  5,
+                                                                               "role_targets":  [
+
+                                                                                                ],
+                                                                               "stale_limit":  2,
+                                                                               "max_pages":  24
+                                                                           }
+                                               },
+    "AccountProfileRoleResonanceScroll005":  {
+                                                 "recognition":  "DirectHit",
+                                                 "action":  "Swipe",
+                                                 "begin":  [
+                                                               920,
+                                                               620
+                                                           ],
+                                                 "end":  [
+                                                             920,
+                                                             500
+                                                         ],
+                                                 "duration":  520,
+                                                 "post_delay":  500,
+                                                 "next":  [
+                                                              "AccountProfileRoleResonancePageOcr006"
+                                                          ]
+                                             },
+    "AccountProfileRoleResonancePageOcr006":  {
+                                                  "recognition":  "OCR",
+                                                  "roi":  [
+                                                              0,
+                                                              80,
+                                                              1260,
+                                                              615
+                                                          ],
+                                                  "action":  "Custom",
+                                                  "next":  [
+                                                               "AccountProfileRoleResonanceContinue006"
+                                                           ],
+                                                  "on_error":  [
+                                                                   "AccountProfileRoleResonanceContinue006"
+                                                               ],
+                                                  "timeout":  10000,
+                                                  "expected":  "",
+                                                  "custom_action":  "profile_role_resonance_page_read",
+                                                  "custom_action_param":  {
+                                                                              "page_index":  6,
+                                                                              "role_targets":  [
+
+                                                                                               ]
+                                                                          }
+                                              },
+    "AccountProfileRoleResonanceContinue006":  {
+                                                   "recognition":  "DirectHit",
+                                                   "action":  "Custom",
+                                                   "next":  [
+                                                                "AccountProfileRoleResonanceScroll006"
+                                                            ],
+                                                   "on_error":  [
+                                                                    "AccountProfileRoleResonanceComplete"
+                                                                ],
+                                                   "custom_action":  "profile_role_resonance_should_continue",
+                                                   "custom_action_param":  {
+                                                                               "page_index":  6,
+                                                                               "role_targets":  [
+
+                                                                                                ],
+                                                                               "stale_limit":  2,
+                                                                               "max_pages":  24
+                                                                           }
+                                               },
+    "AccountProfileRoleResonanceScroll006":  {
+                                                 "recognition":  "DirectHit",
+                                                 "action":  "Swipe",
+                                                 "begin":  [
+                                                               920,
+                                                               620
+                                                           ],
+                                                 "end":  [
+                                                             920,
+                                                             500
+                                                         ],
+                                                 "duration":  520,
+                                                 "post_delay":  500,
+                                                 "next":  [
+                                                              "AccountProfileRoleResonancePageOcr007"
+                                                          ]
+                                             },
+    "AccountProfileRoleResonancePageOcr007":  {
+                                                  "recognition":  "OCR",
+                                                  "roi":  [
+                                                              0,
+                                                              80,
+                                                              1260,
+                                                              615
+                                                          ],
+                                                  "action":  "Custom",
+                                                  "next":  [
+                                                               "AccountProfileRoleResonanceContinue007"
+                                                           ],
+                                                  "on_error":  [
+                                                                   "AccountProfileRoleResonanceContinue007"
+                                                               ],
+                                                  "timeout":  10000,
+                                                  "expected":  "",
+                                                  "custom_action":  "profile_role_resonance_page_read",
+                                                  "custom_action_param":  {
+                                                                              "page_index":  7,
+                                                                              "role_targets":  [
+
+                                                                                               ]
+                                                                          }
+                                              },
+    "AccountProfileRoleResonanceContinue007":  {
+                                                   "recognition":  "DirectHit",
+                                                   "action":  "Custom",
+                                                   "next":  [
+                                                                "AccountProfileRoleResonanceScroll007"
+                                                            ],
+                                                   "on_error":  [
+                                                                    "AccountProfileRoleResonanceComplete"
+                                                                ],
+                                                   "custom_action":  "profile_role_resonance_should_continue",
+                                                   "custom_action_param":  {
+                                                                               "page_index":  7,
+                                                                               "role_targets":  [
+
+                                                                                                ],
+                                                                               "stale_limit":  2,
+                                                                               "max_pages":  24
+                                                                           }
+                                               },
+    "AccountProfileRoleResonanceScroll007":  {
+                                                 "recognition":  "DirectHit",
+                                                 "action":  "Swipe",
+                                                 "begin":  [
+                                                               920,
+                                                               620
+                                                           ],
+                                                 "end":  [
+                                                             920,
+                                                             500
+                                                         ],
+                                                 "duration":  520,
+                                                 "post_delay":  500,
+                                                 "next":  [
+                                                              "AccountProfileRoleResonancePageOcr008"
+                                                          ]
+                                             },
+    "AccountProfileRoleResonancePageOcr008":  {
+                                                  "recognition":  "OCR",
+                                                  "roi":  [
+                                                              0,
+                                                              80,
+                                                              1260,
+                                                              615
+                                                          ],
+                                                  "action":  "Custom",
+                                                  "next":  [
+                                                               "AccountProfileRoleResonanceContinue008"
+                                                           ],
+                                                  "on_error":  [
+                                                                   "AccountProfileRoleResonanceContinue008"
+                                                               ],
+                                                  "timeout":  10000,
+                                                  "expected":  "",
+                                                  "custom_action":  "profile_role_resonance_page_read",
+                                                  "custom_action_param":  {
+                                                                              "page_index":  8,
+                                                                              "role_targets":  [
+
+                                                                                               ]
+                                                                          }
+                                              },
+    "AccountProfileRoleResonanceContinue008":  {
+                                                   "recognition":  "DirectHit",
+                                                   "action":  "Custom",
+                                                   "next":  [
+                                                                "AccountProfileRoleResonanceScroll008"
+                                                            ],
+                                                   "on_error":  [
+                                                                    "AccountProfileRoleResonanceComplete"
+                                                                ],
+                                                   "custom_action":  "profile_role_resonance_should_continue",
+                                                   "custom_action_param":  {
+                                                                               "page_index":  8,
+                                                                               "role_targets":  [
+
+                                                                                                ],
+                                                                               "stale_limit":  2,
+                                                                               "max_pages":  24
+                                                                           }
+                                               },
+    "AccountProfileRoleResonanceScroll008":  {
+                                                 "recognition":  "DirectHit",
+                                                 "action":  "Swipe",
+                                                 "begin":  [
+                                                               920,
+                                                               620
+                                                           ],
+                                                 "end":  [
+                                                             920,
+                                                             500
+                                                         ],
+                                                 "duration":  520,
+                                                 "post_delay":  500,
+                                                 "next":  [
+                                                              "AccountProfileRoleResonancePageOcr009"
+                                                          ]
+                                             },
+    "AccountProfileRoleResonancePageOcr009":  {
+                                                  "recognition":  "OCR",
+                                                  "roi":  [
+                                                              0,
+                                                              80,
+                                                              1260,
+                                                              615
+                                                          ],
+                                                  "action":  "Custom",
+                                                  "next":  [
+                                                               "AccountProfileRoleResonanceContinue009"
+                                                           ],
+                                                  "on_error":  [
+                                                                   "AccountProfileRoleResonanceContinue009"
+                                                               ],
+                                                  "timeout":  10000,
+                                                  "expected":  "",
+                                                  "custom_action":  "profile_role_resonance_page_read",
+                                                  "custom_action_param":  {
+                                                                              "page_index":  9,
+                                                                              "role_targets":  [
+
+                                                                                               ]
+                                                                          }
+                                              },
+    "AccountProfileRoleResonanceContinue009":  {
+                                                   "recognition":  "DirectHit",
+                                                   "action":  "Custom",
+                                                   "next":  [
+                                                                "AccountProfileRoleResonanceScroll009"
+                                                            ],
+                                                   "on_error":  [
+                                                                    "AccountProfileRoleResonanceComplete"
+                                                                ],
+                                                   "custom_action":  "profile_role_resonance_should_continue",
+                                                   "custom_action_param":  {
+                                                                               "page_index":  9,
+                                                                               "role_targets":  [
+
+                                                                                                ],
+                                                                               "stale_limit":  2,
+                                                                               "max_pages":  24
+                                                                           }
+                                               },
+    "AccountProfileRoleResonanceScroll009":  {
+                                                 "recognition":  "DirectHit",
+                                                 "action":  "Swipe",
+                                                 "begin":  [
+                                                               920,
+                                                               620
+                                                           ],
+                                                 "end":  [
+                                                             920,
+                                                             500
+                                                         ],
+                                                 "duration":  520,
+                                                 "post_delay":  500,
+                                                 "next":  [
+                                                              "AccountProfileRoleResonancePageOcr010"
+                                                          ]
+                                             },
+    "AccountProfileRoleResonancePageOcr010":  {
+                                                  "recognition":  "OCR",
+                                                  "roi":  [
+                                                              0,
+                                                              80,
+                                                              1260,
+                                                              615
+                                                          ],
+                                                  "action":  "Custom",
+                                                  "next":  [
+                                                               "AccountProfileRoleResonanceContinue010"
+                                                           ],
+                                                  "on_error":  [
+                                                                   "AccountProfileRoleResonanceContinue010"
+                                                               ],
+                                                  "timeout":  10000,
+                                                  "expected":  "",
+                                                  "custom_action":  "profile_role_resonance_page_read",
+                                                  "custom_action_param":  {
+                                                                              "page_index":  10,
+                                                                              "role_targets":  [
+
+                                                                                               ]
+                                                                          }
+                                              },
+    "AccountProfileRoleResonanceContinue010":  {
+                                                   "recognition":  "DirectHit",
+                                                   "action":  "Custom",
+                                                   "next":  [
+                                                                "AccountProfileRoleResonanceScroll010"
+                                                            ],
+                                                   "on_error":  [
+                                                                    "AccountProfileRoleResonanceComplete"
+                                                                ],
+                                                   "custom_action":  "profile_role_resonance_should_continue",
+                                                   "custom_action_param":  {
+                                                                               "page_index":  10,
+                                                                               "role_targets":  [
+
+                                                                                                ],
+                                                                               "stale_limit":  2,
+                                                                               "max_pages":  24
+                                                                           }
+                                               },
+    "AccountProfileRoleResonanceScroll010":  {
+                                                 "recognition":  "DirectHit",
+                                                 "action":  "Swipe",
+                                                 "begin":  [
+                                                               920,
+                                                               620
+                                                           ],
+                                                 "end":  [
+                                                             920,
+                                                             500
+                                                         ],
+                                                 "duration":  520,
+                                                 "post_delay":  500,
+                                                 "next":  [
+                                                              "AccountProfileRoleResonancePageOcr011"
+                                                          ]
+                                             },
+    "AccountProfileRoleResonancePageOcr011":  {
+                                                  "recognition":  "OCR",
+                                                  "roi":  [
+                                                              0,
+                                                              80,
+                                                              1260,
+                                                              615
+                                                          ],
+                                                  "action":  "Custom",
+                                                  "next":  [
+                                                               "AccountProfileRoleResonanceContinue011"
+                                                           ],
+                                                  "on_error":  [
+                                                                   "AccountProfileRoleResonanceContinue011"
+                                                               ],
+                                                  "timeout":  10000,
+                                                  "expected":  "",
+                                                  "custom_action":  "profile_role_resonance_page_read",
+                                                  "custom_action_param":  {
+                                                                              "page_index":  11,
+                                                                              "role_targets":  [
+
+                                                                                               ]
+                                                                          }
+                                              },
+    "AccountProfileRoleResonanceContinue011":  {
+                                                   "recognition":  "DirectHit",
+                                                   "action":  "Custom",
+                                                   "next":  [
+                                                                "AccountProfileRoleResonanceScroll011"
+                                                            ],
+                                                   "on_error":  [
+                                                                    "AccountProfileRoleResonanceComplete"
+                                                                ],
+                                                   "custom_action":  "profile_role_resonance_should_continue",
+                                                   "custom_action_param":  {
+                                                                               "page_index":  11,
+                                                                               "role_targets":  [
+
+                                                                                                ],
+                                                                               "stale_limit":  2,
+                                                                               "max_pages":  24
+                                                                           }
+                                               },
+    "AccountProfileRoleResonanceScroll011":  {
+                                                 "recognition":  "DirectHit",
+                                                 "action":  "Swipe",
+                                                 "begin":  [
+                                                               920,
+                                                               620
+                                                           ],
+                                                 "end":  [
+                                                             920,
+                                                             500
+                                                         ],
+                                                 "duration":  520,
+                                                 "post_delay":  500,
+                                                 "next":  [
+                                                              "AccountProfileRoleResonancePageOcr012"
+                                                          ]
+                                             },
+    "AccountProfileRoleResonancePageOcr012":  {
+                                                  "recognition":  "OCR",
+                                                  "roi":  [
+                                                              0,
+                                                              80,
+                                                              1260,
+                                                              615
+                                                          ],
+                                                  "action":  "Custom",
+                                                  "next":  [
+                                                               "AccountProfileRoleResonanceContinue012"
+                                                           ],
+                                                  "on_error":  [
+                                                                   "AccountProfileRoleResonanceContinue012"
+                                                               ],
+                                                  "timeout":  10000,
+                                                  "expected":  "",
+                                                  "custom_action":  "profile_role_resonance_page_read",
+                                                  "custom_action_param":  {
+                                                                              "page_index":  12,
+                                                                              "role_targets":  [
+
+                                                                                               ]
+                                                                          }
+                                              },
+    "AccountProfileRoleResonanceContinue012":  {
+                                                   "recognition":  "DirectHit",
+                                                   "action":  "Custom",
+                                                   "next":  [
+                                                                "AccountProfileRoleResonanceScroll012"
+                                                            ],
+                                                   "on_error":  [
+                                                                    "AccountProfileRoleResonanceComplete"
+                                                                ],
+                                                   "custom_action":  "profile_role_resonance_should_continue",
+                                                   "custom_action_param":  {
+                                                                               "page_index":  12,
+                                                                               "role_targets":  [
+
+                                                                                                ],
+                                                                               "stale_limit":  2,
+                                                                               "max_pages":  24
+                                                                           }
+                                               },
+    "AccountProfileRoleResonanceScroll012":  {
+                                                 "recognition":  "DirectHit",
+                                                 "action":  "Swipe",
+                                                 "begin":  [
+                                                               920,
+                                                               620
+                                                           ],
+                                                 "end":  [
+                                                             920,
+                                                             500
+                                                         ],
+                                                 "duration":  520,
+                                                 "post_delay":  500,
+                                                 "next":  [
+                                                              "AccountProfileRoleResonancePageOcr013"
+                                                          ]
+                                             },
+    "AccountProfileRoleResonancePageOcr013":  {
+                                                  "recognition":  "OCR",
+                                                  "roi":  [
+                                                              0,
+                                                              80,
+                                                              1260,
+                                                              615
+                                                          ],
+                                                  "action":  "Custom",
+                                                  "next":  [
+                                                               "AccountProfileRoleResonanceContinue013"
+                                                           ],
+                                                  "on_error":  [
+                                                                   "AccountProfileRoleResonanceContinue013"
+                                                               ],
+                                                  "timeout":  10000,
+                                                  "expected":  "",
+                                                  "custom_action":  "profile_role_resonance_page_read",
+                                                  "custom_action_param":  {
+                                                                              "page_index":  13,
+                                                                              "role_targets":  [
+
+                                                                                               ]
+                                                                          }
+                                              },
+    "AccountProfileRoleResonanceContinue013":  {
+                                                   "recognition":  "DirectHit",
+                                                   "action":  "Custom",
+                                                   "next":  [
+                                                                "AccountProfileRoleResonanceScroll013"
+                                                            ],
+                                                   "on_error":  [
+                                                                    "AccountProfileRoleResonanceComplete"
+                                                                ],
+                                                   "custom_action":  "profile_role_resonance_should_continue",
+                                                   "custom_action_param":  {
+                                                                               "page_index":  13,
+                                                                               "role_targets":  [
+
+                                                                                                ],
+                                                                               "stale_limit":  2,
+                                                                               "max_pages":  24
+                                                                           }
+                                               },
+    "AccountProfileRoleResonanceScroll013":  {
+                                                 "recognition":  "DirectHit",
+                                                 "action":  "Swipe",
+                                                 "begin":  [
+                                                               920,
+                                                               620
+                                                           ],
+                                                 "end":  [
+                                                             920,
+                                                             500
+                                                         ],
+                                                 "duration":  520,
+                                                 "post_delay":  500,
+                                                 "next":  [
+                                                              "AccountProfileRoleResonancePageOcr014"
+                                                          ]
+                                             },
+    "AccountProfileRoleResonancePageOcr014":  {
+                                                  "recognition":  "OCR",
+                                                  "roi":  [
+                                                              0,
+                                                              80,
+                                                              1260,
+                                                              615
+                                                          ],
+                                                  "action":  "Custom",
+                                                  "next":  [
+                                                               "AccountProfileRoleResonanceContinue014"
+                                                           ],
+                                                  "on_error":  [
+                                                                   "AccountProfileRoleResonanceContinue014"
+                                                               ],
+                                                  "timeout":  10000,
+                                                  "expected":  "",
+                                                  "custom_action":  "profile_role_resonance_page_read",
+                                                  "custom_action_param":  {
+                                                                              "page_index":  14,
+                                                                              "role_targets":  [
+
+                                                                                               ]
+                                                                          }
+                                              },
+    "AccountProfileRoleResonanceContinue014":  {
+                                                   "recognition":  "DirectHit",
+                                                   "action":  "Custom",
+                                                   "next":  [
+                                                                "AccountProfileRoleResonanceScroll014"
+                                                            ],
+                                                   "on_error":  [
+                                                                    "AccountProfileRoleResonanceComplete"
+                                                                ],
+                                                   "custom_action":  "profile_role_resonance_should_continue",
+                                                   "custom_action_param":  {
+                                                                               "page_index":  14,
+                                                                               "role_targets":  [
+
+                                                                                                ],
+                                                                               "stale_limit":  2,
+                                                                               "max_pages":  24
+                                                                           }
+                                               },
+    "AccountProfileRoleResonanceScroll014":  {
+                                                 "recognition":  "DirectHit",
+                                                 "action":  "Swipe",
+                                                 "begin":  [
+                                                               920,
+                                                               620
+                                                           ],
+                                                 "end":  [
+                                                             920,
+                                                             500
+                                                         ],
+                                                 "duration":  520,
+                                                 "post_delay":  500,
+                                                 "next":  [
+                                                              "AccountProfileRoleResonancePageOcr015"
+                                                          ]
+                                             },
+    "AccountProfileRoleResonancePageOcr015":  {
+                                                  "recognition":  "OCR",
+                                                  "roi":  [
+                                                              0,
+                                                              80,
+                                                              1260,
+                                                              615
+                                                          ],
+                                                  "action":  "Custom",
+                                                  "next":  [
+                                                               "AccountProfileRoleResonanceContinue015"
+                                                           ],
+                                                  "on_error":  [
+                                                                   "AccountProfileRoleResonanceContinue015"
+                                                               ],
+                                                  "timeout":  10000,
+                                                  "expected":  "",
+                                                  "custom_action":  "profile_role_resonance_page_read",
+                                                  "custom_action_param":  {
+                                                                              "page_index":  15,
+                                                                              "role_targets":  [
+
+                                                                                               ]
+                                                                          }
+                                              },
+    "AccountProfileRoleResonanceContinue015":  {
+                                                   "recognition":  "DirectHit",
+                                                   "action":  "Custom",
+                                                   "next":  [
+                                                                "AccountProfileRoleResonanceScroll015"
+                                                            ],
+                                                   "on_error":  [
+                                                                    "AccountProfileRoleResonanceComplete"
+                                                                ],
+                                                   "custom_action":  "profile_role_resonance_should_continue",
+                                                   "custom_action_param":  {
+                                                                               "page_index":  15,
+                                                                               "role_targets":  [
+
+                                                                                                ],
+                                                                               "stale_limit":  2,
+                                                                               "max_pages":  24
+                                                                           }
+                                               },
+    "AccountProfileRoleResonanceScroll015":  {
+                                                 "recognition":  "DirectHit",
+                                                 "action":  "Swipe",
+                                                 "begin":  [
+                                                               920,
+                                                               620
+                                                           ],
+                                                 "end":  [
+                                                             920,
+                                                             500
+                                                         ],
+                                                 "duration":  520,
+                                                 "post_delay":  500,
+                                                 "next":  [
+                                                              "AccountProfileRoleResonancePageOcr016"
+                                                          ]
+                                             },
+    "AccountProfileRoleResonancePageOcr016":  {
+                                                  "recognition":  "OCR",
+                                                  "roi":  [
+                                                              0,
+                                                              80,
+                                                              1260,
+                                                              615
+                                                          ],
+                                                  "action":  "Custom",
+                                                  "next":  [
+                                                               "AccountProfileRoleResonanceContinue016"
+                                                           ],
+                                                  "on_error":  [
+                                                                   "AccountProfileRoleResonanceContinue016"
+                                                               ],
+                                                  "timeout":  10000,
+                                                  "expected":  "",
+                                                  "custom_action":  "profile_role_resonance_page_read",
+                                                  "custom_action_param":  {
+                                                                              "page_index":  16,
+                                                                              "role_targets":  [
+
+                                                                                               ]
+                                                                          }
+                                              },
+    "AccountProfileRoleResonanceContinue016":  {
+                                                   "recognition":  "DirectHit",
+                                                   "action":  "Custom",
+                                                   "next":  [
+                                                                "AccountProfileRoleResonanceScroll016"
+                                                            ],
+                                                   "on_error":  [
+                                                                    "AccountProfileRoleResonanceComplete"
+                                                                ],
+                                                   "custom_action":  "profile_role_resonance_should_continue",
+                                                   "custom_action_param":  {
+                                                                               "page_index":  16,
+                                                                               "role_targets":  [
+
+                                                                                                ],
+                                                                               "stale_limit":  2,
+                                                                               "max_pages":  24
+                                                                           }
+                                               },
+    "AccountProfileRoleResonanceScroll016":  {
+                                                 "recognition":  "DirectHit",
+                                                 "action":  "Swipe",
+                                                 "begin":  [
+                                                               920,
+                                                               620
+                                                           ],
+                                                 "end":  [
+                                                             920,
+                                                             500
+                                                         ],
+                                                 "duration":  520,
+                                                 "post_delay":  500,
+                                                 "next":  [
+                                                              "AccountProfileRoleResonancePageOcr017"
+                                                          ]
+                                             },
+    "AccountProfileRoleResonancePageOcr017":  {
+                                                  "recognition":  "OCR",
+                                                  "roi":  [
+                                                              0,
+                                                              80,
+                                                              1260,
+                                                              615
+                                                          ],
+                                                  "action":  "Custom",
+                                                  "next":  [
+                                                               "AccountProfileRoleResonanceContinue017"
+                                                           ],
+                                                  "on_error":  [
+                                                                   "AccountProfileRoleResonanceContinue017"
+                                                               ],
+                                                  "timeout":  10000,
+                                                  "expected":  "",
+                                                  "custom_action":  "profile_role_resonance_page_read",
+                                                  "custom_action_param":  {
+                                                                              "page_index":  17,
+                                                                              "role_targets":  [
+
+                                                                                               ]
+                                                                          }
+                                              },
+    "AccountProfileRoleResonanceContinue017":  {
+                                                   "recognition":  "DirectHit",
+                                                   "action":  "Custom",
+                                                   "next":  [
+                                                                "AccountProfileRoleResonanceScroll017"
+                                                            ],
+                                                   "on_error":  [
+                                                                    "AccountProfileRoleResonanceComplete"
+                                                                ],
+                                                   "custom_action":  "profile_role_resonance_should_continue",
+                                                   "custom_action_param":  {
+                                                                               "page_index":  17,
+                                                                               "role_targets":  [
+
+                                                                                                ],
+                                                                               "stale_limit":  2,
+                                                                               "max_pages":  24
+                                                                           }
+                                               },
+    "AccountProfileRoleResonanceScroll017":  {
+                                                 "recognition":  "DirectHit",
+                                                 "action":  "Swipe",
+                                                 "begin":  [
+                                                               920,
+                                                               620
+                                                           ],
+                                                 "end":  [
+                                                             920,
+                                                             500
+                                                         ],
+                                                 "duration":  520,
+                                                 "post_delay":  500,
+                                                 "next":  [
+                                                              "AccountProfileRoleResonancePageOcr018"
+                                                          ]
+                                             },
+    "AccountProfileRoleResonancePageOcr018":  {
+                                                  "recognition":  "OCR",
+                                                  "roi":  [
+                                                              0,
+                                                              80,
+                                                              1260,
+                                                              615
+                                                          ],
+                                                  "action":  "Custom",
+                                                  "next":  [
+                                                               "AccountProfileRoleResonanceContinue018"
+                                                           ],
+                                                  "on_error":  [
+                                                                   "AccountProfileRoleResonanceContinue018"
+                                                               ],
+                                                  "timeout":  10000,
+                                                  "expected":  "",
+                                                  "custom_action":  "profile_role_resonance_page_read",
+                                                  "custom_action_param":  {
+                                                                              "page_index":  18,
+                                                                              "role_targets":  [
+
+                                                                                               ]
+                                                                          }
+                                              },
+    "AccountProfileRoleResonanceContinue018":  {
+                                                   "recognition":  "DirectHit",
+                                                   "action":  "Custom",
+                                                   "next":  [
+                                                                "AccountProfileRoleResonanceScroll018"
+                                                            ],
+                                                   "on_error":  [
+                                                                    "AccountProfileRoleResonanceComplete"
+                                                                ],
+                                                   "custom_action":  "profile_role_resonance_should_continue",
+                                                   "custom_action_param":  {
+                                                                               "page_index":  18,
+                                                                               "role_targets":  [
+
+                                                                                                ],
+                                                                               "stale_limit":  2,
+                                                                               "max_pages":  24
+                                                                           }
+                                               },
+    "AccountProfileRoleResonanceScroll018":  {
+                                                 "recognition":  "DirectHit",
+                                                 "action":  "Swipe",
+                                                 "begin":  [
+                                                               920,
+                                                               620
+                                                           ],
+                                                 "end":  [
+                                                             920,
+                                                             500
+                                                         ],
+                                                 "duration":  520,
+                                                 "post_delay":  500,
+                                                 "next":  [
+                                                              "AccountProfileRoleResonancePageOcr019"
+                                                          ]
+                                             },
+    "AccountProfileRoleResonancePageOcr019":  {
+                                                  "recognition":  "OCR",
+                                                  "roi":  [
+                                                              0,
+                                                              80,
+                                                              1260,
+                                                              615
+                                                          ],
+                                                  "action":  "Custom",
+                                                  "next":  [
+                                                               "AccountProfileRoleResonanceContinue019"
+                                                           ],
+                                                  "on_error":  [
+                                                                   "AccountProfileRoleResonanceContinue019"
+                                                               ],
+                                                  "timeout":  10000,
+                                                  "expected":  "",
+                                                  "custom_action":  "profile_role_resonance_page_read",
+                                                  "custom_action_param":  {
+                                                                              "page_index":  19,
+                                                                              "role_targets":  [
+
+                                                                                               ]
+                                                                          }
+                                              },
+    "AccountProfileRoleResonanceContinue019":  {
+                                                   "recognition":  "DirectHit",
+                                                   "action":  "Custom",
+                                                   "next":  [
+                                                                "AccountProfileRoleResonanceScroll019"
+                                                            ],
+                                                   "on_error":  [
+                                                                    "AccountProfileRoleResonanceComplete"
+                                                                ],
+                                                   "custom_action":  "profile_role_resonance_should_continue",
+                                                   "custom_action_param":  {
+                                                                               "page_index":  19,
+                                                                               "role_targets":  [
+
+                                                                                                ],
+                                                                               "stale_limit":  2,
+                                                                               "max_pages":  24
+                                                                           }
+                                               },
+    "AccountProfileRoleResonanceScroll019":  {
+                                                 "recognition":  "DirectHit",
+                                                 "action":  "Swipe",
+                                                 "begin":  [
+                                                               920,
+                                                               620
+                                                           ],
+                                                 "end":  [
+                                                             920,
+                                                             500
+                                                         ],
+                                                 "duration":  520,
+                                                 "post_delay":  500,
+                                                 "next":  [
+                                                              "AccountProfileRoleResonancePageOcr020"
+                                                          ]
+                                             },
+    "AccountProfileRoleResonancePageOcr020":  {
+                                                  "recognition":  "OCR",
+                                                  "roi":  [
+                                                              0,
+                                                              80,
+                                                              1260,
+                                                              615
+                                                          ],
+                                                  "action":  "Custom",
+                                                  "next":  [
+                                                               "AccountProfileRoleResonanceContinue020"
+                                                           ],
+                                                  "on_error":  [
+                                                                   "AccountProfileRoleResonanceContinue020"
+                                                               ],
+                                                  "timeout":  10000,
+                                                  "expected":  "",
+                                                  "custom_action":  "profile_role_resonance_page_read",
+                                                  "custom_action_param":  {
+                                                                              "page_index":  20,
+                                                                              "role_targets":  [
+
+                                                                                               ]
+                                                                          }
+                                              },
+    "AccountProfileRoleResonanceContinue020":  {
+                                                   "recognition":  "DirectHit",
+                                                   "action":  "Custom",
+                                                   "next":  [
+                                                                "AccountProfileRoleResonanceScroll020"
+                                                            ],
+                                                   "on_error":  [
+                                                                    "AccountProfileRoleResonanceComplete"
+                                                                ],
+                                                   "custom_action":  "profile_role_resonance_should_continue",
+                                                   "custom_action_param":  {
+                                                                               "page_index":  20,
+                                                                               "role_targets":  [
+
+                                                                                                ],
+                                                                               "stale_limit":  2,
+                                                                               "max_pages":  24
+                                                                           }
+                                               },
+    "AccountProfileRoleResonanceScroll020":  {
+                                                 "recognition":  "DirectHit",
+                                                 "action":  "Swipe",
+                                                 "begin":  [
+                                                               920,
+                                                               620
+                                                           ],
+                                                 "end":  [
+                                                             920,
+                                                             500
+                                                         ],
+                                                 "duration":  520,
+                                                 "post_delay":  500,
+                                                 "next":  [
+                                                              "AccountProfileRoleResonancePageOcr021"
+                                                          ]
+                                             },
+    "AccountProfileRoleResonancePageOcr021":  {
+                                                  "recognition":  "OCR",
+                                                  "roi":  [
+                                                              0,
+                                                              80,
+                                                              1260,
+                                                              615
+                                                          ],
+                                                  "action":  "Custom",
+                                                  "next":  [
+                                                               "AccountProfileRoleResonanceContinue021"
+                                                           ],
+                                                  "on_error":  [
+                                                                   "AccountProfileRoleResonanceContinue021"
+                                                               ],
+                                                  "timeout":  10000,
+                                                  "expected":  "",
+                                                  "custom_action":  "profile_role_resonance_page_read",
+                                                  "custom_action_param":  {
+                                                                              "page_index":  21,
+                                                                              "role_targets":  [
+
+                                                                                               ]
+                                                                          }
+                                              },
+    "AccountProfileRoleResonanceContinue021":  {
+                                                   "recognition":  "DirectHit",
+                                                   "action":  "Custom",
+                                                   "next":  [
+                                                                "AccountProfileRoleResonanceScroll021"
+                                                            ],
+                                                   "on_error":  [
+                                                                    "AccountProfileRoleResonanceComplete"
+                                                                ],
+                                                   "custom_action":  "profile_role_resonance_should_continue",
+                                                   "custom_action_param":  {
+                                                                               "page_index":  21,
+                                                                               "role_targets":  [
+
+                                                                                                ],
+                                                                               "stale_limit":  2,
+                                                                               "max_pages":  24
+                                                                           }
+                                               },
+    "AccountProfileRoleResonanceScroll021":  {
+                                                 "recognition":  "DirectHit",
+                                                 "action":  "Swipe",
+                                                 "begin":  [
+                                                               920,
+                                                               620
+                                                           ],
+                                                 "end":  [
+                                                             920,
+                                                             500
+                                                         ],
+                                                 "duration":  520,
+                                                 "post_delay":  500,
+                                                 "next":  [
+                                                              "AccountProfileRoleResonancePageOcr022"
+                                                          ]
+                                             },
+    "AccountProfileRoleResonancePageOcr022":  {
+                                                  "recognition":  "OCR",
+                                                  "roi":  [
+                                                              0,
+                                                              80,
+                                                              1260,
+                                                              615
+                                                          ],
+                                                  "action":  "Custom",
+                                                  "next":  [
+                                                               "AccountProfileRoleResonanceContinue022"
+                                                           ],
+                                                  "on_error":  [
+                                                                   "AccountProfileRoleResonanceContinue022"
+                                                               ],
+                                                  "timeout":  10000,
+                                                  "expected":  "",
+                                                  "custom_action":  "profile_role_resonance_page_read",
+                                                  "custom_action_param":  {
+                                                                              "page_index":  22,
+                                                                              "role_targets":  [
+
+                                                                                               ]
+                                                                          }
+                                              },
+    "AccountProfileRoleResonanceContinue022":  {
+                                                   "recognition":  "DirectHit",
+                                                   "action":  "Custom",
+                                                   "next":  [
+                                                                "AccountProfileRoleResonanceScroll022"
+                                                            ],
+                                                   "on_error":  [
+                                                                    "AccountProfileRoleResonanceComplete"
+                                                                ],
+                                                   "custom_action":  "profile_role_resonance_should_continue",
+                                                   "custom_action_param":  {
+                                                                               "page_index":  22,
+                                                                               "role_targets":  [
+
+                                                                                                ],
+                                                                               "stale_limit":  2,
+                                                                               "max_pages":  24
+                                                                           }
+                                               },
+    "AccountProfileRoleResonanceScroll022":  {
+                                                 "recognition":  "DirectHit",
+                                                 "action":  "Swipe",
+                                                 "begin":  [
+                                                               920,
+                                                               620
+                                                           ],
+                                                 "end":  [
+                                                             920,
+                                                             500
+                                                         ],
+                                                 "duration":  520,
+                                                 "post_delay":  500,
+                                                 "next":  [
+                                                              "AccountProfileRoleResonancePageOcr023"
+                                                          ]
+                                             },
+    "AccountProfileRoleResonancePageOcr023":  {
+                                                  "recognition":  "OCR",
+                                                  "roi":  [
+                                                              0,
+                                                              80,
+                                                              1260,
+                                                              615
+                                                          ],
+                                                  "action":  "Custom",
+                                                  "next":  [
+                                                               "AccountProfileRoleResonanceContinue023"
+                                                           ],
+                                                  "on_error":  [
+                                                                   "AccountProfileRoleResonanceContinue023"
+                                                               ],
+                                                  "timeout":  10000,
+                                                  "expected":  "",
+                                                  "custom_action":  "profile_role_resonance_page_read",
+                                                  "custom_action_param":  {
+                                                                              "page_index":  23,
+                                                                              "role_targets":  [
+
+                                                                                               ]
+                                                                          }
+                                              },
+    "AccountProfileRoleResonanceContinue023":  {
+                                                   "recognition":  "DirectHit",
+                                                   "action":  "Custom",
+                                                   "next":  [
+                                                                "AccountProfileRoleResonanceScroll023"
+                                                            ],
+                                                   "on_error":  [
+                                                                    "AccountProfileRoleResonanceComplete"
+                                                                ],
+                                                   "custom_action":  "profile_role_resonance_should_continue",
+                                                   "custom_action_param":  {
+                                                                               "page_index":  23,
+                                                                               "role_targets":  [
+
+                                                                                                ],
+                                                                               "stale_limit":  2,
+                                                                               "max_pages":  24
+                                                                           }
+                                               },
+    "AccountProfileRoleResonanceScroll023":  {
+                                                 "recognition":  "DirectHit",
+                                                 "action":  "Swipe",
+                                                 "begin":  [
+                                                               920,
+                                                               620
+                                                           ],
+                                                 "end":  [
+                                                             920,
+                                                             500
+                                                         ],
+                                                 "duration":  520,
+                                                 "post_delay":  500,
+                                                 "next":  [
+                                                              "AccountProfileRoleResonancePageOcr024"
+                                                          ]
+                                             },
+    "AccountProfileRoleResonancePageOcr024":  {
+                                                  "recognition":  "OCR",
+                                                  "roi":  [
+                                                              0,
+                                                              80,
+                                                              1260,
+                                                              615
+                                                          ],
+                                                  "action":  "Custom",
+                                                  "next":  [
+                                                               "AccountProfileRoleResonanceComplete"
+                                                           ],
+                                                  "on_error":  [
+                                                                   "AccountProfileRoleResonanceComplete"
+                                                               ],
+                                                  "timeout":  10000,
+                                                  "expected":  "",
+                                                  "custom_action":  "profile_role_resonance_page_read",
+                                                  "custom_action_param":  {
+                                                                              "page_index":  24,
+                                                                              "role_targets":  [
+
+                                                                                               ]
+                                                                          }
+                                              },
+    "AccountProfileRoleResonanceComplete":  {
+                                                "recognition":  "DirectHit",
+                                                "action":  "Custom",
+                                                "custom_action":  "profile_role_resonance_complete",
+                                                "custom_action_param":  {
+                                                                            "role_targets":  [
+
+                                                                                             ]
+                                                                        },
+                                                "next":  [
+                                                             "AccountProfileRoleResonanceReturnHome"
+                                                         ]
+                                            },
+    "AccountProfileRoleResonanceReturnHome":  {
+                                                  "recognition":  "TemplateMatch",
+                                                  "template":  "go_home.png",
+                                                  "roi":  [
+                                                              154,
+                                                              9,
+                                                              89,
+                                                              58
+                                                          ],
+                                                  "threshold":  0.9,
+                                                  "action":  "Click",
+                                                  "post_delay":  300,
+                                                  "next":  [
+                                                               "AccountProfileRoleResonanceMainMapReady"
+                                                           ],
+                                                  "on_error":  [
+                                                                   "AccountProfileRoleResonanceDone"
+                                                               ]
+                                              },
+    "AccountProfileRoleResonanceMainMapReady":  {
+                                                    "recognition":  "TemplateMatch",
+                                                    "template":  "main_map.png",
+                                                    "threshold":  0.96,
+                                                    "action":  "DoNothing",
+                                                    "next":  [
+                                                                 "AccountProfileRoleResonanceDone"
+                                                             ],
+                                                    "on_error":  [
+                                                                     "AccountProfileRoleResonanceDone"
+                                                                 ]
+                                                },
+    "AccountProfileRoleResonanceDone":  {
+                                            "recognition":  "DirectHit",
+                                            "action":  "DoNothing"
+                                        }
+}

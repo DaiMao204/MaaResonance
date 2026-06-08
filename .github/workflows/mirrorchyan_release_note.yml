@@ -20,16 +20,16 @@ jobs:
     # 若有需要请联系 Mirror酱 开通，直接自行开启是无法使用的
     # https://mirrorchyan.com/
     if: false
-    # if: ${{ github.repository_owner == 'MaaXYZ' }}
+    # if: ${{ github.repository_owner == 'DaiMao204' }}
 
     steps:
       - id: uploading
         uses: MirrorChyan/release-note-action@v1
         with:
-          mirrorchyan_rid: MaaXXX
+          mirrorchyan_rid: MaaResonance
           version_name: ${{ inputs.tag }}
 
-          owner: MaaXYZ
-          repo: MaaXXX
+          owner: DaiMao204
+          repo: MaaResonance
           github_token: ${{ secrets.GITHUB_TOKEN }}
           upload_token: ${{ secrets.MirrorChyanUploadToken }}

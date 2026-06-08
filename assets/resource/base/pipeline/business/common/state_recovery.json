@@ -1,0 +1,1335 @@
+{
+    "StateRecoveryStart": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 8000,
+        "next": [
+            "StateRecoveryMainMapReadyByTemplate",
+            "StateRecoveryMainMapReadyByOcr",
+            "StateRecoveryTravelRouteEvent",
+            "StateRecoveryTravelInProgress",
+            "StateRecoveryFightActive",
+            "StateRecoveryCloseActivityPanel",
+            "StateRecoveryTapStartScreen",
+            "StateRecoveryConfirmResourceDownload",
+            "StateRecoveryCloseAnnouncement",
+            "StateRecoveryCloseGenericPopup",
+            "StateRecoveryConfirmPlainPopup",
+            "StateRecoveryCloseRouteMapDetail",
+            "StateRecoveryCloseBuySellReport",
+            "StateRecoveryCloseRouteLossReport",
+            "StateRecoveryEnterArrivedCity",
+            "StateRecoveryCloseGoodDetail",
+            "StateRecoveryCloseStrengthPrompt",
+            "StateRecoveryCloseBentoCabinet",
+            "StateRecoveryCloseStrengthPage",
+            "StateRecoveryCloseTradePage",
+            "StateRecoveryCloseTradeMenu",
+            "StateRecoveryClosePersonalInfo",
+            "StateRecoveryCloseProfilePanel",
+            "StateRecoveryCloseRoleWarehouse",
+            "StateRecoveryCloseCityPageByOcr",
+            "StateRecoveryCloseCityPageByTemplate",
+            "StateRecoveryCloseRouteMap",
+            "StateRecoveryCloseMissionPanel",
+            "StateRecoveryCloseBrochurePanel",
+            "StateRecoveryTapHome001",
+            "StateRecoveryTapBack001"
+        ],
+        "on_error": "StateRecoveryRestartGameOnce"
+    },
+    "StateRecoveryPostRestartStart": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 10000,
+        "next": [
+            "StateRecoveryMainMapReadyByTemplate",
+            "StateRecoveryMainMapReadyByOcr",
+            "StateRecoveryTravelRouteEvent",
+            "StateRecoveryTravelInProgress",
+            "StateRecoveryFightActive",
+            "StateRecoveryCloseActivityPanel",
+            "StateRecoveryTapStartScreen",
+            "StateRecoveryConfirmResourceDownload",
+            "StateRecoveryCloseAnnouncement",
+            "StateRecoveryCloseGenericPopup",
+            "StateRecoveryConfirmPlainPopup",
+            "StateRecoveryCloseRouteMapDetail",
+            "StateRecoveryCloseBuySellReport",
+            "StateRecoveryCloseRouteLossReport",
+            "StateRecoveryEnterArrivedCity",
+            "StateRecoveryCloseGoodDetail",
+            "StateRecoveryCloseStrengthPrompt",
+            "StateRecoveryCloseBentoCabinet",
+            "StateRecoveryCloseStrengthPage",
+            "StateRecoveryCloseTradePage",
+            "StateRecoveryCloseTradeMenu",
+            "StateRecoveryClosePersonalInfo",
+            "StateRecoveryCloseProfilePanel",
+            "StateRecoveryCloseRoleWarehouse",
+            "StateRecoveryCloseCityPageByOcr",
+            "StateRecoveryCloseCityPageByTemplate",
+            "StateRecoveryCloseRouteMap",
+            "StateRecoveryCloseMissionPanel",
+            "StateRecoveryCloseBrochurePanel",
+            "StateRecoveryTapHomeAfterRestart001",
+            "StateRecoveryTapBackAfterRestart001"
+        ],
+        "on_error": "StateRecoveryFailed"
+    },
+    "StateRecoveryMainMapReadyByTemplate": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "main_map.png",
+                "threshold": 0.95
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "next": "StateRecoveryComplete"
+    },
+    "StateRecoveryMainMapReadyByOcr": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "整备列车",
+                    "客运管理",
+                    "STARTENGINE",
+                    "START ENGINE"
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "next": "StateRecoveryComplete"
+    },
+    "StateRecoveryTravelRouteEvent": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "护卫队迎击",
+                    "敌方等级",
+                    "诱饵气球",
+                    "立即返航"
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "state_recovery_travel_detected",
+                "custom_action_param": {
+                    "kind": "route_event"
+                }
+            }
+        },
+        "post_delay": 200,
+        "next": "StateRecoveryFailed"
+    },
+    "StateRecoveryTravelInProgress": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "目的地",
+                    "剩余行程",
+                    "巡航"
+                ],
+                "roi": [
+                    460,
+                    16,
+                    380,
+                    145
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "state_recovery_travel_detected",
+                "custom_action_param": {
+                    "kind": "travel_hud"
+                }
+            }
+        },
+        "post_delay": 200,
+        "next": "StateRecoveryFailed"
+    },
+    "StateRecoveryTapStartScreen": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "点击屏幕进入游戏",
+                    "点击任意位置进入游戏",
+                    "下载已经完成"
+                ]
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 2000,
+        "next": "StateRecoveryObserveAfterStep001"
+    },
+    "StateRecoveryCloseActivityPanel": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "限时活动",
+                    "常规活动",
+                    "剧情活动",
+                    "经营活动",
+                    "启程签到",
+                    "活动时间"
+                ],
+                "roi": [
+                    0,
+                    60,
+                    1280,
+                    620
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    83,
+                    36
+                ]
+            }
+        },
+        "post_delay": 900,
+        "next": "StateRecoveryObserveAfterStep001"
+    },
+    "StateRecoveryConfirmResourceDownload": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "需要下载资源包",
+                    "下载资源包"
+                ],
+                "roi": [
+                    260,
+                    260,
+                    760,
+                    220
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "next": "StateRecoveryTapResourceDownloadConfirm"
+    },
+    "StateRecoveryTapResourceDownloadConfirm": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": "确认",
+                "roi": [
+                    320,
+                    440,
+                    640,
+                    130
+                ]
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 5000,
+        "next": "StateRecoveryObserveAfterStep001"
+    },
+    "StateRecoveryCloseAnnouncement": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "公告",
+                    "更新公告",
+                    "活动公告",
+                    "停服维护",
+                    "维护公告"
+                ],
+                "roi": [
+                    260,
+                    40,
+                    760,
+                    620
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    1110,
+                    95
+                ]
+            }
+        },
+        "post_delay": 800,
+        "next": "StateRecoveryObserveAfterStep001"
+    },
+    "StateRecoveryCloseGenericPopup": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "触碰空白区域退出"
+                ],
+                "roi": [
+                    360,
+                    620,
+                    560,
+                    95
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    640,
+                    705
+                ]
+            }
+        },
+        "post_delay": 800,
+        "next": "StateRecoveryObserveAfterStep001"
+    },
+    "StateRecoveryConfirmPlainPopup": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "确认",
+                    "确定"
+                ],
+                "roi": [
+                    300,
+                    240,
+                    680,
+                    320
+                ]
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 800,
+        "next": "StateRecoveryObserveAfterStep001"
+    },
+    "StateRecoveryCloseRouteMapDetail": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "推荐等级",
+                    "路程"
+                ],
+                "roi": [
+                    680,
+                    80,
+                    580,
+                    540
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    330,
+                    360
+                ]
+            }
+        },
+        "post_delay": 700,
+        "next": "StateRecoveryObserveAfterStep001"
+    },
+    "StateRecoveryCloseBuySellReport": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "买入结算报告",
+                    "卖出结算报告",
+                    "出售结算报告",
+                    "触碰空白区域退出"
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    1180,
+                    680
+                ]
+            }
+        },
+        "post_delay": 900,
+        "next": "StateRecoveryObserveAfterStep001"
+    },
+    "StateRecoveryCloseRouteLossReport": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "遇袭损失报告",
+                    "LOSS REPORT",
+                    "铁盟币损失",
+                    "列车耐久度"
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    727,
+                    541
+                ]
+            }
+        },
+        "post_delay": 1200,
+        "next": "StateRecoveryObserveAfterStep001"
+    },
+    "StateRecoveryEnterArrivedCity": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "访问城市",
+                    "进入城市"
+                ],
+                "roi": [
+                    1000,
+                    360,
+                    280,
+                    260
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    1270,
+                    494
+                ]
+            }
+        },
+        "post_delay": 1500,
+        "next": "StateRecoveryObserveAfterStep001"
+    },
+    "StateRecoveryCloseGoodDetail": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "获取途径",
+                    "拥有数量"
+                ],
+                "roi": [
+                    480,
+                    170,
+                    690,
+                    150
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    100,
+                    100
+                ]
+            }
+        },
+        "post_delay": 700,
+        "next": "StateRecoveryObserveAfterStep001"
+    },
+    "StateRecoveryCloseStrengthPrompt": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "疲劳值已消除",
+                    "已消除",
+                    "恢复成功",
+                    "疲劳已恢复"
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    640,
+                    510
+                ]
+            }
+        },
+        "post_delay": 800,
+        "next": "StateRecoveryObserveAfterStep001"
+    },
+    "StateRecoveryCloseBentoCabinet": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "BENTOCABINET",
+                    "BOXMEAL",
+                    "工作餐",
+                    "全部使用",
+                    "爱心便当"
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    83,
+                    36
+                ]
+            }
+        },
+        "post_delay": 900,
+        "next": "StateRecoveryObserveAfterStep001"
+    },
+    "StateRecoveryCloseStrengthPage": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "请选择恢复疲劳值方式",
+                    "前往便当柜",
+                    "列车长疲劳值"
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    83,
+                    36
+                ]
+            }
+        },
+        "post_delay": 900,
+        "next": "StateRecoveryObserveAfterStep001"
+    },
+    "StateRecoveryCloseTradePage": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "预计买入",
+                    "全部买入",
+                    "预计卖出",
+                    "全部卖出",
+                    "全部出售"
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    83,
+                    36
+                ]
+            }
+        },
+        "post_delay": 900,
+        "next": "StateRecoveryObserveAfterStep001"
+    },
+    "StateRecoveryCloseTradeMenu": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "我要买",
+                    "我要卖"
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    83,
+                    36
+                ]
+            }
+        },
+        "post_delay": 900,
+        "next": "StateRecoveryObserveAfterStep001"
+    },
+    "StateRecoveryClosePersonalInfo": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "个人信息",
+                    "账号信息",
+                    "UID",
+                    "昵称",
+                    "查看更多信息",
+                    "列车长形象"
+                ],
+                "roi": [
+                    0,
+                    0,
+                    1280,
+                    720
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    900,
+                    360
+                ]
+            }
+        },
+        "post_delay": 900,
+        "next": "StateRecoveryObserveAfterStep001"
+    },
+    "StateRecoveryCloseProfilePanel": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "声望总和",
+                    "所有城市声望",
+                    "城市声望",
+                    "货仓",
+                    "仓库管理"
+                ],
+                "roi": [
+                    0,
+                    40,
+                    1280,
+                    640
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    83,
+                    36
+                ]
+            }
+        },
+        "post_delay": 900,
+        "next": "StateRecoveryObserveAfterStep001"
+    },
+    "StateRecoveryCloseRoleWarehouse": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "乘员仓库",
+                    "获取时间",
+                    "RESONANCE",
+                    "CONDUCTOR"
+                ],
+                "roi": [
+                    0,
+                    40,
+                    1280,
+                    640
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    83,
+                    36
+                ]
+            }
+        },
+        "post_delay": 900,
+        "next": "StateRecoveryObserveAfterStep001"
+    },
+    "StateRecoveryCloseCityPageByOcr": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "交易所",
+                    "休息区",
+                    "铁安局",
+                    "城市声望",
+                    "商会"
+                ],
+                "roi": [
+                    0,
+                    80,
+                    1280,
+                    540
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    83,
+                    36
+                ]
+            }
+        },
+        "post_delay": 900,
+        "next": "StateRecoveryObserveAfterStep001"
+    },
+    "StateRecoveryCloseCityPageByTemplate": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "fame.png",
+                "roi": [
+                    25,
+                    634,
+                    74,
+                    73
+                ],
+                "threshold": 0.95
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    83,
+                    36
+                ]
+            }
+        },
+        "post_delay": 900,
+        "next": "StateRecoveryObserveAfterStep001"
+    },
+    "StateRecoveryCloseRouteMap": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "路线图",
+                    "前往目的地",
+                    "当前站点",
+                    "当前城市",
+                    "图示",
+                    "导航至",
+                    "主线任务车站"
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    83,
+                    36
+                ]
+            }
+        },
+        "post_delay": 900,
+        "next": "StateRecoveryObserveAfterStep001"
+    },
+    "StateRecoveryCloseMissionPanel": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "支线任务",
+                    "商会任务",
+                    "物资补给",
+                    "取消追踪",
+                    "奖励物品"
+                ],
+                "roi": [
+                    0,
+                    80,
+                    1280,
+                    540
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    83,
+                    36
+                ]
+            }
+        },
+        "post_delay": 900,
+        "next": "StateRecoveryObserveAfterStep001"
+    },
+    "StateRecoveryCloseBrochurePanel": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "BROCHURE",
+                    "DEVELOPMENT",
+                    "BOUNDLESS",
+                    "开拓手册",
+                    "无垠手册",
+                    "立即获得桦石",
+                    "委托派遣奖励双倍"
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    83,
+                    36
+                ]
+            }
+        },
+        "post_delay": 900,
+        "next": "StateRecoveryObserveAfterStep001"
+    },
+    "StateRecoveryObserveAfterStep001": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 8000,
+        "next": [
+            "StateRecoveryMainMapReadyByTemplate",
+            "StateRecoveryMainMapReadyByOcr",
+            "StateRecoveryTravelRouteEvent",
+            "StateRecoveryTravelInProgress",
+            "StateRecoveryFightActive",
+            "StateRecoveryCloseActivityPanel",
+            "StateRecoveryTapStartScreen",
+            "StateRecoveryConfirmResourceDownload",
+            "StateRecoveryCloseAnnouncement",
+            "StateRecoveryCloseGenericPopup",
+            "StateRecoveryConfirmPlainPopup",
+            "StateRecoveryCloseRouteMapDetail",
+            "StateRecoveryCloseBuySellReport",
+            "StateRecoveryCloseRouteLossReport",
+            "StateRecoveryEnterArrivedCity",
+            "StateRecoveryCloseGoodDetail",
+            "StateRecoveryCloseStrengthPrompt",
+            "StateRecoveryCloseBentoCabinet",
+            "StateRecoveryCloseStrengthPage",
+            "StateRecoveryCloseTradePage",
+            "StateRecoveryCloseTradeMenu",
+            "StateRecoveryClosePersonalInfo",
+            "StateRecoveryCloseProfilePanel",
+            "StateRecoveryCloseRoleWarehouse",
+            "StateRecoveryCloseCityPageByOcr",
+            "StateRecoveryCloseCityPageByTemplate",
+            "StateRecoveryCloseRouteMap",
+            "StateRecoveryCloseMissionPanel",
+            "StateRecoveryCloseBrochurePanel",
+            "StateRecoveryTapHome002",
+            "StateRecoveryTapBack002"
+        ],
+        "on_error": "StateRecoveryRestartGameOnce"
+    },
+    "StateRecoveryObserveAfterStep002": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 8000,
+        "next": [
+            "StateRecoveryMainMapReadyByTemplate",
+            "StateRecoveryMainMapReadyByOcr",
+            "StateRecoveryTravelRouteEvent",
+            "StateRecoveryTravelInProgress",
+            "StateRecoveryFightActive",
+            "StateRecoveryCloseActivityPanel",
+            "StateRecoveryTapStartScreen",
+            "StateRecoveryConfirmResourceDownload",
+            "StateRecoveryCloseAnnouncement",
+            "StateRecoveryCloseGenericPopup",
+            "StateRecoveryConfirmPlainPopup",
+            "StateRecoveryCloseRouteMapDetail",
+            "StateRecoveryCloseBuySellReport",
+            "StateRecoveryCloseRouteLossReport",
+            "StateRecoveryEnterArrivedCity",
+            "StateRecoveryCloseGoodDetail",
+            "StateRecoveryCloseStrengthPrompt",
+            "StateRecoveryCloseBentoCabinet",
+            "StateRecoveryCloseStrengthPage",
+            "StateRecoveryCloseTradePage",
+            "StateRecoveryCloseTradeMenu",
+            "StateRecoveryClosePersonalInfo",
+            "StateRecoveryCloseProfilePanel",
+            "StateRecoveryCloseRoleWarehouse",
+            "StateRecoveryCloseCityPageByOcr",
+            "StateRecoveryCloseCityPageByTemplate",
+            "StateRecoveryCloseRouteMap",
+            "StateRecoveryCloseMissionPanel",
+            "StateRecoveryCloseBrochurePanel",
+            "StateRecoveryTapHome003",
+            "StateRecoveryTapBack003"
+        ],
+        "on_error": "StateRecoveryRestartGameOnce"
+    },
+    "StateRecoveryObserveAfterStep003": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 8000,
+        "next": [
+            "StateRecoveryMainMapReadyByTemplate",
+            "StateRecoveryMainMapReadyByOcr",
+            "StateRecoveryTravelRouteEvent",
+            "StateRecoveryTravelInProgress",
+            "StateRecoveryFightActive",
+            "StateRecoveryCloseActivityPanel",
+            "StateRecoveryTapStartScreen",
+            "StateRecoveryConfirmResourceDownload",
+            "StateRecoveryCloseAnnouncement",
+            "StateRecoveryCloseGenericPopup",
+            "StateRecoveryConfirmPlainPopup",
+            "StateRecoveryCloseRouteMapDetail",
+            "StateRecoveryCloseBuySellReport",
+            "StateRecoveryCloseRouteLossReport",
+            "StateRecoveryEnterArrivedCity",
+            "StateRecoveryCloseGoodDetail",
+            "StateRecoveryCloseStrengthPrompt",
+            "StateRecoveryCloseBentoCabinet",
+            "StateRecoveryCloseStrengthPage",
+            "StateRecoveryCloseTradePage",
+            "StateRecoveryCloseTradeMenu",
+            "StateRecoveryClosePersonalInfo",
+            "StateRecoveryCloseProfilePanel",
+            "StateRecoveryCloseRoleWarehouse",
+            "StateRecoveryCloseCityPageByOcr",
+            "StateRecoveryCloseCityPageByTemplate",
+            "StateRecoveryCloseRouteMap",
+            "StateRecoveryCloseMissionPanel",
+            "StateRecoveryCloseBrochurePanel",
+            "StateRecoveryTapHome004",
+            "StateRecoveryTapBack004"
+        ],
+        "on_error": "StateRecoveryRestartGameOnce"
+    },
+    "StateRecoveryObserveFinal": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 8000,
+        "next": [
+            "StateRecoveryMainMapReadyByTemplate",
+            "StateRecoveryMainMapReadyByOcr",
+            "StateRecoveryTravelRouteEvent",
+            "StateRecoveryTravelInProgress",
+            "StateRecoveryFightActive",
+            "StateRecoveryCloseActivityPanel",
+            "StateRecoveryTapStartScreen",
+            "StateRecoveryConfirmResourceDownload",
+            "StateRecoveryCloseAnnouncement",
+            "StateRecoveryCloseGenericPopup",
+            "StateRecoveryConfirmPlainPopup",
+            "StateRecoveryCloseRouteMapDetail",
+            "StateRecoveryCloseBuySellReport",
+            "StateRecoveryCloseRouteLossReport",
+            "StateRecoveryEnterArrivedCity",
+            "StateRecoveryCloseGoodDetail",
+            "StateRecoveryCloseStrengthPrompt",
+            "StateRecoveryCloseBentoCabinet",
+            "StateRecoveryCloseStrengthPage",
+            "StateRecoveryCloseTradePage",
+            "StateRecoveryCloseTradeMenu",
+            "StateRecoveryClosePersonalInfo",
+            "StateRecoveryCloseProfilePanel",
+            "StateRecoveryCloseRoleWarehouse",
+            "StateRecoveryCloseCityPageByOcr",
+            "StateRecoveryCloseCityPageByTemplate",
+            "StateRecoveryCloseRouteMap",
+            "StateRecoveryCloseMissionPanel",
+            "StateRecoveryCloseBrochurePanel"
+        ],
+        "on_error": "StateRecoveryRestartGameOnce"
+    },
+    "StateRecoveryPostRestartObserveAfterStep001": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 10000,
+        "next": [
+            "StateRecoveryMainMapReadyByTemplate",
+            "StateRecoveryMainMapReadyByOcr",
+            "StateRecoveryTravelRouteEvent",
+            "StateRecoveryTravelInProgress",
+            "StateRecoveryFightActive",
+            "StateRecoveryCloseActivityPanel",
+            "StateRecoveryTapStartScreen",
+            "StateRecoveryConfirmResourceDownload",
+            "StateRecoveryCloseAnnouncement",
+            "StateRecoveryCloseGenericPopup",
+            "StateRecoveryConfirmPlainPopup",
+            "StateRecoveryCloseRouteMapDetail",
+            "StateRecoveryCloseBuySellReport",
+            "StateRecoveryCloseRouteLossReport",
+            "StateRecoveryEnterArrivedCity",
+            "StateRecoveryCloseGoodDetail",
+            "StateRecoveryCloseStrengthPrompt",
+            "StateRecoveryCloseBentoCabinet",
+            "StateRecoveryCloseStrengthPage",
+            "StateRecoveryCloseTradePage",
+            "StateRecoveryCloseTradeMenu",
+            "StateRecoveryClosePersonalInfo",
+            "StateRecoveryCloseProfilePanel",
+            "StateRecoveryCloseRoleWarehouse",
+            "StateRecoveryCloseCityPageByOcr",
+            "StateRecoveryCloseCityPageByTemplate",
+            "StateRecoveryCloseRouteMap",
+            "StateRecoveryCloseMissionPanel",
+            "StateRecoveryCloseBrochurePanel",
+            "StateRecoveryTapHomeAfterRestart002",
+            "StateRecoveryTapBackAfterRestart002"
+        ],
+        "on_error": "StateRecoveryFailed"
+    },
+    "StateRecoveryPostRestartObserveAfterStep002": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "timeout": 10000,
+        "next": [
+            "StateRecoveryMainMapReadyByTemplate",
+            "StateRecoveryMainMapReadyByOcr",
+            "StateRecoveryTravelRouteEvent",
+            "StateRecoveryTravelInProgress",
+            "StateRecoveryFightActive",
+            "StateRecoveryCloseActivityPanel",
+            "StateRecoveryTapStartScreen",
+            "StateRecoveryConfirmResourceDownload",
+            "StateRecoveryCloseAnnouncement",
+            "StateRecoveryCloseGenericPopup",
+            "StateRecoveryConfirmPlainPopup",
+            "StateRecoveryCloseRouteMapDetail",
+            "StateRecoveryCloseBuySellReport",
+            "StateRecoveryCloseRouteLossReport",
+            "StateRecoveryEnterArrivedCity",
+            "StateRecoveryCloseGoodDetail",
+            "StateRecoveryCloseStrengthPrompt",
+            "StateRecoveryCloseBentoCabinet",
+            "StateRecoveryCloseStrengthPage",
+            "StateRecoveryCloseTradePage",
+            "StateRecoveryCloseTradeMenu",
+            "StateRecoveryClosePersonalInfo",
+            "StateRecoveryCloseProfilePanel",
+            "StateRecoveryCloseRoleWarehouse",
+            "StateRecoveryCloseCityPageByOcr",
+            "StateRecoveryCloseCityPageByTemplate",
+            "StateRecoveryCloseRouteMap",
+            "StateRecoveryCloseMissionPanel",
+            "StateRecoveryCloseBrochurePanel",
+            "StateRecoveryTapHomeAfterRestart003",
+            "StateRecoveryTapBackAfterRestart003"
+        ],
+        "on_error": "StateRecoveryFailed"
+    },
+    "StateRecoveryTapHome001": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "go_home.png",
+                "threshold": 0.9
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 900,
+        "next": "StateRecoveryObserveAfterStep001"
+    },
+    "StateRecoveryTapHome002": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "go_home.png",
+                "threshold": 0.9
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 900,
+        "next": "StateRecoveryObserveAfterStep002"
+    },
+    "StateRecoveryTapHome003": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "go_home.png",
+                "threshold": 0.9
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 900,
+        "next": "StateRecoveryObserveAfterStep003"
+    },
+    "StateRecoveryTapHome004": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "go_home.png",
+                "threshold": 0.9
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 900,
+        "next": "StateRecoveryObserveFinal"
+    },
+    "StateRecoveryTapBack001": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "page_back.png",
+                "threshold": 0.9
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 900,
+        "next": "StateRecoveryObserveAfterStep001"
+    },
+    "StateRecoveryTapBack002": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "page_back.png",
+                "threshold": 0.9
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 900,
+        "next": "StateRecoveryObserveAfterStep002"
+    },
+    "StateRecoveryTapBack003": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "page_back.png",
+                "threshold": 0.9
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 900,
+        "next": "StateRecoveryObserveAfterStep003"
+    },
+    "StateRecoveryTapBack004": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "page_back.png",
+                "threshold": 0.9
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 900,
+        "next": "StateRecoveryObserveFinal"
+    },
+    "StateRecoveryTapHomeAfterRestart001": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "go_home.png",
+                "threshold": 0.9
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 900,
+        "next": "StateRecoveryPostRestartObserveAfterStep001"
+    },
+    "StateRecoveryTapHomeAfterRestart002": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "go_home.png",
+                "threshold": 0.9
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 900,
+        "next": "StateRecoveryPostRestartObserveAfterStep002"
+    },
+    "StateRecoveryTapHomeAfterRestart003": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "go_home.png",
+                "threshold": 0.9
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 900,
+        "next": "StateRecoveryFailed"
+    },
+    "StateRecoveryTapBackAfterRestart001": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "page_back.png",
+                "threshold": 0.9
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 900,
+        "next": "StateRecoveryPostRestartObserveAfterStep001"
+    },
+    "StateRecoveryTapBackAfterRestart002": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "page_back.png",
+                "threshold": 0.9
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 900,
+        "next": "StateRecoveryPostRestartObserveAfterStep002"
+    },
+    "StateRecoveryTapBackAfterRestart003": {
+        "recognition": {
+            "type": "TemplateMatch",
+            "param": {
+                "template": "page_back.png",
+                "threshold": 0.9
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 900,
+        "next": "StateRecoveryFailed"
+    },
+    "StateRecoveryRestartGameOnce": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "StopApp",
+            "param": {
+                "package": "com.hermes.goda"
+            }
+        },
+        "post_delay": 2000,
+        "next": "StateRecoveryStartGameOnce"
+    },
+    "StateRecoveryStartGameOnce": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "StartApp",
+            "param": {
+                "package": "com.hermes.goda"
+            }
+        },
+        "post_delay": 10000,
+        "next": "StateRecoveryPostRestartStart"
+    },
+    "StateRecoveryComplete": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "DoNothing"
+        }
+    },
+    "StateRecoveryFailed": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "DoNothing"
+        }
+    },
+    "StateRecoveryFightActive": {
+        "recognition": "Custom",
+        "custom_recognition": "manual_two_city_business_fight_active",
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "state_recovery_travel_detected",
+                "custom_action_param": {
+                    "kind": "fight_active"
+                }
+            }
+        },
+        "post_delay": 200,
+        "next": "StateRecoveryFailed"
+    }
+}

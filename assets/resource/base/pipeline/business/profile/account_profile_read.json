@@ -1,0 +1,341 @@
+{
+    "AccountProfileReadStart": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "next": "AccountProfilePrestigeStart"
+    },
+    "AccountProfileReadDone": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "DoNothing"
+        }
+    },
+    "AccountProfileReadFailed": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "account_profile_read_failed"
+            }
+        }
+    },
+    "AccountProfileUidRead": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": "",
+                "roi": [
+                    0,
+                    630,
+                    360,
+                    90
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_uid_read"
+            }
+        },
+        "next": "AccountProfilePrestigeStart",
+        "on_error": "AccountProfilePrestigeStart"
+    },
+    "AccountProfileCityUnlockProbe001MissingGate": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_should_probe",
+                "custom_action_param": {
+                    "city": "7号自由港",
+                    "reset": true
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe001MoveToCity",
+        "on_error": "AccountProfileCityUnlockProbe002MissingGate"
+    },
+    "AccountProfileCityUnlockProbe002MissingGate": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_should_probe",
+                "custom_action_param": {
+                    "city": "武林源"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe002MoveToCity",
+        "on_error": "AccountProfileCityUnlockProbe003MissingGate"
+    },
+    "AccountProfileCityUnlockProbe003MissingGate": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_should_probe",
+                "custom_action_param": {
+                    "city": "阿妮塔战备工厂"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe003MoveToCity",
+        "on_error": "AccountProfileCityUnlockProbe004MissingGate"
+    },
+    "AccountProfileCityUnlockProbe004MissingGate": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_should_probe",
+                "custom_action_param": {
+                    "city": "阿妮塔能源研究所"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe004MoveToCity",
+        "on_error": "AccountProfileCityUnlockProbe005MissingGate"
+    },
+    "AccountProfileCityUnlockProbe005MissingGate": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_should_probe",
+                "custom_action_param": {
+                    "city": "阿妮塔发射中心"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe005MoveToCity",
+        "on_error": "AccountProfileCityUnlockProbe006MissingGate"
+    },
+    "AccountProfileCityUnlockProbe006MissingGate": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_should_probe",
+                "custom_action_param": {
+                    "city": "汇流塔"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe006MoveToCity",
+        "on_error": "AccountProfileCityUnlockProbe007MissingGate"
+    },
+    "AccountProfileCityUnlockProbe007MissingGate": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_should_probe",
+                "custom_action_param": {
+                    "city": "海角城"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe007MoveToCity",
+        "on_error": "AccountProfileCityUnlockProbe008MissingGate"
+    },
+    "AccountProfileCityUnlockProbe008MissingGate": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_should_probe",
+                "custom_action_param": {
+                    "city": "远星大桥"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe008MoveToCity",
+        "on_error": "AccountProfileCityUnlockProbe009MissingGate"
+    },
+    "AccountProfileCityUnlockProbe009MissingGate": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_should_probe",
+                "custom_action_param": {
+                    "city": "贡露城"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe009MoveToCity",
+        "on_error": "AccountProfileCityUnlockProbe010MissingGate"
+    },
+    "AccountProfileCityUnlockProbe010MissingGate": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_should_probe",
+                "custom_action_param": {
+                    "city": "澄明数据中心"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe010MoveToCity",
+        "on_error": "AccountProfileCityUnlockProbe011MissingGate"
+    },
+    "AccountProfileCityUnlockProbe011MissingGate": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_should_probe",
+                "custom_action_param": {
+                    "city": "修格里城"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe011MoveToCity",
+        "on_error": "AccountProfileCityUnlockProbe012MissingGate"
+    },
+    "AccountProfileCityUnlockProbe012MissingGate": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_should_probe",
+                "custom_action_param": {
+                    "city": "铁盟哨站"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe012MoveToCity",
+        "on_error": "AccountProfileCityUnlockProbe013MissingGate"
+    },
+    "AccountProfileCityUnlockProbe013MissingGate": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_should_probe",
+                "custom_action_param": {
+                    "city": "曼德矿场"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe013MoveToCity",
+        "on_error": "AccountProfileCityUnlockProbe014MissingGate"
+    },
+    "AccountProfileCityUnlockProbe014MissingGate": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_should_probe",
+                "custom_action_param": {
+                    "city": "淘金乐园"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe014MoveToCity",
+        "on_error": "AccountProfileCityUnlockProbe015MissingGate"
+    },
+    "AccountProfileCityUnlockProbe015MissingGate": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_should_probe",
+                "custom_action_param": {
+                    "city": "荒原站"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe015MoveToCity",
+        "on_error": "AccountProfileCityUnlockProbe016MissingGate"
+    },
+    "AccountProfileCityUnlockProbe016MissingGate": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_should_probe",
+                "custom_action_param": {
+                    "city": "云岫桥基地"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe016MoveToCity",
+        "on_error": "AccountProfileCityUnlockProbe017MissingGate"
+    },
+    "AccountProfileCityUnlockProbe017MissingGate": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_should_probe",
+                "custom_action_param": {
+                    "city": "栖羽站"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe017MoveToCity",
+        "on_error": "AccountProfileCityUnlockProbe018MissingGate"
+    },
+    "AccountProfileCityUnlockProbe018MissingGate": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "profile_city_unlock_should_probe",
+                "custom_action_param": {
+                    "city": "岚心城"
+                }
+            }
+        },
+        "next": "AccountProfileCityUnlockProbe018MoveToCity",
+        "on_error": "AccountProfileCityUnlockComplete"
+    }
+}
