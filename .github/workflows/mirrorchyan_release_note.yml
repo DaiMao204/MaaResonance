@@ -20,6 +20,7 @@ jobs:
         with:
           mirrorchyan_rid: MaaResonance
           version_name: ${{ inputs.tag }}
+          channel: stable
 
           owner: DaiMao204
           repo: MaaResonance
