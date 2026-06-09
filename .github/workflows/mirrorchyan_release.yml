@@ -25,7 +25,6 @@ jobs:
           filename: ${{ format('MaaResonance-{0}-{1}-*', matrix.os, matrix.arch) }}
           mirrorchyan_rid: MaaResonance
           tag: ${{ inputs.tag }}
-          channel: stable
 
           os: ${{ matrix.os }}
           arch: ${{ matrix.arch }}
