@@ -775,7 +775,10 @@
             "ManualTwoCityBusinessProductScanNeeded",
             "ManualTwoCityBusinessBuyDrinkCheck"
         ],
-        "on_error": "ManualTwoCityBusinessCloseDailyCheckInForBuyPageReady"
+        "on_error": [
+            "ManualTwoCityBusinessCloseDailyCheckInForBuyPageReady",
+            "ManualTwoCityBusinessTradeEntryFailed"
+        ]
     },
     "ManualTwoCityBusinessCloseDailyCheckInForBuyPageReady": {
         "recognition": {
@@ -1669,7 +1672,10 @@
             }
         },
         "next": "ManualTwoCityBusinessSellDrinkCheck",
-        "on_error": "ManualTwoCityBusinessCloseDailyCheckInForSellPageReady"
+        "on_error": [
+            "ManualTwoCityBusinessCloseDailyCheckInForSellPageReady",
+            "ManualTwoCityBusinessTradeEntryFailed"
+        ]
     },
     "ManualTwoCityBusinessCloseDailyCheckInForSellPageReady": {
         "recognition": {
@@ -1708,7 +1714,10 @@
             }
         },
         "next": "ManualTwoCityBusinessOpenStrengthForDrink",
-        "on_error": "ManualTwoCityBusinessCloseDailyCheckInForBuyDrinkCheck"
+        "on_error": [
+            "ManualTwoCityBusinessCloseDailyCheckInForBuyDrinkCheck",
+            "ManualTwoCityBusinessBuyStrengthRecoveryCheck"
+        ]
     },
     "ManualTwoCityBusinessCloseDailyCheckInForBuyDrinkCheck": {
         "recognition": {
@@ -1747,7 +1756,10 @@
             }
         },
         "next": "ManualTwoCityBusinessOpenStrengthForDrink",
-        "on_error": "ManualTwoCityBusinessCloseDailyCheckInForSellDrinkCheck"
+        "on_error": [
+            "ManualTwoCityBusinessCloseDailyCheckInForSellDrinkCheck",
+            "ManualTwoCityBusinessSellStrengthRecoveryCheck"
+        ]
     },
     "ManualTwoCityBusinessCloseDailyCheckInForSellDrinkCheck": {
         "recognition": {
@@ -2358,7 +2370,10 @@
             }
         },
         "next": "ManualTwoCityBusinessSellMarketChangeConfirmButton",
-        "on_error": "ManualTwoCityBusinessSellConfirmPopup"
+        "on_error": [
+            "ManualTwoCityBusinessSellConfirmPopup",
+            "ManualTwoCityBusinessTradeEntryFailed"
+        ]
     },
     "ManualTwoCityBusinessSellMarketChangeConfirmButton": {
         "recognition": {
