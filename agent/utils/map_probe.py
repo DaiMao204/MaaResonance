@@ -39,6 +39,14 @@ DESTINATION_TITLE_ALIASES = {
     "阿妮塔发射中心": ["阿妮塔发射中心", "发射中心", "阿妮塔发射"],
 }
 
+DAILY_CHECKIN_POPUP_TEXTS = [
+    "每日签到奖励",
+    "DAILY CHECK-IN CALENDAR",
+    "今日奖励",
+    "本月累计签到",
+    "已领取",
+]
+
 
 def _int_param(params: dict[str, Any], key: str, default: int) -> int:
     try:
@@ -146,6 +154,31 @@ def close_destination_detail_panel(context: Context, image: Any) -> bool:
     context.tasker.controller.post_click(80, 360).wait()
     time.sleep(0.55)
     return True
+
+
+def close_daily_checkin_popup(context: Context, image: Any) -> dict[str, Any]:
+    if image is None:
+        return {"closed": False, "reason": "missing_image"}
+    detail = context.run_recognition(
+        "RouteMapDailyCheckinPopup",
+        image,
+        {
+            "RouteMapDailyCheckinPopup": {
+                "recognition": "OCR",
+                "expected": DAILY_CHECKIN_POPUP_TEXTS,
+                "roi": [120, 40, 1040, 640],
+                "action": "DoNothing",
+            }
+        },
+    )
+    if not bool(detail and detail.hit):
+        return {"closed": False, "reason": "not_hit"}
+    context.tasker.controller.post_click(640, 705).wait()
+    time.sleep(0.9)
+    return {
+        "closed": True,
+        "texts": [_recognition_text(item) for item in _recognition_result_items(detail)[:12]],
+    }
 
 
 def destination_visible_text_probe(
@@ -485,6 +518,13 @@ def destination_map_vicinity_probe(context: Context, params: dict[str, Any]) -> 
             if image is None:
                 result["reason"] = "screencap_failed"
                 return result
+            popup = close_daily_checkin_popup(context, image)
+            if popup.get("closed"):
+                attempts.append({"step": step, "reason": "daily_checkin_popup_closed", "popup": popup})
+                image = controller_screencap_image(context)
+                if image is None:
+                    result["reason"] = "screencap_failed_after_daily_popup"
+                    return result
             array = np.ascontiguousarray(np.asarray(image)[:, :, :3])
             if array.ndim != 3 or array.shape[2] < 3:
                 result["reason"] = "invalid_screenshot"
@@ -683,6 +723,13 @@ def destination_map_coordinate_probe(context: Context, params: dict[str, Any]) -
             if image is None:
                 result["reason"] = "screencap_failed"
                 return result
+            popup = close_daily_checkin_popup(context, image)
+            if popup.get("closed"):
+                attempts.append({"step": step, "reason": "daily_checkin_popup_closed", "popup": popup})
+                image = controller_screencap_image(context)
+                if image is None:
+                    result["reason"] = "screencap_failed_after_daily_popup"
+                    return result
             if destination_panel_title_hit(context, image, destination_city):
                 result.update(
                     {
@@ -825,6 +872,18 @@ def destination_map_coordinate_probe(context: Context, params: dict[str, Any]) -
                     context.tasker.controller.post_click(probe_point[0], probe_point[1]).wait()
                     time.sleep(0.75)
                     verify_image = controller_screencap_image(context)
+                    popup = close_daily_checkin_popup(context, verify_image)
+                    if popup.get("closed"):
+                        probe_results.append(
+                            {
+                                "point": list(probe_point),
+                                "verified": False,
+                                "panel_closed": False,
+                                "daily_checkin_popup_closed": True,
+                                "popup": popup,
+                            }
+                        )
+                        verify_image = controller_screencap_image(context)
                     verified = destination_panel_title_hit(context, verify_image, destination_city)
                     panel_closed = False
                     if not verified:

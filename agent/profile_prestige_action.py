@@ -129,12 +129,14 @@ BUY_GOODS_LIST_ROI = [500, 105, 430, 585]
 BUY_PAGE_READY_TEXTS = ["预计买入", "全部买入", "全部取消"]
 BUY_PAGE_CARGO_LOAD_ROI = [880, 360, 390, 85]
 BUY_PAGE_CARGO_LOAD_PROBE_ROI = [1070, 345, 210, 120]
+POST_BUY_CARGO_VERIFY_PLANNED_RATIO = 0.95
+POST_BUY_CARGO_VERIFY_PASS_RATIO = 0.98
 TRADE_SWITCH_TO_SELL_ROI = [0, 600, 430, 100]
 TRADE_SWITCH_TO_SELL_TARGET = (336, 669)
 TRADE_SWITCH_TO_BUY_ROI = [0, 600, 430, 100]
 TRADE_SWITCH_TO_BUY_TARGET = (116, 669)
 TRADE_STRENGTH_ENTRY_TARGET = (974, 32)
-TRADE_STRENGTH_STATUS_ROI = [940, 0, 130, 50]
+TRADE_STRENGTH_STATUS_ROI = [820, 0, 300, 65]
 TRADE_STRENGTH_STATUS_TEXT = r"\d+\s*/\s*\d+"
 RECOVERY_PAGE_BACK_TARGET = (83, 36)
 PRE_BUY_CLEANUP_WARN_RATIO = 0.10
@@ -282,8 +284,17 @@ FATIGUE_BENTO_SUCCESS_TEXTS = ["疲劳值已消除", "已消除", "恢复成功"
 FATIGUE_BENTO_CONFIRM_PROMPT_TEXTS = ["确定", "确认", "完成", "关闭", "知道了"]
 FATIGUE_MEDICINE_POPUP_TEXTS = ["请选择补充次数", "当前疲劳值", "补充后疲劳值", "持有数量", "拥有数量", "补充"]
 FATIGUE_MEDICINE_POPUP_ROI = [430, 90, 720, 560]
+FATIGUE_MEDICINE_MAX_TEXTS = ["最多", "最大", "MAX", "Max", "max"]
+FATIGUE_MEDICINE_PLUS_TARGET = (827, 479)
+FATIGUE_MEDICINE_MAX_TARGET = (892, 479)
 FATIGUE_MEDICINE_CONFIRM_TARGET = (1000, 585)
 FATIGUE_MEDICINE_CANCEL_TARGET = (320, 585)
+FATIGUE_MEDICINE_CARD_ROIS = {
+    "提神棒棒糖": [540, 190, 230, 220],
+    "提神口香糖": [780, 190, 250, 220],
+    "仙人掌提神跳糖": [540, 450, 240, 210],
+}
+FATIGUE_MEDICINE_CARD_UNAVAILABLE_TEXTS = ["获取途径", "不在范围内", "库存不足", "数量不足", "无库存", "没有可用"]
 FATIGUE_MEDICINE_FALLBACK_TARGETS = {
     "提神棒棒糖": (660, 354),
     "提神口香糖": (900, 354),
@@ -3310,6 +3321,85 @@ def _fatigue_write_option_config_values_via_mxu_api(
     }
 
 
+def _fatigue_write_option_config_values_to_files(
+    *,
+    task_name: str,
+    option_name: str,
+    values: dict[str, Any],
+) -> dict[str, Any]:
+    normalized_values = {
+        str(key): str(value)
+        for key, value in (values or {}).items()
+        if str(key).strip()
+    }
+    existing_paths = [path for path in _fatigue_option_config_paths() if path.exists()]
+    updates: list[dict[str, Any]] = []
+    observations: list[dict[str, Any]] = []
+    errors: list[dict[str, str]] = []
+    if not normalized_values:
+        return {
+            "updated": False,
+            "reason": "empty_values",
+            "paths": [str(path) for path in existing_paths],
+            "updates": updates,
+            "observations": observations,
+            "errors": errors,
+        }
+
+    for option_path in existing_paths:
+        try:
+            data = json.loads(option_path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            errors.append({"path": str(option_path), "error": f"{type(exc).__name__}: {exc}"})
+            continue
+        changed = False
+        matched = False
+        for instance in data.get("instances", []):
+            tasks = instance.get("tasks", []) if isinstance(instance, dict) else []
+            for task in tasks:
+                if not isinstance(task, dict) or task.get("taskName") != task_name:
+                    continue
+                option_values = task.get("optionValues", {})
+                option = option_values.get(option_name, {}) if isinstance(option_values, dict) else {}
+                current_values = option.get("values", {}) if isinstance(option, dict) else {}
+                if not isinstance(current_values, dict):
+                    continue
+                matched = True
+                for key, value in normalized_values.items():
+                    if key not in current_values:
+                        observations.append({"path": str(option_path), "key": key, "reason": "missing_key"})
+                        continue
+                    old_value = str(current_values.get(key, "")).strip()
+                    if old_value == value:
+                        continue
+                    current_values[key] = value
+                    changed = True
+                    updates.append(
+                        {
+                            "path": str(option_path),
+                            "task_name": task_name,
+                            "option_name": option_name,
+                            "key": key,
+                            "old_value": old_value,
+                            "new_value": value,
+                        }
+                    )
+        if not matched:
+            observations.append({"path": str(option_path), "option_name": option_name, "reason": "missing_option"})
+        if changed:
+            try:
+                option_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+            except Exception as exc:
+                errors.append({"path": str(option_path), "error": f"{type(exc).__name__}: {exc}"})
+    return {
+        "updated": bool(updates),
+        "paths": [str(path) for path in existing_paths],
+        "updates": updates,
+        "observations": observations,
+        "errors": errors,
+    }
+
+
 def _auto_two_city_normalize_city_cases(cities: Any) -> list[str]:
     valid_cities = set(load_city_names())
     normalized: list[str] = []
@@ -3530,6 +3620,16 @@ def _fatigue_decrement_option_config_limit(
         option_name=option_name,
     )
     if api_result.get("available"):
+        exact_values: dict[str, Any] = {}
+        for update in (api_result.get("updates") or api_result.get("pending_updates") or []):
+            if isinstance(update, dict) and update.get("key"):
+                exact_values[str(update["key"])] = update.get("new_value")
+        if exact_values:
+            api_result["file_sync"] = _fatigue_write_option_config_values_to_files(
+                task_name=task_name,
+                option_name=option_name,
+                values=exact_values,
+            )
         return api_result
 
     key = _fatigue_limit_key_for_resource(resource, resource_type)
@@ -3680,75 +3780,20 @@ def _fatigue_write_option_config_values(
         values=normalized_values,
     )
     if api_result.get("available"):
+        api_result["file_sync"] = _fatigue_write_option_config_values_to_files(
+            task_name=task_name,
+            option_name=option_name,
+            values=normalized_values,
+        )
         return api_result
 
-    existing_paths = [path for path in _fatigue_option_config_paths() if path.exists()]
-    updates: list[dict[str, Any]] = []
-    observations: list[dict[str, Any]] = []
-    errors: list[dict[str, str]] = []
-    if not normalized_values:
-        return {
-            "updated": False,
-            "reason": "empty_values",
-            "paths": [str(path) for path in existing_paths],
-            "updates": updates,
-            "observations": observations,
-            "errors": errors,
-        }
-
-    for option_path in existing_paths:
-        try:
-            data = json.loads(option_path.read_text(encoding="utf-8"))
-        except Exception as exc:
-            errors.append({"path": str(option_path), "error": f"{type(exc).__name__}: {exc}"})
-            continue
-        changed = False
-        matched = False
-        for instance in data.get("instances", []):
-            tasks = instance.get("tasks", []) if isinstance(instance, dict) else []
-            for task in tasks:
-                if not isinstance(task, dict) or task.get("taskName") != task_name:
-                    continue
-                option_values = task.get("optionValues", {})
-                option = option_values.get(option_name, {}) if isinstance(option_values, dict) else {}
-                current_values = option.get("values", {}) if isinstance(option, dict) else {}
-                if not isinstance(current_values, dict):
-                    continue
-                matched = True
-                for key, value in normalized_values.items():
-                    if key not in current_values:
-                        observations.append({"path": str(option_path), "key": key, "reason": "missing_key"})
-                        continue
-                    old_value = str(current_values.get(key, "")).strip()
-                    if old_value == value:
-                        continue
-                    current_values[key] = value
-                    changed = True
-                    updates.append(
-                        {
-                            "path": str(option_path),
-                            "task_name": task_name,
-                            "option_name": option_name,
-                            "key": key,
-                            "old_value": old_value,
-                            "new_value": value,
-                        }
-                    )
-        if not matched:
-            observations.append({"path": str(option_path), "option_name": option_name, "reason": "missing_option"})
-        if changed:
-            try:
-                option_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-            except Exception as exc:
-                errors.append({"path": str(option_path), "error": f"{type(exc).__name__}: {exc}"})
-    return {
-        "updated": bool(updates),
-        "paths": [str(path) for path in existing_paths],
-        "updates": updates,
-        "observations": observations,
-        "errors": errors,
-        "api_result": api_result,
-    }
+    file_result = _fatigue_write_option_config_values_to_files(
+        task_name=task_name,
+        option_name=option_name,
+        values=normalized_values,
+    )
+    file_result["api_result"] = api_result
+    return file_result
 
 
 def _fatigue_schedule_delayed_option_config_write(
@@ -3872,9 +3917,15 @@ def _fatigue_rewrite_option_config_values_with_retry(
         values=values,
     )
     if immediate.get("via") == "mxu_api" and immediate.get("available"):
+        delayed = _fatigue_schedule_delayed_option_config_write(
+            task_name=task_name,
+            option_name=option_name,
+            values=values,
+            delays=[2.0, 8.0, 30.0, 120.0, 300.0, 900.0],
+        )
         return {
             "immediate": immediate,
-            "delayed": {"scheduled": False, "reason": "mxu_api_synced"},
+            "delayed": delayed,
         }
     delayed = _fatigue_schedule_delayed_option_config_write(
         task_name=task_name,
@@ -4439,6 +4490,61 @@ def _manual_two_city_reco_box(detail: Any, expected: list[str] | None = None) ->
     return None
 
 
+MANUAL_TWO_CITY_DAILY_CHECKIN_TEXTS = [
+    "每日签到奖励",
+    "DAILY CHECK-IN CALENDAR",
+    "本月累计签到",
+    "今日奖励",
+]
+
+
+@AgentServer.custom_recognition("manual_two_city_business_daily_checkin_popup")
+class ManualTwoCityBusinessDailyCheckinPopupRecognition(CustomRecognition):
+    def analyze(
+        self,
+        context: Context,
+        argv: CustomRecognition.AnalyzeArg,
+    ) -> CustomRecognition.AnalyzeResult:
+        image = getattr(argv, "image", None)
+        if image is None:
+            image = _manual_two_city_screencap(context)
+        if image is None:
+            return CustomRecognition.AnalyzeResult(
+                box=None,
+                detail={"ok": False, "reason": "no_image"},
+            )
+        try:
+            detail = context.run_recognition(
+                f"{argv.node_name}DailyCheckinProbe",
+                image,
+                {
+                    f"{argv.node_name}DailyCheckinProbe": {
+                        "recognition": "OCR",
+                        "expected": "",
+                        "roi": [120, 40, 1040, 640],
+                        "action": "DoNothing",
+                    }
+                },
+            )
+        except Exception as exc:
+            return CustomRecognition.AnalyzeResult(
+                box=None,
+                detail={"ok": False, "reason": "probe_error", "error": str(exc)},
+            )
+        texts = _ocr_texts_from_detail(detail)
+        joined = " ".join(clean_text(text) for text in texts)
+        hit = any(text in joined for text in MANUAL_TWO_CITY_DAILY_CHECKIN_TEXTS)
+        if not hit:
+            return CustomRecognition.AnalyzeResult(
+                box=None,
+                detail={"ok": False, "reason": "not_daily_checkin", "texts": texts[:20]},
+            )
+        return CustomRecognition.AnalyzeResult(
+            box=(610, 690, 60, 30),
+            detail={"ok": True, "reason": "daily_checkin_popup", "texts": texts[:30]},
+        )
+
+
 @AgentServer.custom_recognition("manual_two_city_business_route_item_available")
 class ManualTwoCityBusinessRouteItemAvailableRecognition(CustomRecognition):
     def analyze(
@@ -4587,6 +4693,119 @@ class ManualTwoCityBusinessFightActiveRecognition(CustomRecognition):
                 "has_timer": has_timer,
                 "has_wave": has_wave,
                 "has_card_ui": has_card_ui,
+            },
+        )
+
+
+@AgentServer.custom_recognition("manual_two_city_business_strength_stop_pending")
+class ManualTwoCityBusinessStrengthStopPendingRecognition(CustomRecognition):
+    def analyze(
+        self,
+        context: Context,
+        argv: CustomRecognition.AnalyzeArg,
+    ) -> CustomRecognition.AnalyzeResult:
+        state = _manual_two_city_state()
+        if not state.get("strength_recovery_stop_pending"):
+            return CustomRecognition.AnalyzeResult(
+                box=None,
+                detail={"ok": False, "reason": "not_pending"},
+            )
+        return CustomRecognition.AnalyzeResult(
+            box=(0, 0, 1, 1),
+            detail={
+                "ok": True,
+                "reason": "stop_pending",
+                "phase": state.get("strength_recovery_stop_phase") or state.get("trade_phase"),
+                "status": state.get("strength_recovery_stop_status"),
+                "required": state.get("strength_recovery_stop_required"),
+            },
+        )
+
+
+CITY_TRADE_OUTLET_WULIN_MARKET_ROI = [0, 80, 1100, 560]
+CITY_TRADE_OUTLET_WULIN_CLICK_Y_OFFSET = 65
+
+
+@AgentServer.custom_recognition("city_trade_outlet_wulin_market")
+class CityTradeOutletWulinMarketRecognition(CustomRecognition):
+    def analyze(
+        self,
+        context: Context,
+        argv: CustomRecognition.AnalyzeArg,
+    ) -> CustomRecognition.AnalyzeResult:
+        _hit, entries, texts = _manual_two_city_ocr_entries(
+            context,
+            "CityTradeOutletWulinMarket",
+            ["交易所", "武林市集", "武林市"],
+            roi=CITY_TRADE_OUTLET_WULIN_MARKET_ROI,
+        )
+        market_entries: list[dict[str, Any]] = []
+        trade_entries: list[dict[str, Any]] = []
+        for entry in entries:
+            text = clean_text(entry.get("text"))
+            if "武林市集" in text or "武林市" in text or ("武林" in text and "市集" in text):
+                market_entries.append(entry)
+            if "交易所" in text:
+                trade_entries.append(entry)
+
+        if not market_entries:
+            return CustomRecognition.AnalyzeResult(
+                box=None,
+                detail={"ok": False, "reason": "market_missing", "texts": texts[:20]},
+            )
+
+        def entry_float(entry: dict[str, Any], key: str, fallback: float = 0.0) -> float:
+            try:
+                return float(entry.get(key) or fallback)
+            except (TypeError, ValueError):
+                return fallback
+
+        market = min(market_entries, key=lambda item: entry_float(item, "y"))
+        market_text = clean_text(market.get("text"))
+        market_x = entry_float(market, "x")
+        market_y = entry_float(market, "y")
+        market_w = entry_float(market, "w")
+        market_h = entry_float(market, "h")
+        market_cx = entry_float(market, "center_x", market_x + market_w / 2)
+        market_cy = entry_float(market, "center_y", market_y + market_h / 2)
+        target_x = market_cx
+        target_y = market_cy + CITY_TRADE_OUTLET_WULIN_CLICK_Y_OFFSET
+        reason = "market_text"
+
+        if "交易所" not in market_text:
+            same_row_trade = [
+                entry
+                for entry in trade_entries
+                if abs(entry_float(entry, "center_y") - market_cy) <= 38
+            ]
+            if same_row_trade:
+                trade = min(same_row_trade, key=lambda item: abs(entry_float(item, "center_y") - market_cy))
+                left = min(entry_float(trade, "x"), market_x)
+                right = max(entry_float(trade, "x") + entry_float(trade, "w"), market_x + market_w)
+                target_x = (left + right) / 2
+                target_y = (
+                    entry_float(trade, "center_y", entry_float(trade, "y") + entry_float(trade, "h") / 2)
+                    + market_cy
+                ) / 2 + CITY_TRADE_OUTLET_WULIN_CLICK_Y_OFFSET
+                reason = "trade_and_market_text"
+            else:
+                target_x = market_cx - max(36.0, min(90.0, market_w * 0.55))
+                reason = "market_text_estimated_prefix"
+        else:
+            reason = "full_text"
+
+        target_x = max(20.0, min(1080.0, target_x))
+        target_y = max(100.0, min(660.0, target_y))
+        x = int(round(target_x)) - 6
+        y = int(round(target_y)) - 6
+        return CustomRecognition.AnalyzeResult(
+            box=(x, y, 12, 12),
+            detail={
+                "ok": True,
+                "reason": reason,
+                "target": [int(round(target_x)), int(round(target_y))],
+                "market_text": market.get("text"),
+                "texts": texts[:20],
             },
         )
 
@@ -5254,6 +5473,45 @@ def _manual_two_city_next_required_fatigue(
     return _manual_two_city_required_fatigue_with_buffer(_manual_two_city_leg_required_fatigue(legs[active_index]))
 
 
+def _manual_two_city_sell_haggle_required_fatigue(target_percent: Any) -> int:
+    target = _manual_two_city_haggle_count(target_percent)
+    if target <= 0:
+        return 0
+    return int(math.ceil(target / 10)) * 8 + 16
+
+
+def _manual_two_city_pre_buy_cleanup_required_fatigue(
+    state: dict[str, Any],
+    leg: dict[str, Any],
+    raise_percent: Any,
+) -> int:
+    route_required = _manual_two_city_next_required_fatigue(state, phase="buy")
+    if route_required <= 0:
+        route_required = _manual_two_city_required_fatigue_with_buffer(_manual_two_city_leg_required_fatigue(leg))
+    haggle_required = _manual_two_city_sell_haggle_required_fatigue(raise_percent)
+    if route_required <= 0 and haggle_required > 0:
+        haggle_required += MANUAL_TWO_CITY_FATIGUE_SAFETY_BUFFER
+    return max(route_required, haggle_required)
+
+
+def _manual_two_city_required_fatigue_for_strength_check(
+    state: dict[str, Any],
+    *,
+    phase: str,
+) -> int:
+    current_phase = str(phase or state.get("trade_phase") or "buy").strip().lower()
+    if current_phase == "sell" and state.get("pre_buy_cleanup"):
+        required = _fatigue_int(state.get("pre_buy_cleanup_strength_required"), 0)
+        if required > 0:
+            return required
+        return _manual_two_city_pre_buy_cleanup_required_fatigue(
+            state,
+            _manual_two_city_active_leg(),
+            state.get("pre_buy_cleanup_raise_percent"),
+        )
+    return _manual_two_city_next_required_fatigue(state, phase=current_phase)
+
+
 def _manual_two_city_strength_recovery_state(state: dict[str, Any] | None = None) -> dict[str, Any]:
     current_state = state or _manual_two_city_state()
     recovery = current_state.setdefault("strength_recovery", {})
@@ -5324,8 +5582,6 @@ def _manual_two_city_medicine_limit_state(
         limit = _fatigue_normalize_limit(state.get(key))
     if limit == 0:
         return False, "配置为不使用", limit, used
-    if limit > 0 and used >= limit:
-        return False, f"已达配置上限 {limit} 次", limit, used
     return True, "", limit, used
 
 
@@ -5349,6 +5605,59 @@ def _manual_two_city_resource_restore(resource: str, resource_type: str) -> int:
     return int(FATIGUE_MEDICINE_RESOURCES.get(resource, {}).get("restore") or 0)
 
 
+def _manual_two_city_medicine_target_count(
+    state: dict[str, Any],
+    resource: str,
+    *,
+    required: int,
+    status: dict[str, int] | None,
+    inventory: int | None,
+    limit: int,
+    used: int,
+) -> dict[str, Any]:
+    restore = max(1, _manual_two_city_resource_restore(resource, "medicine"))
+    remaining, gap = _manual_two_city_strength_gap(status, required)
+    if gap > 0:
+        target = int(math.ceil(gap / restore))
+        reason = "gap"
+    elif isinstance(status, dict):
+        target = 0
+        reason = "enough"
+    else:
+        target = 1
+        reason = "unknown_status"
+
+    remaining_limit: int | None
+    if limit < 0:
+        remaining_limit = None
+    else:
+        # The in-memory task option is decremented after each use, so a positive
+        # finite limit is already the remaining use count for this run.
+        remaining_limit = max(0, limit)
+        target = min(target, remaining_limit)
+    if inventory is not None:
+        target = min(target, max(0, inventory))
+    if target > FATIGUE_MEDICINE_POPUP_MAX_STEPS:
+        target = FATIGUE_MEDICINE_POPUP_MAX_STEPS
+
+    use_max = bool(
+        target > 1
+        and inventory is not None
+        and target >= inventory
+        and (remaining_limit is None or target <= remaining_limit)
+    )
+    return {
+        "target_count": max(0, int(target)),
+        "restore": restore,
+        "remaining": remaining,
+        "gap": gap,
+        "reason": reason,
+        "remaining_limit": remaining_limit,
+        "inventory": inventory,
+        "use_max": use_max,
+    }
+
+
 def _manual_two_city_config_remaining_count(
     state: dict[str, Any],
     resource: str,
@@ -5369,12 +5678,12 @@ def _manual_two_city_config_remaining_count(
         return 0, payload
     if huashi:
         max_left = max(0, HUASHI_MAX_USE_LIMIT - used)
-        count = max_left if limit < 0 else min(max_left, max(0, limit - used))
+        count = max_left if limit < 0 else min(max_left, max(0, limit))
     elif limit < 0:
         # 无限配置只代表脚本不限制次数；理论预算按“足以补齐一次单程”处理。
         count = 999
     else:
-        count = max(0, limit - used)
+        count = max(0, limit)
     payload["count"] = count
     return count, payload
 
@@ -5524,6 +5833,14 @@ def _manual_two_city_probe_medicine_actual_budget(
         )
         detail["inventory"] = inventory
         detail["texts"] = inventory_texts[:20]
+        card_unavailable, card_texts = _manual_two_city_medicine_card_unavailable(context, resource, resource_key)
+        detail["card_texts"] = card_texts[:20]
+        if card_unavailable:
+            reason = "卡片不可用"
+            _manual_two_city_recovery_mark_unavailable(recovery, resource, reason)
+            detail["reason"] = reason
+            actual_details.append(detail)
+            continue
         if inventory is None or inventory <= 0:
             reason = "页面数量为 0" if inventory == 0 else "未识别页面数量"
             if inventory == 0:
@@ -5767,6 +6084,24 @@ def _manual_two_city_read_strength_status(context: Context, name: str) -> tuple[
     return strength_status_from_texts(fatigue_page_texts), fatigue_page_texts or fallback_texts or texts
 
 
+def _manual_two_city_read_strength_status_with_retry(
+    context: Context,
+    name: str,
+    *,
+    attempts: int = 3,
+    delay: float = 0.45,
+) -> tuple[dict[str, int] | None, list[str]]:
+    all_texts: list[str] = []
+    for index in range(max(1, attempts)):
+        if index > 0:
+            time.sleep(max(0.0, delay))
+        status, texts = _manual_two_city_read_strength_status(context, f"{name}{index + 1:03d}")
+        all_texts.extend(texts)
+        if status:
+            return status, list(dict.fromkeys(all_texts))
+    return None, list(dict.fromkeys(all_texts))
+
+
 def _manual_two_city_strength_enough(status: dict[str, int] | None, required: int) -> bool:
     return bool(status and required > 0 and int(status.get("remaining") or 0) >= required)
 
@@ -5845,6 +6180,39 @@ def _manual_two_city_read_buy_page_cargo_load(
     )
     cargo_load = _manual_two_city_parse_buy_page_cargo_load(probe_entries, roi=BUY_PAGE_CARGO_LOAD_PROBE_ROI)
     return cargo_load, probe_texts, True
+
+
+def _manual_two_city_planned_goods_total(leg: dict[str, Any] | None) -> int:
+    if not isinstance(leg, dict):
+        return 0
+    total = 0
+    for item in leg.get("goods_detail") or []:
+        if not isinstance(item, dict):
+            continue
+        try:
+            total += max(0, int(item.get("num") or item.get("buyLot") or 0))
+        except (TypeError, ValueError):
+            continue
+    return total
+
+
+def _manual_two_city_probe_buy_page_cargo_load(
+    context: Context,
+    name: str,
+) -> tuple[dict[str, Any] | None, list[str]]:
+    all_texts: list[str] = []
+    for index, roi in enumerate((BUY_PAGE_CARGO_LOAD_PROBE_ROI, BUY_PAGE_CARGO_LOAD_ROI), start=1):
+        _hit, entries, texts = _manual_two_city_ocr_entries(
+            context,
+            f"{name}{index:03d}",
+            r".+",
+            roi=roi,
+        )
+        all_texts.extend(texts)
+        cargo_load = _manual_two_city_parse_buy_page_cargo_load(entries, roi=roi)
+        if cargo_load is not None:
+            return cargo_load, all_texts
+    return None, all_texts
 
 
 def _known_buy_goods_for_city(city_name: Any) -> list[str]:
@@ -6639,6 +7007,75 @@ def _manual_two_city_texts_contain(texts: list[str], expected: list[str]) -> boo
     return any(clean_text(item) and clean_text(item) in text for item in expected for text in cleaned)
 
 
+def _manual_two_city_medicine_card_unavailable(
+    context: Context,
+    resource: str,
+    resource_key: str,
+) -> tuple[bool, list[str]]:
+    roi = FATIGUE_MEDICINE_CARD_ROIS.get(resource)
+    if not roi:
+        return False, []
+    hit, _, texts = _manual_two_city_ocr_entries(
+        context,
+        f"ManualTwoCityStrength{resource_key}CardUnavailable",
+        FATIGUE_MEDICINE_CARD_UNAVAILABLE_TEXTS,
+        roi=roi,
+    )
+    return bool(hit or _manual_two_city_texts_contain(texts, FATIGUE_MEDICINE_CARD_UNAVAILABLE_TEXTS)), texts
+
+
+def _manual_two_city_adjust_medicine_popup_count(
+    context: Context,
+    resource_key: str,
+    target_count: int,
+    *,
+    use_max: bool,
+) -> dict[str, Any]:
+    target_count = max(1, int(target_count or 1))
+    if use_max:
+        clicked, texts = _manual_two_city_click_ocr_text(
+            context,
+            f"ManualTwoCityStrength{resource_key}UseMax",
+            FATIGUE_MEDICINE_MAX_TEXTS,
+            roi=[560, 430, 390, 110],
+            fallback=FATIGUE_MEDICINE_MAX_TARGET,
+            delay=0.25,
+        )
+        return {
+            "method": "max",
+            "clicked": clicked,
+            "target_count": target_count,
+            "plus_clicks": 0,
+            "texts": texts[:20],
+        }
+
+    plus_clicks = max(0, min(FATIGUE_MEDICINE_POPUP_MAX_STEPS, target_count) - 1)
+    for index in range(plus_clicks):
+        if index and index % 8 == 0:
+            popup_hit, _, popup_texts = _manual_two_city_ocr_entries(
+                context,
+                f"ManualTwoCityStrength{resource_key}PopupStillOpen{index:03d}",
+                FATIGUE_MEDICINE_POPUP_TEXTS,
+                roi=FATIGUE_MEDICINE_POPUP_ROI,
+            )
+            if not popup_hit:
+                return {
+                    "method": "plus",
+                    "clicked": False,
+                    "target_count": target_count,
+                    "plus_clicks": index,
+                    "reason": "popup_lost",
+                    "texts": popup_texts[:20],
+                }
+        _manual_two_city_click(context, FATIGUE_MEDICINE_PLUS_TARGET, 0.12)
+    return {
+        "method": "plus",
+        "clicked": True,
+        "target_count": target_count,
+        "plus_clicks": plus_clicks,
+    }
+
+
 def _manual_two_city_click_ocr_text(
     context: Context,
     name: str,
@@ -6826,26 +7263,28 @@ def _manual_two_city_try_bento_recovery(
 
     _manual_two_city_resource_used(state, "便当", "bento")
     _manual_two_city_recovery_mark_unavailable(recovery, "便当", "已全部使用")
-    _manual_two_city_click(context, RECOVERY_PAGE_BACK_TARGET, 0.9)
     status, status_texts = _manual_two_city_read_strength_status(context, "ManualTwoCityStrengthBentoStatus")
+    if isinstance(status, dict):
+        state["strength_recovery_last_status"] = status
     if _manual_two_city_strength_enough(status, required):
         _append_user_log(
             MANUAL_TWO_CITY_TASK_ENTRY,
             (
-                f"跑商补疲劳：便当后剩余疲劳 {status['remaining']}，"
+                f"跑商补疲劳：便当页确认剩余疲劳 {status['remaining']}，"
                 f"已满足安全需求 {required}，返回交易页。"
             ),
             event="manual_two_city_strength_bento_enough",
             data={"phase": phase, "status": status, "required": required, "texts": status_texts[:20]},
         )
         _manual_two_city_click(context, RECOVERY_PAGE_BACK_TARGET, 0.8)
+        _manual_two_city_click(context, RECOVERY_PAGE_BACK_TARGET, 0.8)
         state["skip_next_drink_check"] = True
         return {"used": True, "resource": "便当", "enough": True, "return_trade": True, "status": status}
 
     if status:
-        message = f"跑商补疲劳：便当后剩余疲劳 {status['remaining']}，仍低于安全需求 {required}，继续尝试体力药。"
+        message = f"跑商补疲劳：便当页确认剩余疲劳 {status['remaining']}，仍低于安全需求 {required}，继续尝试体力药。"
     else:
-        message = "跑商补疲劳：便当后回到疲劳页仍未读到疲劳值，继续尝试体力药。"
+        message = "跑商补疲劳：便当页未读到疲劳值，继续尝试体力药。"
     _append_user_log(
         MANUAL_TWO_CITY_TASK_ENTRY,
         message,
@@ -6853,6 +7292,7 @@ def _manual_two_city_try_bento_recovery(
         event="manual_two_city_strength_bento_not_enough",
         data={"phase": phase, "status": status, "required": required, "texts": status_texts[:20]},
     )
+    _manual_two_city_click(context, RECOVERY_PAGE_BACK_TARGET, 0.8)
     return {"used": True, "resource": "便当", "enough": False, "return_trade": False, "status": status}
 
 
@@ -6861,6 +7301,8 @@ def _manual_two_city_try_medicine_recovery(
     state: dict[str, Any],
     resource: str,
     *,
+    required: int,
+    status: dict[str, int] | None,
     phase: str,
 ) -> dict[str, Any]:
     recovery = _manual_two_city_strength_recovery_state(state)
@@ -6879,6 +7321,17 @@ def _manual_two_city_try_medicine_recovery(
         "提神口香糖": "Gum",
         "仙人掌提神跳糖": "CactusCandy",
     }.get(resource, "Medicine")
+    card_unavailable, card_texts = _manual_two_city_medicine_card_unavailable(context, resource, resource_key)
+    if card_unavailable:
+        _manual_two_city_recovery_mark_unavailable(recovery, resource, "卡片不可用")
+        _append_user_log(
+            MANUAL_TWO_CITY_TASK_ENTRY,
+            f"跑商补疲劳：{resource} 卡片不可用，跳过。",
+            level="warning",
+            event="manual_two_city_strength_medicine_card_unavailable",
+            data={"phase": phase, "resource": resource, "texts": card_texts[:20]},
+        )
+        return {"used": False, "resource": resource, "reason": "card_unavailable"}
 
     clicked, click_texts = _manual_two_city_click_ocr_text(
         context,
@@ -6909,20 +7362,94 @@ def _manual_two_city_try_medicine_recovery(
     if not popup_hit or medicine_no_inventory_seen(popup_texts) or inventory == 0:
         reason = "库存不足" if medicine_no_inventory_seen(popup_texts) or inventory == 0 else "未识别弹窗"
         _manual_two_city_recovery_mark_unavailable(recovery, resource, reason)
-        _manual_two_city_click(context, FATIGUE_MEDICINE_CANCEL_TARGET, 0.8)
+        cancel_clicked = False
+        popup_visible = bool(
+            popup_hit
+            or inventory is not None
+            or medicine_no_inventory_seen(popup_texts)
+            or _manual_two_city_texts_contain(popup_texts, FATIGUE_MEDICINE_POPUP_TEXTS + ["取消", "确定", "确认"])
+        )
+        if popup_visible:
+            _manual_two_city_click(context, FATIGUE_MEDICINE_CANCEL_TARGET, 0.8)
+            cancel_clicked = True
         _append_user_log(
             MANUAL_TWO_CITY_TASK_ENTRY,
             f"跑商补疲劳：{resource} {reason}，继续尝试下一种资源。",
             level="warning",
             event="manual_two_city_strength_medicine_unavailable",
-            data={"phase": phase, "resource": resource, "inventory": inventory, "texts": popup_texts[:20]},
+            data={
+                "phase": phase,
+                "resource": resource,
+                "inventory": inventory,
+                "cancel_clicked": cancel_clicked,
+                "texts": popup_texts[:20],
+            },
         )
         return {"used": False, "resource": resource, "reason": reason}
 
+    use_plan = _manual_two_city_medicine_target_count(
+        state,
+        resource,
+        required=required,
+        status=status,
+        inventory=inventory,
+        limit=limit,
+        used=used,
+    )
+    target_count = int(use_plan.get("target_count") or 0)
+    if target_count <= 0:
+        _manual_two_city_click(context, FATIGUE_MEDICINE_CANCEL_TARGET, 0.8)
+        _append_user_log(
+            MANUAL_TWO_CITY_TASK_ENTRY,
+            f"跑商补疲劳：{resource} 本次无需使用，取消弹窗并继续检查。",
+            level="warning",
+            event="manual_two_city_strength_medicine_no_need",
+            data={"phase": phase, "resource": resource, "use_plan": use_plan, "status": status, "required": required},
+        )
+        return {"used": False, "resource": resource, "reason": "target_count_zero", "use_plan": use_plan}
+
+    adjust_result = _manual_two_city_adjust_medicine_popup_count(
+        context,
+        resource_key,
+        target_count,
+        use_max=bool(use_plan.get("use_max")),
+    )
+    if not adjust_result.get("clicked"):
+        _manual_two_city_click(context, FATIGUE_MEDICINE_CANCEL_TARGET, 0.8)
+        _append_user_log(
+            MANUAL_TWO_CITY_TASK_ENTRY,
+            f"跑商补疲劳：{resource} 调整使用数量失败，取消弹窗并尝试下一种资源。",
+            level="warning",
+            event="manual_two_city_strength_medicine_adjust_failed",
+            data={
+                "phase": phase,
+                "resource": resource,
+                "use_plan": use_plan,
+                "adjust_result": adjust_result,
+                "status": status,
+                "required": required,
+            },
+        )
+        return {"used": False, "resource": resource, "reason": "adjust_failed", "use_plan": use_plan}
+
     _manual_two_city_click(context, FATIGUE_MEDICINE_CONFIRM_TARGET, 1.2)
-    _manual_two_city_resource_used(state, resource, "medicine", count=1, pending={"inventory_count": inventory})
+    _manual_two_city_resource_used(
+        state,
+        resource,
+        "medicine",
+        count=target_count,
+        pending={"inventory_count": inventory, "use_plan": use_plan, "adjust_result": adjust_result},
+    )
     state["skip_next_drink_check"] = True
-    return {"used": True, "resource": resource, "return_trade": True, "inventory_count": inventory}
+    return {
+        "used": True,
+        "resource": resource,
+        "return_trade": True,
+        "inventory_count": inventory,
+        "count": target_count,
+        "use_plan": use_plan,
+        "adjust_result": adjust_result,
+    }
 
 
 def _manual_two_city_try_huashi_recovery(
@@ -7799,6 +8326,7 @@ class ManualTwoCityBusinessBuyPageReadyAction(CustomAction):
                     state.pop("pre_buy_cleanup", None)
                     state.pop("pre_buy_cleanup_raise_percent", None)
                     state.pop("pre_buy_cleanup_cargo", None)
+                    state.pop("pre_buy_cleanup_strength_required", None)
                     state.pop("pre_buy_cleanup_signature", None)
                     state.pop("pre_buy_cleanup_skip_signature", None)
                     state["selected_buy_goods"] = []
@@ -7853,12 +8381,15 @@ class ManualTwoCityBusinessBuyPageReadyAction(CustomAction):
                 state.pop("pre_buy_cleanup", None)
                 state.pop("pre_buy_cleanup_raise_percent", None)
                 state.pop("pre_buy_cleanup_cargo", None)
+                state.pop("pre_buy_cleanup_strength_required", None)
                 state.pop("pre_buy_cleanup_signature", None)
             else:
                 raise_percent = PRE_BUY_CLEANUP_RAISE_PERCENT if cargo_load["ratio"] > PRE_BUY_CLEANUP_RAISE_RATIO else 0
+                cleanup_required = _manual_two_city_pre_buy_cleanup_required_fatigue(state, leg, raise_percent)
                 state["pre_buy_cleanup"] = True
                 state["pre_buy_cleanup_raise_percent"] = raise_percent
                 state["pre_buy_cleanup_cargo"] = cargo_load
+                state["pre_buy_cleanup_strength_required"] = cleanup_required
                 if cleanup_signature:
                     state["pre_buy_cleanup_signature"] = cleanup_signature
                 state["selected_buy_goods"] = []
@@ -7911,6 +8442,7 @@ class ManualTwoCityBusinessBuyPageReadyAction(CustomAction):
                         "leg": leg,
                         "cargo_load": cargo_load,
                         "raise_percent": raise_percent,
+                        "strength_required": cleanup_required,
                         "switch_texts": switch_texts[:20],
                     },
                 )
@@ -7923,6 +8455,7 @@ class ManualTwoCityBusinessBuyPageReadyAction(CustomAction):
                         "pre_buy_cleanup": True,
                         "cargo_load": cargo_load,
                         "raise_percent": raise_percent,
+                        "strength_required": cleanup_required,
                     },
                 )
                 return True
@@ -7930,6 +8463,7 @@ class ManualTwoCityBusinessBuyPageReadyAction(CustomAction):
         state.pop("pre_buy_cleanup", None)
         state.pop("pre_buy_cleanup_raise_percent", None)
         state.pop("pre_buy_cleanup_cargo", None)
+        state.pop("pre_buy_cleanup_strength_required", None)
         state.pop("pre_buy_cleanup_signature", None)
         cargo_note = (
             f"，货仓 {cargo_load['used']}/{cargo_load['capacity']} ({cargo_load['ratio']:.1%})"
@@ -9263,12 +9797,14 @@ class ManualTwoCityBusinessShouldRecoverStrengthAction(CustomAction):
         params = _argv_param(argv)
         state = _manual_two_city_state()
         phase = str(params.get("phase") or state.get("trade_phase") or "buy").strip().lower()
+        pre_buy_cleanup = bool(state.get("pre_buy_cleanup"))
         state["strength_recovery_stop_pending"] = False
-        required = _manual_two_city_next_required_fatigue(state, phase=phase)
+        required_phase = "buy" if phase == "sell" and pre_buy_cleanup else phase
+        required = _manual_two_city_required_fatigue_for_strength_check(state, phase=phase)
         texts = _ocr_texts(argv)
         status = strength_status_from_texts(texts)
         if not status:
-            status, texts = _manual_two_city_read_strength_status(
+            status, texts = _manual_two_city_read_strength_status_with_retry(
                 context,
                 f"ManualTwoCity{phase.capitalize()}StrengthRecoveryCheck",
             )
@@ -9280,18 +9816,25 @@ class ManualTwoCityBusinessShouldRecoverStrengthAction(CustomAction):
             )
             return False
         if not status:
+            state["strength_recovery_stop_pending"] = True
+            state["strength_recovery_stop_reason"] = "strength_status_unknown"
+            state["strength_recovery_stop_status"] = None
+            state["strength_recovery_stop_required"] = required
+            state["strength_recovery_stop_phase"] = phase
+            state["strength_recovery_stop_terminal_status"] = MANUAL_TWO_CITY_TERMINAL_FAILED
+            state["strength_recovery_stop_terminal_reason"] = "交易所页未能识别疲劳值，已停止继续买入/卖出/抬砍"
             _append_user_log(
-                MANUAL_TWO_CITY_TASK_ENTRY,
-                "跑商补疲劳预检：未识别到交易页疲劳值，继续当前跑商流程。",
-                level="warning",
-                event="manual_two_city_strength_precheck_no_status",
+                _manual_two_city_current_task_entry(state),
+                "跑商补疲劳预检：交易所页连续未识别到疲劳值，已阻止继续买入/卖出/抬砍。",
+                level="error",
+                event="manual_two_city_strength_precheck_status_unknown_stop",
                 data={"phase": phase, "required": required, "leg": leg, "texts": texts[:20]},
             )
             _json_payload(
                 "manual_two_city_business_should_recover_strength",
-                {"ok": False, "reason": "no_status", "phase": phase, "required": required},
+                {"ok": True, "reason": "strength_status_unknown_stop", "phase": phase, "required": required},
             )
-            return False
+            return True
         remaining = int(status.get("remaining") or 0)
         if remaining >= required:
             state["strength_recovery_unavailable"] = False
@@ -9302,7 +9845,7 @@ class ManualTwoCityBusinessShouldRecoverStrengthAction(CustomAction):
                 {"ok": False, "reason": "enough", "phase": phase, "status": status, "required": required},
             )
             return False
-        if phase == "sell":
+        if phase == "sell" and not pre_buy_cleanup:
             _append_user_log(
                 MANUAL_TWO_CITY_TASK_ENTRY,
                 (
@@ -9318,6 +9861,17 @@ class ManualTwoCityBusinessShouldRecoverStrengthAction(CustomAction):
                 {"ok": False, "reason": "sell_goods_first", "phase": phase, "status": status, "required": required},
             )
             return False
+        if phase == "sell" and pre_buy_cleanup:
+            _append_user_log(
+                MANUAL_TWO_CITY_TASK_ENTRY,
+                (
+                    f"买入前清仓疲劳预检：剩余疲劳 {remaining} 低于当前单程安全需求 {required}，"
+                    "先恢复疲劳，避免清仓抬价时弹出疲劳不足。"
+                ),
+                level="warning",
+                event="manual_two_city_pre_buy_cleanup_strength_needed",
+                data={"phase": phase, "required_phase": required_phase, "status": status, "required": required, "leg": leg},
+            )
         if state.get("strength_recovery_unavailable"):
             _manual_two_city_mark_strength_stop(
                 state,
@@ -9400,11 +9954,12 @@ class ManualTwoCityBusinessStopIfFatigueExhaustedAction(CustomAction):
         else:
             status_text = "当前疲劳未识别"
         is_fatigue_exhausted = terminal_status == MANUAL_TWO_CITY_TERMINAL_FATIGUE_EXHAUSTED
-        message = (
-            f"跑到疲劳耗尽：{status_text}，安全需求 {required}，恢复手段已不可用，结束跑商。"
-            if is_fatigue_exhausted
-            else f"跑商失败：{status_text}，安全需求 {required}，恢复手段不可用，已停止继续买入。"
-        )
+        if reason == "strength_status_unknown":
+            message = f"跑商失败：交易所页未能识别疲劳值，安全需求 {required}，已停止继续买入/卖出/抬砍。"
+        elif is_fatigue_exhausted:
+            message = f"跑到疲劳耗尽：{status_text}，安全需求 {required}，恢复手段已不可用，结束跑商。"
+        else:
+            message = f"跑商失败：{status_text}，安全需求 {required}，恢复手段不可用，已停止继续买入。"
         _append_user_log(
             _manual_two_city_current_task_entry(state),
             message,
@@ -9446,9 +10001,11 @@ class ManualTwoCityBusinessRecoverStrengthOnceAction(CustomAction):
         phase = str(params.get("phase") or state.get("strength_recovery_phase") or state.get("trade_phase") or "buy").strip().lower()
         phase = "sell" if phase == "sell" else "buy"
         state["trade_phase"] = phase
-        required = _manual_two_city_next_required_fatigue(state, phase=phase)
+        required = _manual_two_city_required_fatigue_for_strength_check(state, phase=phase)
         recovery = _manual_two_city_strength_recovery_state(state)
-        status, status_texts = _manual_two_city_read_strength_status(context, "ManualTwoCityStrengthRecoveryStartStatus")
+        status = state.get("strength_recovery_last_status")
+        status = dict(status) if isinstance(status, dict) else None
+        status_texts: list[str] = []
         if required <= 0:
             _json_payload(
                 "manual_two_city_business_recover_strength_once",
@@ -9459,9 +10016,9 @@ class ManualTwoCityBusinessRecoverStrengthOnceAction(CustomAction):
             state.pop("strength_recovery_required", None)
             _append_user_log(
                 MANUAL_TWO_CITY_TASK_ENTRY,
-                f"跑商补疲劳：进入疲劳页后确认剩余 {status['remaining']}，已满足需求 {required}，返回交易页。",
-                event="manual_two_city_strength_recovery_already_enough",
-                data={"phase": phase, "status": status, "required": required, "texts": status_texts[:20]},
+                f"跑商补疲劳：交易页预检剩余 {status['remaining']}，已满足需求 {required}，返回交易页。",
+                event="manual_two_city_strength_recovery_precheck_already_enough",
+                data={"phase": phase, "status": status, "required": required},
             )
             _manual_two_city_click(context, RECOVERY_PAGE_BACK_TARGET, 0.9)
             state["skip_next_drink_check"] = True
@@ -9504,7 +10061,14 @@ class ManualTwoCityBusinessRecoverStrengthOnceAction(CustomAction):
             return True
 
         for resource in FATIGUE_MEDICINE_RESOURCES:
-            result = _manual_two_city_try_medicine_recovery(context, state, resource, phase=phase)
+            result = _manual_two_city_try_medicine_recovery(
+                context,
+                state,
+                resource,
+                required=required,
+                status=status,
+                phase=phase,
+            )
             if result.get("used"):
                 state["strength_recovery_last_resource"] = resource
                 _json_payload(
@@ -9966,6 +10530,83 @@ class ManualTwoCityBusinessCloseBuyReportAction(CustomAction):
         return True
 
 
+@AgentServer.custom_action("manual_two_city_business_verify_cargo_after_buy")
+class ManualTwoCityBusinessVerifyCargoAfterBuyAction(CustomAction):
+    def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
+        state = _manual_two_city_state()
+        leg = _manual_two_city_active_leg()
+        if state.get("initial_transfer_in_progress"):
+            _json_payload(
+                "manual_two_city_business_verify_cargo_after_buy",
+                {"ok": True, "reason": "initial_transfer_skip", "leg": leg},
+            )
+            return True
+
+        cargo_load, texts = _manual_two_city_probe_buy_page_cargo_load(
+            context,
+            "ManualTwoCityVerifyCargoAfterBuy",
+        )
+        planned_total = _manual_two_city_planned_goods_total(leg)
+        if cargo_load is None:
+            _append_user_log(
+                MANUAL_TWO_CITY_TASK_ENTRY,
+                "买入后货仓复核：未能读取货仓载量，继续发车；若肉眼发现未满，请保留日志继续定位。",
+                level="warning",
+                event="manual_two_city_post_buy_cargo_unreadable",
+                data={"leg": leg, "planned_total": planned_total, "texts": texts[:20]},
+            )
+            _json_payload(
+                "manual_two_city_business_verify_cargo_after_buy",
+                {"ok": True, "reason": "cargo_unreadable", "leg": leg, "planned_total": planned_total, "texts": texts[:20]},
+            )
+            return True
+
+        capacity = int(cargo_load.get("capacity") or 0)
+        used = int(cargo_load.get("used") or 0)
+        planned_ratio = planned_total / capacity if capacity > 0 else 0
+        actual_ratio = used / capacity if capacity > 0 else 0
+        strict = capacity > 0 and planned_ratio >= POST_BUY_CARGO_VERIFY_PLANNED_RATIO
+        passed = (not strict) or actual_ratio >= POST_BUY_CARGO_VERIFY_PASS_RATIO
+        level = "info" if passed else "error"
+        message = (
+            f"买入后货仓复核：实际 {used}/{capacity}，计划 {planned_total}/{capacity}。"
+            if capacity > 0
+            else f"买入后货仓复核：实际 {used}/-，计划 {planned_total}/-。"
+        )
+        if not passed:
+            message += "计划应接近满载但实际未满，停止发车以避免半仓跑商。"
+        else:
+            message += "复核通过，继续发车。"
+        _append_user_log(
+            MANUAL_TWO_CITY_TASK_ENTRY,
+            message,
+            level=level,
+            event="manual_two_city_post_buy_cargo_verified" if passed else "manual_two_city_post_buy_cargo_insufficient",
+            data={
+                "leg": leg,
+                "cargo_load": cargo_load,
+                "planned_total": planned_total,
+                "planned_ratio": planned_ratio,
+                "actual_ratio": actual_ratio,
+                "strict": strict,
+                "texts": texts[:20],
+            },
+        )
+        _json_payload(
+            "manual_two_city_business_verify_cargo_after_buy",
+            {
+                "ok": passed,
+                "leg": leg,
+                "cargo_load": cargo_load,
+                "planned_total": planned_total,
+                "planned_ratio": planned_ratio,
+                "actual_ratio": actual_ratio,
+                "strict": strict,
+            },
+        )
+        return passed
+
+
 @AgentServer.custom_action("manual_two_city_business_sell_page_ready")
 class ManualTwoCityBusinessSellPageReadyAction(CustomAction):
     def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
@@ -10179,6 +10820,7 @@ class ManualTwoCityBusinessSellGoodsMissingAction(CustomAction):
             cleanup_signature = state.pop("pre_buy_cleanup_signature", None)
             state.pop("pre_buy_cleanup", None)
             state.pop("pre_buy_cleanup_raise_percent", None)
+            state.pop("pre_buy_cleanup_strength_required", None)
             if cleanup_signature:
                 state["pre_buy_cleanup_skip_signature"] = cleanup_signature
             state["selected_buy_goods"] = []
@@ -10266,6 +10908,7 @@ class ManualTwoCityBusinessAfterSellAction(CustomAction):
             state.pop("pre_buy_cleanup_skip_signature", None)
             state.pop("pre_buy_cleanup", None)
             state.pop("pre_buy_cleanup_raise_percent", None)
+            state.pop("pre_buy_cleanup_strength_required", None)
             state["selected_buy_goods"] = []
             state["trade_phase"] = "buy"
             try:
@@ -10441,6 +11084,8 @@ class ManualTwoCityBusinessDoneAction(CustomAction):
         else:
             result_note = terminal_reason or f"未按跑商执行方式完成，当前阶段 {state.get('trade_phase') or '-'}"
             level = "error"
+        result_note = str(result_note).strip().rstrip("。.!！?？")
+        config_note = str(config_note).strip().rstrip("。.!！?？")
         _append_user_log(
             task_entry,
             f"{task_label}收尾：{result_note}。{config_note}。",

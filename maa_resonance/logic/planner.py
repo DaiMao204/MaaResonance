@@ -54,6 +54,7 @@ WULINYUAN_CITY_NAME = "武林源"
 WULINYUAN_CURRENCY_NAME = "交子"
 WULINYUAN_BASE_CURRENCY_NAME = "铁盟币"
 WULINYUAN_PRICE_DIVISOR_FROM_BASE = 20
+WULINYUAN_FIXED_TAX_RATE = 0.15
 
 
 @dataclass(frozen=True)
@@ -671,9 +672,17 @@ def get_prestige_config(trade_data: dict[str, Any], city: str, options: RoutePla
 
 
 def get_prestige_tax_rate(prestige: dict[str, Any], master_city: str) -> float:
+    if normalize_city_name(master_city) == WULINYUAN_CITY_NAME:
+        return WULINYUAN_FIXED_TAX_RATE
     special_tax = prestige.get("specialTax") or {}
     city_tax = special_tax.get(master_city)
     return float(city_tax if city_tax is not None else prestige.get("generalTax", 0))
+
+
+def get_prestige_buy_more_percent(prestige: dict[str, Any], city: str) -> float:
+    if normalize_city_name(city) == WULINYUAN_CITY_NAME:
+        return 0.0
+    return float(prestige.get("extraBuy", 0)) * 100
 
 
 def get_resonance_skill_buy_more_percent(
@@ -697,6 +706,25 @@ def get_resonance_skill_buy_more_percent(
             percent += float((buy_more.get("city") or {}).get(from_city, 0))
         percent += float(buy_more.get("all") or 0)
     return percent
+
+
+def get_resonance_skill_buy_more_flat_amount(
+    trade_data: dict[str, Any],
+    roles: dict[str, dict[str, int]],
+    product: dict[str, Any],
+) -> int:
+    amount = 0
+    role_skills = trade_data.get("resonance_skills") or {}
+    for role_name, player_role in roles.items():
+        level = player_role.get("resonance", 0)
+        if not level:
+            continue
+        skill = (role_skills.get(role_name) or {}).get(str(level))
+        if not skill:
+            continue
+        buy_more_flat = skill.get("buyMoreFlat") or {}
+        amount += int((buy_more_flat.get("product") or {}).get(product.get("name"), 0) or 0)
+    return amount
 
 
 def get_resonance_skill_tax_cut_percent(
@@ -844,6 +872,7 @@ def calculate_columba_price_items(
     to_city_master = get_city_master(trade_data, to_city)
     buy_resonance_tax_cut = get_resonance_skill_tax_cut_percent(trade_data, roles, from_city)
     sell_resonance_tax_cut = get_resonance_skill_tax_cut_percent(trade_data, roles, to_city)
+    special_currency_pair = is_wulinyuan_pair(from_city, to_city)
     items: list[dict[str, Any]] = []
 
     for product in get_trade_products(trade_data):
@@ -870,6 +899,7 @@ def calculate_columba_price_items(
 
         if not bargain.disabled:
             buy_price *= 1 - bargain.bargain_percent / 100
+            buy_price = js_round(buy_price)
             sell_price = js_round(sell_price * (1 + bargain.raise_percent / 100))
 
         buy_tax_rate = get_prestige_tax_rate(buy_prestige, from_city_master)
@@ -877,23 +907,31 @@ def calculate_columba_price_items(
         buy_tax_rate += buy_resonance_tax_cut
 
         sell_tax_rate = get_prestige_tax_rate(sell_prestige, to_city_master)
+        if special_currency_pair:
+            sell_tax_rate += get_game_event_tax_variation(trade_data, product, to_city, events_config)
         sell_tax_rate += sell_resonance_tax_cut
 
         rounded_buy_price = js_round(buy_price)
         rounded_sell_price = js_round(sell_price)
         single_cost = js_round(rounded_buy_price * (1 + buy_tax_rate))
         single_income = js_round(rounded_sell_price * (1 - sell_tax_rate))
-        single_profit = rounded_sell_price - rounded_buy_price
-        single_profit -= single_profit * sell_tax_rate
-        single_profit -= rounded_buy_price * buy_tax_rate
-        single_profit = js_round(single_profit)
+        if special_currency_pair:
+            single_profit = single_income - single_cost
+        else:
+            # 游戏内成交价按整数展示与结算；这也和 columba-bot 的旧普通路径、
+            # 特殊货币路径一致。当前 bot OneGraph 普通路径未取整，视为待对齐差异。
+            single_profit = rounded_sell_price - rounded_buy_price
+            single_profit -= single_profit * sell_tax_rate
+            single_profit -= rounded_buy_price * buy_tax_rate
+            single_profit = js_round(single_profit)
         if single_profit < options.min_profit:
             continue
 
         buy_more_percent = get_resonance_skill_buy_more_percent(trade_data, roles, product, from_city)
-        buy_more_percent += float(buy_prestige.get("extraBuy", 0)) * 100
+        buy_more_percent += get_prestige_buy_more_percent(buy_prestige, from_city)
         buy_more_percent += get_game_event_buy_more_percent(trade_data, product, from_city, events_config)
         buy_lot = js_round(float(static_buy_lot) * (100 + buy_more_percent) / 100)
+        buy_lot += get_resonance_skill_buy_more_flat_amount(trade_data, roles, product)
         if buy_lot <= 0:
             continue
 
@@ -1063,6 +1101,8 @@ def wulinyuan_currency_profit_metrics(
     total_fatigue: int,
     total_restock: int,
 ) -> dict[str, int] | None:
+    # 跟 columba-bot 的特殊货币模型保持一致：路线评分使用铁盟币基准价格，
+    # 但对外记录交子数量时按 priceDivisorFromBase 折算成实际交子。
     jiaozi_income = convert_base_price_to_wulinyuan_currency(jiaozi_income_base)
     jiaozi_cost = convert_base_price_to_wulinyuan_currency(jiaozi_cost_base)
     jiaozi_profit = jiaozi_income - jiaozi_cost

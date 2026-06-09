@@ -11,7 +11,12 @@ def strength_status_from_texts(texts: list[str]) -> dict[str, int] | None:
     cleaned = [clean_text(text) for text in texts if str(text).strip()]
 
     def result(current: int, total: int) -> dict[str, int] | None:
-        if total <= 0 or current < 0 or current > total:
+        if total <= 0 or current < 0:
+            return None
+        # The game can show over-fatigue values such as 923/920 after the train
+        # has already exceeded the safe limit. Treat them as valid with zero
+        # remaining fatigue, but still reject obvious OCR outliers.
+        if current > total * 2:
             return None
         return {
             "current": current,
@@ -69,9 +74,10 @@ def strength_status_from_texts(texts: list[str]) -> dict[str, int] | None:
     label_indices = [index for index, text in enumerate(cleaned) if "列车长疲劳值" in text or "疲劳值" == text]
     search_indices: list[int] = []
     for label_index in label_indices:
-        search_indices.extend(range(max(0, label_index - 4), min(len(cleaned), label_index + 3)))
-    search_indices.extend(range(max(0, total_index - 8), total_index))
+        search_indices.extend(range(max(0, label_index - 8), min(len(cleaned), label_index + 3)))
+    search_indices.extend(range(max(0, total_index - 12), total_index))
     seen: set[int] = set()
+    candidates: list[int] = []
     for index in search_indices:
         if index in seen or index == total_index:
             continue
@@ -81,7 +87,10 @@ def strength_status_from_texts(texts: list[str]) -> dict[str, int] | None:
             continue
         parsed = result(current, total)
         if parsed:
-            return parsed
+            candidates.append(current)
+    if candidates:
+        current = max(candidates, key=lambda value: (len(str(value)), value))
+        return result(current, total)
     return None
 
 

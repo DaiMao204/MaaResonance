@@ -327,6 +327,7 @@
         },
         "timeout": 8000,
         "next": [
+            "ManualTwoCityBusinessCloseDailyCheckInForStartupTravelRecover",
             "ManualTwoCityBusinessRouteImpactDrillEnabled",
             "ManualTwoCityBusinessRouteImpactDrillButton",
             "ManualTwoCityBusinessRouteSpeedProjectileEnabled",
@@ -346,6 +347,19 @@
             "ManualTwoCityBusinessStartupTravelFallbackRecovery"
         ],
         "on_error": "StateRecoveryStart"
+    },
+    "ManualTwoCityBusinessCloseDailyCheckInForStartupTravelRecover": {
+        "recognition": {
+            "type": "Custom",
+            "param": {
+                "custom_recognition": "manual_two_city_business_daily_checkin_popup"
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 900,
+        "next": "ManualTwoCityBusinessStartupTravelRecover"
     },
     "ManualTwoCityBusinessStartupTravelFallbackRecovery": {
         "recognition": {
@@ -754,12 +768,27 @@
             }
         },
         "next": [
+            "ManualTwoCityBusinessCloseDailyCheckInForBuyPageReady",
             "ManualTwoCityBusinessSellPageReady",
             "ManualTwoCityBusinessSkipBuyDueFullCargo",
             "ManualTwoCityBusinessInitialTransferNeeded",
             "ManualTwoCityBusinessProductScanNeeded",
             "ManualTwoCityBusinessBuyDrinkCheck"
         ],
+        "on_error": "ManualTwoCityBusinessCloseDailyCheckInForBuyPageReady"
+    },
+    "ManualTwoCityBusinessCloseDailyCheckInForBuyPageReady": {
+        "recognition": {
+            "type": "Custom",
+            "param": {
+                "custom_recognition": "manual_two_city_business_daily_checkin_popup"
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 900,
+        "next": "ManualTwoCityBusinessBuyPageReady",
         "on_error": "ManualTwoCityBusinessTradeEntryFailed"
     },
     "ManualTwoCityBusinessSkipBuyDueFullCargo": {
@@ -1640,6 +1669,20 @@
             }
         },
         "next": "ManualTwoCityBusinessSellDrinkCheck",
+        "on_error": "ManualTwoCityBusinessCloseDailyCheckInForSellPageReady"
+    },
+    "ManualTwoCityBusinessCloseDailyCheckInForSellPageReady": {
+        "recognition": {
+            "type": "Custom",
+            "param": {
+                "custom_recognition": "manual_two_city_business_daily_checkin_popup"
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 900,
+        "next": "ManualTwoCityBusinessSellPageReady",
         "on_error": "ManualTwoCityBusinessTradeEntryFailed"
     },
     "ManualTwoCityBusinessBuyDrinkCheck": {
@@ -1665,6 +1708,20 @@
             }
         },
         "next": "ManualTwoCityBusinessOpenStrengthForDrink",
+        "on_error": "ManualTwoCityBusinessCloseDailyCheckInForBuyDrinkCheck"
+    },
+    "ManualTwoCityBusinessCloseDailyCheckInForBuyDrinkCheck": {
+        "recognition": {
+            "type": "Custom",
+            "param": {
+                "custom_recognition": "manual_two_city_business_daily_checkin_popup"
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 900,
+        "next": "ManualTwoCityBusinessBuyDrinkCheck",
         "on_error": "ManualTwoCityBusinessBuyStrengthRecoveryCheck"
     },
     "ManualTwoCityBusinessSellDrinkCheck": {
@@ -1690,6 +1747,20 @@
             }
         },
         "next": "ManualTwoCityBusinessOpenStrengthForDrink",
+        "on_error": "ManualTwoCityBusinessCloseDailyCheckInForSellDrinkCheck"
+    },
+    "ManualTwoCityBusinessCloseDailyCheckInForSellDrinkCheck": {
+        "recognition": {
+            "type": "Custom",
+            "param": {
+                "custom_recognition": "manual_two_city_business_daily_checkin_popup"
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 900,
+        "next": "ManualTwoCityBusinessSellDrinkCheck",
         "on_error": "ManualTwoCityBusinessSellStrengthRecoveryCheck"
     },
     "ManualTwoCityBusinessOpenStrengthForDrink": {
@@ -1925,9 +1996,8 @@
         "on_error": "ManualTwoCityBusinessTapSellAllButton"
     },
     "ManualTwoCityBusinessStopIfFatigueExhausted": {
-        "recognition": {
-            "type": "DirectHit"
-        },
+        "recognition": "Custom",
+        "custom_recognition": "manual_two_city_business_strength_stop_pending",
         "action": {
             "type": "Custom",
             "param": {
@@ -2819,8 +2889,22 @@
             }
         },
         "post_delay": 200,
-        "next": "ManualTwoCityBusinessReturnHomeAfterBuy",
+        "next": "ManualTwoCityBusinessVerifyCargoAfterBuy",
         "on_error": "ManualTwoCityBusinessDepartFailed"
+    },
+    "ManualTwoCityBusinessVerifyCargoAfterBuy": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_verify_cargo_after_buy"
+            }
+        },
+        "post_delay": 200,
+        "next": "ManualTwoCityBusinessReturnHomeAfterBuy",
+        "on_error": "ManualTwoCityBusinessTradeEntryFailed"
     },
     "ManualTwoCityBusinessReturnHomeAfterBuy": {
         "recognition": {
@@ -2858,8 +2942,68 @@
             "type": "Click"
         },
         "post_delay": 1600,
-        "next": "ManualTwoCityBusinessRouteMapReady",
+        "next": [
+            "ManualTwoCityBusinessRouteMapReady",
+            "ManualTwoCityBusinessCloseDailyCheckInForRouteMapReady",
+            "ManualTwoCityBusinessCloseGenericPopupForRouteMapReady"
+        ],
         "on_error": "ManualTwoCityBusinessDepartFailed"
+    },
+    "ManualTwoCityBusinessCloseDailyCheckInForRouteMapReady": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "每日签到奖励",
+                    "DAILY CHECK-IN CALENDAR",
+                    "今日奖励",
+                    "本月累计签到",
+                    "已领取"
+                ],
+                "roi": [
+                    120,
+                    40,
+                    1040,
+                    640
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    640,
+                    705
+                ]
+            }
+        },
+        "post_delay": 900,
+        "next": "ManualTwoCityBusinessRouteMapReady"
+    },
+    "ManualTwoCityBusinessCloseGenericPopupForRouteMapReady": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": "触碰空白区域退出",
+                "roi": [
+                    360,
+                    620,
+                    560,
+                    95
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    640,
+                    705
+                ]
+            }
+        },
+        "post_delay": 900,
+        "next": "ManualTwoCityBusinessRouteMapReady"
     },
     "ManualTwoCityBusinessRouteMapReady": {
         "recognition": {
@@ -2932,8 +3076,68 @@
             }
         },
         "post_delay": 500,
-        "next": "ManualTwoCityBusinessTapGoDestination",
+        "next": [
+            "ManualTwoCityBusinessTapGoDestination",
+            "ManualTwoCityBusinessCloseDailyCheckInForTapGoDestination",
+            "ManualTwoCityBusinessCloseGenericPopupForTapGoDestination"
+        ],
         "on_error": "ManualTwoCityBusinessDepartFailed"
+    },
+    "ManualTwoCityBusinessCloseDailyCheckInForTapGoDestination": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "每日签到奖励",
+                    "DAILY CHECK-IN CALENDAR",
+                    "今日奖励",
+                    "本月累计签到",
+                    "已领取"
+                ],
+                "roi": [
+                    120,
+                    40,
+                    1040,
+                    640
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    640,
+                    705
+                ]
+            }
+        },
+        "post_delay": 900,
+        "next": "ManualTwoCityBusinessTapGoDestination"
+    },
+    "ManualTwoCityBusinessCloseGenericPopupForTapGoDestination": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": "触碰空白区域退出",
+                "roi": [
+                    360,
+                    620,
+                    560,
+                    95
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    640,
+                    705
+                ]
+            }
+        },
+        "post_delay": 900,
+        "next": "ManualTwoCityBusinessTapGoDestination"
     },
     "ManualTwoCityBusinessTapGoDestination": {
         "recognition": {
@@ -3095,6 +3299,7 @@
         "rate_limit": 3000,
         "timeout": 1200000,
         "next": [
+            "ManualTwoCityBusinessCloseDailyCheckInForTravelMonitor",
             "ManualTwoCityBusinessFightClearTeamPopupCancel",
             "ManualTwoCityBusinessArrivedMainMap",
             "ManualTwoCityBusinessArrivedVisitCity",
@@ -3119,6 +3324,19 @@
             "ManualTwoCityBusinessTravelInProgress"
         ],
         "on_error": "ManualTwoCityBusinessTravelFailed"
+    },
+    "ManualTwoCityBusinessCloseDailyCheckInForTravelMonitor": {
+        "recognition": {
+            "type": "Custom",
+            "param": {
+                "custom_recognition": "manual_two_city_business_daily_checkin_popup"
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 900,
+        "next": "ManualTwoCityBusinessTravelMonitor"
     },
     "ManualTwoCityBusinessTravelStallWatchdog": {
         "recognition": {
@@ -3841,6 +4059,7 @@
         "rate_limit": 3000,
         "timeout": 180000,
         "next": [
+            "ManualTwoCityBusinessCloseDailyCheckInForFightMonitor",
             "ManualTwoCityBusinessFightClearTeamPopupCancel",
             "ManualTwoCityBusinessFightEndButton",
             "ManualTwoCityBusinessFightStartByOcr",
@@ -3854,6 +4073,19 @@
             "ManualTwoCityBusinessTravelGenericPopup"
         ],
         "on_error": "ManualTwoCityBusinessTravelMonitor"
+    },
+    "ManualTwoCityBusinessCloseDailyCheckInForFightMonitor": {
+        "recognition": {
+            "type": "Custom",
+            "param": {
+                "custom_recognition": "manual_two_city_business_daily_checkin_popup"
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 900,
+        "next": "ManualTwoCityBusinessFightMonitor"
     },
     "ManualTwoCityBusinessFightFormationReady": {
         "recognition": {

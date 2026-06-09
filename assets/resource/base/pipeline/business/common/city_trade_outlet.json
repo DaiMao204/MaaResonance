@@ -94,10 +94,33 @@
             "type": "DoNothing"
         },
         "next": [
+            "CityTradeOutletTapWulinMarket001",
             "CityTradeOutletTapByOcr001",
             "CityTradeOutletSwipeSlight"
         ],
         "on_error": "CityTradeOutletOpenFailed"
+    },
+    "CityTradeOutletTapWulinMarket001": {
+        "recognition": "Custom",
+        "custom_recognition": "city_trade_outlet_wulin_market",
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 1200,
+        "next": "CityTradeOutletWaitMenuAfterWulinMarket001"
+    },
+    "CityTradeOutletWaitMenuAfterWulinMarket001": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "post_delay": 900,
+        "next": [
+            "CityTradeOutletMenuReadyAfterTap001",
+            "CityTradeOutletTapByOcr001"
+        ]
     },
     "CityTradeOutletTapByOcr001": {
         "recognition": {
@@ -187,10 +210,33 @@
         },
         "post_delay": 650,
         "next": [
+            "CityTradeOutletTapWulinMarket002",
             "CityTradeOutletTapByOcr002",
             "CityTradeOutletSwipeLeft"
         ],
         "on_error": "CityTradeOutletOpenFailed"
+    },
+    "CityTradeOutletTapWulinMarket002": {
+        "recognition": "Custom",
+        "custom_recognition": "city_trade_outlet_wulin_market",
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 1200,
+        "next": "CityTradeOutletWaitMenuAfterWulinMarket002"
+    },
+    "CityTradeOutletWaitMenuAfterWulinMarket002": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "post_delay": 900,
+        "next": [
+            "CityTradeOutletMenuReadyAfterTap002",
+            "CityTradeOutletTapByOcr002"
+        ]
     },
     "CityTradeOutletTapByOcr002": {
         "recognition": {
@@ -280,10 +326,33 @@
         },
         "post_delay": 650,
         "next": [
+            "CityTradeOutletTapWulinMarket003",
             "CityTradeOutletTapByOcr003",
             "CityTradeOutletSwipeRight"
         ],
         "on_error": "CityTradeOutletOpenFailed"
+    },
+    "CityTradeOutletTapWulinMarket003": {
+        "recognition": "Custom",
+        "custom_recognition": "city_trade_outlet_wulin_market",
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 1200,
+        "next": "CityTradeOutletWaitMenuAfterWulinMarket003"
+    },
+    "CityTradeOutletWaitMenuAfterWulinMarket003": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "post_delay": 900,
+        "next": [
+            "CityTradeOutletMenuReadyAfterTap003",
+            "CityTradeOutletTapByOcr003"
+        ]
     },
     "CityTradeOutletTapByOcr003": {
         "recognition": {
@@ -373,10 +442,33 @@
         },
         "post_delay": 650,
         "next": [
+            "CityTradeOutletTapWulinMarket004",
             "CityTradeOutletTapByOcr004",
             "CityTradeOutletSwipeDown"
         ],
         "on_error": "CityTradeOutletOpenFailed"
+    },
+    "CityTradeOutletTapWulinMarket004": {
+        "recognition": "Custom",
+        "custom_recognition": "city_trade_outlet_wulin_market",
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 1200,
+        "next": "CityTradeOutletWaitMenuAfterWulinMarket004"
+    },
+    "CityTradeOutletWaitMenuAfterWulinMarket004": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "post_delay": 900,
+        "next": [
+            "CityTradeOutletMenuReadyAfterTap004",
+            "CityTradeOutletTapByOcr004"
+        ]
     },
     "CityTradeOutletTapByOcr004": {
         "recognition": {
@@ -466,10 +558,33 @@
         },
         "post_delay": 650,
         "next": [
+            "CityTradeOutletTapWulinMarket005",
             "CityTradeOutletTapByOcr005",
             "CityTradeOutletOpenFailed"
         ],
         "on_error": "CityTradeOutletOpenFailed"
+    },
+    "CityTradeOutletTapWulinMarket005": {
+        "recognition": "Custom",
+        "custom_recognition": "city_trade_outlet_wulin_market",
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 1200,
+        "next": "CityTradeOutletWaitMenuAfterWulinMarket005"
+    },
+    "CityTradeOutletWaitMenuAfterWulinMarket005": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "post_delay": 900,
+        "next": [
+            "CityTradeOutletMenuReadyAfterTap005",
+            "CityTradeOutletTapByOcr005"
+        ]
     },
     "CityTradeOutletTapByOcr005": {
         "recognition": {
