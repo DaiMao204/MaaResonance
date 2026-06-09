@@ -6,9 +6,9 @@
     "description": "基于 MaaFramework 的 Resonance 自动化辅助项目。",
     "contact": "Issues: https://github.com/DaiMao204/MaaResonance/issues",
     "license": "AGPL-3.0-only",
-    "welcome": "当前处于内部测试阶段，主要测试功能稳定性。遇到异常请附带 MXU 日志、任务配置和出错界面截图反馈。",
+    "welcome": "当前处于公开测试阶段，主要测试功能稳定性。遇到异常请附带 MXU 日志、任务配置和出错界面截图反馈。",
     "github": "https://github.com/DaiMao204/MaaResonance",
-    "version": "v0.2.0-beta",
+    "version": "v1.0.0",
     "mirrorchyan_rid": "MaaResonance",
     "mirrorchyan_multiplatform": true,
     "controller": [
