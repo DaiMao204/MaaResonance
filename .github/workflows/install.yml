@@ -146,11 +146,15 @@ jobs:
         run: |
           {
             echo "release_body<<EOF"
-            echo "## v1.2.0-beta.2 更新日志"
+            echo "## v1.2.0-beta.3 更新日志"
+            echo ""
+            echo "#### 新增"
+            echo ""
+            echo "增加跑商任务中商品数据和城市税率读取功能"
             echo ""
             echo "#### 优化"
             echo ""
-            echo "- 增强任务运行稳定性，减少任务中断的情况"
+            echo "优化了行情计算算法的准确度"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 

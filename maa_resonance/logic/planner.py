@@ -97,6 +97,8 @@ class RoutePlanOptions:
     events: dict[str, dict[str, bool]] | None = None
     product_unlock_status: dict[str, bool] | None = None
     product_unlock_status_by_city: dict[str, dict[str, bool]] | None = None
+    city_tax_rate_by_city: dict[str, float] | None = None
+    product_buy_lot_by_city: dict[str, dict[str, int]] | None = None
     use_default_product_unlock_status: bool = False
     use_columba_onegraph: bool = True
 
@@ -679,6 +681,43 @@ def get_prestige_tax_rate(prestige: dict[str, Any], master_city: str) -> float:
     return float(city_tax if city_tax is not None else prestige.get("generalTax", 0))
 
 
+def normalize_tax_rate_value(value: Any) -> float | None:
+    try:
+        rate = float(value)
+    except (TypeError, ValueError):
+        return None
+    if rate > 1:
+        rate /= 100
+    if rate < 0 or rate > 1:
+        return None
+    return rate
+
+
+def get_observed_city_tax_rate(options: RoutePlanOptions, city: str) -> float | None:
+    city_name = normalize_city_name(str(city or "").strip())
+    if not city_name or not isinstance(options.city_tax_rate_by_city, dict):
+        return None
+    for key in (city_name, str(city or "").strip()):
+        if key in options.city_tax_rate_by_city:
+            return normalize_tax_rate_value(options.city_tax_rate_by_city.get(key))
+    return None
+
+
+def get_observed_product_buy_lot(options: RoutePlanOptions, city: str, product_name: str) -> int | None:
+    city_name = normalize_city_name(str(city or "").strip())
+    good_name = str(product_name or "").strip()
+    if not city_name or not good_name or not isinstance(options.product_buy_lot_by_city, dict):
+        return None
+    city_lots = options.product_buy_lot_by_city.get(city_name) or options.product_buy_lot_by_city.get(str(city or "").strip())
+    if not isinstance(city_lots, dict):
+        return None
+    try:
+        lot = int(city_lots.get(good_name) or 0)
+    except (TypeError, ValueError):
+        return None
+    return lot if lot > 0 else None
+
+
 def get_prestige_buy_more_percent(prestige: dict[str, Any], city: str) -> float:
     if normalize_city_name(city) == WULINYUAN_CITY_NAME:
         return 0.0
@@ -902,14 +941,18 @@ def calculate_columba_price_items(
             buy_price = js_round(buy_price)
             sell_price = js_round(sell_price * (1 + bargain.raise_percent / 100))
 
-        buy_tax_rate = get_prestige_tax_rate(buy_prestige, from_city_master)
-        buy_tax_rate += get_game_event_tax_variation(trade_data, product, from_city, events_config)
-        buy_tax_rate += buy_resonance_tax_cut
+        calculated_buy_tax_rate = get_prestige_tax_rate(buy_prestige, from_city_master)
+        calculated_buy_tax_rate += get_game_event_tax_variation(trade_data, product, from_city, events_config)
+        calculated_buy_tax_rate += buy_resonance_tax_cut
+        observed_buy_tax_rate = get_observed_city_tax_rate(options, from_city)
+        buy_tax_rate = max(calculated_buy_tax_rate, observed_buy_tax_rate) if observed_buy_tax_rate is not None else calculated_buy_tax_rate
 
-        sell_tax_rate = get_prestige_tax_rate(sell_prestige, to_city_master)
+        calculated_sell_tax_rate = get_prestige_tax_rate(sell_prestige, to_city_master)
         if special_currency_pair:
-            sell_tax_rate += get_game_event_tax_variation(trade_data, product, to_city, events_config)
-        sell_tax_rate += sell_resonance_tax_cut
+            calculated_sell_tax_rate += get_game_event_tax_variation(trade_data, product, to_city, events_config)
+        calculated_sell_tax_rate += sell_resonance_tax_cut
+        observed_sell_tax_rate = get_observed_city_tax_rate(options, to_city)
+        sell_tax_rate = max(calculated_sell_tax_rate, observed_sell_tax_rate) if observed_sell_tax_rate is not None else calculated_sell_tax_rate
 
         rounded_buy_price = js_round(buy_price)
         rounded_sell_price = js_round(sell_price)
@@ -930,8 +973,10 @@ def calculate_columba_price_items(
         buy_more_percent = get_resonance_skill_buy_more_percent(trade_data, roles, product, from_city)
         buy_more_percent += get_prestige_buy_more_percent(buy_prestige, from_city)
         buy_more_percent += get_game_event_buy_more_percent(trade_data, product, from_city, events_config)
-        buy_lot = js_round(float(static_buy_lot) * (100 + buy_more_percent) / 100)
-        buy_lot += get_resonance_skill_buy_more_flat_amount(trade_data, roles, product)
+        calculated_buy_lot = js_round(float(static_buy_lot) * (100 + buy_more_percent) / 100)
+        calculated_buy_lot += get_resonance_skill_buy_more_flat_amount(trade_data, roles, product)
+        observed_buy_lot = get_observed_product_buy_lot(options, from_city, product_name)
+        buy_lot = max(calculated_buy_lot, observed_buy_lot) if observed_buy_lot is not None else calculated_buy_lot
         if buy_lot <= 0:
             continue
 

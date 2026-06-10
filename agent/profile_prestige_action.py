@@ -65,6 +65,7 @@ from maa_resonance.logic.planner import load_default_tired_data
 from maa_resonance.logic.planner import load_station_world_coords
 from maa_resonance.logic.planner import normalize_city_name
 from maa_resonance.logic.trade_parser import match_trade_good
+from maa_resonance.logic.trade_parser import parse_trade_tax_rate
 from maa_resonance.logic.trade_parser import trade_good_row_texts
 from maa_resonance.logic.trade_parser import trade_list_page_signature
 from maa_resonance.logic.trade_parser import trade_list_text_signature
@@ -138,6 +139,8 @@ BUY_GOODS_LIST_ROI = [500, 105, 430, 585]
 BUY_PAGE_READY_TEXTS = ["预计买入", "全部买入", "全部取消"]
 BUY_PAGE_CARGO_LOAD_ROI = [880, 360, 390, 85]
 BUY_PAGE_CARGO_LOAD_PROBE_ROI = [1070, 345, 210, 120]
+BUY_PAGE_TAX_RATE_ROI = [880, 480, 390, 75]
+BUY_SELECTION_CARGO_FULL_RATIO = 0.995
 POST_BUY_CARGO_VERIFY_PLANNED_RATIO = 0.95
 POST_BUY_CARGO_VERIFY_PASS_RATIO = 0.98
 TRADE_SWITCH_TO_SELL_ROI = [0, 600, 430, 100]
@@ -302,6 +305,23 @@ FATIGUE_MEDICINE_CARD_ROIS = {
     "提神棒棒糖": [540, 190, 230, 220],
     "提神口香糖": [780, 190, 250, 220],
     "仙人掌提神跳糖": [540, 450, 240, 210],
+}
+FATIGUE_MEDICINE_COUNT_ROIS = {
+    "提神棒棒糖": [
+        [690, 248, 75, 75],
+        [650, 220, 135, 110],
+        [630, 210, 160, 125],
+    ],
+    "提神口香糖": [
+        [930, 248, 85, 75],
+        [890, 220, 155, 110],
+        [865, 210, 180, 125],
+    ],
+    "仙人掌提神跳糖": [
+        [690, 508, 75, 75],
+        [650, 480, 135, 110],
+        [630, 470, 160, 125],
+    ],
 }
 FATIGUE_MEDICINE_CARD_UNAVAILABLE_TEXTS = ["获取途径", "不在范围内", "库存不足", "数量不足", "无库存", "没有可用"]
 FATIGUE_MEDICINE_FALLBACK_TARGETS = {
@@ -1075,6 +1095,76 @@ def _merge_product_unlock_status_by_city(*values: Any) -> dict[str, dict[str, bo
     )
 
 
+def _city_tax_rate_by_city(*values: Any) -> dict[str, float]:
+    rates: dict[str, float] = {}
+    for value in values:
+        if not isinstance(value, dict):
+            continue
+        for city, raw_rate in value.items():
+            city_name = normalize_city_name(str(city or "").strip())
+            if not city_name:
+                continue
+            try:
+                rate = float(raw_rate)
+            except (TypeError, ValueError):
+                continue
+            if rate > 1:
+                rate /= 100
+            if 0 <= rate <= 1:
+                rates[city_name] = rate
+    return {
+        city: rates[city]
+        for city in sorted(rates)
+    }
+
+
+def _product_buy_lot_by_city(*values: Any) -> dict[str, dict[str, int]]:
+    lots: dict[str, dict[str, int]] = {}
+    for value in values:
+        if not isinstance(value, dict):
+            continue
+        for city, goods in value.items():
+            city_name = normalize_city_name(str(city or "").strip())
+            if not city_name or not isinstance(goods, dict):
+                continue
+            city_lots = lots.setdefault(city_name, {})
+            for good, raw_lot in goods.items():
+                good_name = str(good or "").strip()
+                if not good_name:
+                    continue
+                try:
+                    lot = int(raw_lot)
+                except (TypeError, ValueError):
+                    continue
+                if lot > 0:
+                    city_lots[good_name] = lot
+    return {
+        city: {good: lot for good, lot in sorted(goods.items())}
+        for city, goods in sorted(lots.items())
+        if goods
+    }
+
+
+def _city_trade_read_meta_by_city(*values: Any) -> dict[str, dict[str, Any]]:
+    meta_by_city: dict[str, dict[str, Any]] = {}
+    for value in values:
+        if not isinstance(value, dict):
+            continue
+        for city, raw_meta in value.items():
+            city_name = normalize_city_name(str(city or "").strip())
+            if not city_name or not isinstance(raw_meta, dict):
+                continue
+            meta = meta_by_city.setdefault(city_name, {})
+            for key, item in raw_meta.items():
+                if item not in ({}, [], None, ""):
+                    meta[str(key)] = copy.deepcopy(item)
+    return {
+        city: meta
+        for city, meta in sorted(meta_by_city.items())
+        if meta
+    }
+
+
 def _profile_result_from_account_config(payload: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(payload, dict):
         return {}
@@ -1108,6 +1198,25 @@ def _profile_result_from_account_config(payload: dict[str, Any]) -> dict[str, An
     if product_status_by_city:
         result["product_status_by_city"] = product_status_by_city
         result["product_unlock_status_by_city"] = _locked_product_status_by_city(product_status_by_city)
+    city_tax_rate_by_city = _city_tax_rate_by_city(
+        trade.get("city_tax_rate_by_city"),
+        planner.get("city_tax_rate_by_city"),
+    )
+    if city_tax_rate_by_city:
+        result["city_tax_rate_by_city"] = city_tax_rate_by_city
+    product_buy_lot_by_city = _product_buy_lot_by_city(
+        trade.get("product_buy_lot_by_city"),
+        planner.get("product_buy_lot_by_city"),
+    )
+    if product_buy_lot_by_city:
+        result["product_buy_lot_by_city"] = product_buy_lot_by_city
+    city_trade_read = _city_trade_read_meta_by_city(
+        trade.get("city_trade_read"),
+        planner.get("city_trade_read"),
+        payload.get("city_trade_read"),
+    )
+    if city_trade_read:
+        result["city_trade_read"] = city_trade_read
     return result
 
 
@@ -1137,6 +1246,12 @@ def _planner_overrides(result: dict[str, Any]) -> dict[str, Any]:
     )
     if product_unlock_status_by_city:
         overrides["product_unlock_status_by_city"] = product_unlock_status_by_city
+    city_tax_rate_by_city = _city_tax_rate_by_city(result.get("city_tax_rate_by_city"))
+    if city_tax_rate_by_city:
+        overrides["city_tax_rate_by_city"] = city_tax_rate_by_city
+    product_buy_lot_by_city = _product_buy_lot_by_city(result.get("product_buy_lot_by_city"))
+    if product_buy_lot_by_city:
+        overrides["product_buy_lot_by_city"] = product_buy_lot_by_city
     return overrides
 
 
@@ -1173,6 +1288,19 @@ def _merge_profile_result(previous: dict[str, Any], current: dict[str, Any]) -> 
             )
         )
         merged["product_unlock_status_by_city"] = _locked_product_status_by_city(merged["product_status_by_city"])
+    if "read_city_trade" in completed:
+        merged["city_tax_rate_by_city"] = _city_tax_rate_by_city(
+            merged.get("city_tax_rate_by_city"),
+            current.get("city_tax_rate_by_city"),
+        )
+        merged["product_buy_lot_by_city"] = _product_buy_lot_by_city(
+            merged.get("product_buy_lot_by_city"),
+            current.get("product_buy_lot_by_city"),
+        )
+        merged["city_trade_read"] = _city_trade_read_meta_by_city(
+            merged.get("city_trade_read"),
+            current.get("city_trade_read"),
+        )
     if isinstance(current.get("account_profile_read"), dict):
         merged["account_profile_read"] = copy.deepcopy(current.get("account_profile_read") or {})
     elif isinstance(merged.get("account_profile_read"), dict):
@@ -1203,6 +1331,9 @@ def _compact_account_profile(result: dict[str, Any], *, uid: str) -> dict[str, A
         )
     )
     product_unlock_status_by_city = _locked_product_status_by_city(product_status_by_city)
+    city_tax_rate_by_city = _city_tax_rate_by_city(result.get("city_tax_rate_by_city"))
+    product_buy_lot_by_city = _product_buy_lot_by_city(result.get("product_buy_lot_by_city"))
+    city_trade_read = _city_trade_read_meta_by_city(result.get("city_trade_read"))
     cargo_capacity = result.get("cargo_capacity")
     try:
         cargo_capacity = int(cargo_capacity) if cargo_capacity is not None else None
@@ -1215,6 +1346,9 @@ def _compact_account_profile(result: dict[str, Any], *, uid: str) -> dict[str, A
         "roles": {role: {"resonance": level} for role, level in role_resonance.items()},
         "product_status_by_city": product_status_by_city,
         "product_unlock_status_by_city": product_unlock_status_by_city,
+        "city_tax_rate_by_city": city_tax_rate_by_city,
+        "product_buy_lot_by_city": product_buy_lot_by_city,
+        "city_trade_read": city_trade_read,
     }
     planner = {
         key: value
@@ -1235,6 +1369,9 @@ def _compact_account_profile(result: dict[str, Any], *, uid: str) -> dict[str, A
             "role_resonance": role_resonance,
             "product_status_by_city": product_status_by_city,
             "product_unlock_status_by_city": product_unlock_status_by_city,
+            "city_tax_rate_by_city": city_tax_rate_by_city,
+            "product_buy_lot_by_city": product_buy_lot_by_city,
+            "city_trade_read": city_trade_read,
         },
         "planner": planner,
     }
@@ -5959,24 +6096,64 @@ def _manual_two_city_probe_medicine_actual_budget(
     actual_restore = 0
     actual_details: list[dict[str, Any]] = []
     recovery = _manual_two_city_strength_recovery_state(state)
-    medicine_count_rois = {
-        "提神棒棒糖": [690, 248, 75, 75],
-        "提神口香糖": [930, 248, 85, 75],
-        "仙人掌提神跳糖": [690, 508, 75, 75],
-    }
 
-    def read_int_from_roi(name: str, roi: list[int]) -> tuple[int | None, list[str]]:
-        _, _, texts = _manual_two_city_ocr_entries(
-            context,
-            name,
-            r"\d{1,4}",
-            roi=roi,
-        )
+    def parse_inventory_count_values(texts: list[str]) -> list[int]:
         values: list[int] = []
         for text in texts:
-            for match in re.finditer(r"\d{1,4}", clean_text(text).replace("O", "0").replace("o", "0")):
+            normalized = (
+                clean_text(text)
+                .replace("I", "1")
+                .replace("l", "1")
+                .replace("|", "1")
+                .replace("｜", "1")
+                .replace("丨", "1")
+            )
+            for match in re.finditer(r"\d{1,4}", normalized):
                 values.append(int(match.group()))
-        return (values[0] if values else None), texts
+        return values
+
+    def choose_inventory_count(values: list[int], config_count: int) -> int | None:
+        candidates = [value for value in values if 0 <= value <= 9999]
+        if not candidates:
+            return None
+        if 0 < config_count < 999:
+            enough_candidates = [value for value in candidates if value >= config_count]
+            if enough_candidates:
+                return min(enough_candidates)
+        return max(candidates)
+
+    def read_inventory_count(
+        name: str,
+        rois: list[list[int]],
+        config_count: int,
+    ) -> tuple[int | None, list[str], list[dict[str, Any]]]:
+        all_texts: list[str] = []
+        all_values: list[int] = []
+        roi_details: list[dict[str, Any]] = []
+        for index, roi in enumerate(rois):
+            _, entries, texts = _manual_two_city_ocr_entries(
+                context,
+                f"{name}Roi{index + 1}",
+                r"\d{1,4}",
+                roi=roi,
+            )
+            roi_texts = list(
+                dict.fromkeys(
+                    [str(entry.get("text") or "") for entry in entries if str(entry.get("text") or "").strip()]
+                    + [text for text in texts if str(text).strip()]
+                )
+            )
+            values = parse_inventory_count_values(roi_texts)
+            all_texts.extend(roi_texts)
+            all_values.extend(values)
+            roi_details.append(
+                {
+                    "roi": roi,
+                    "texts": roi_texts[:20],
+                    "values": values[:10],
+                }
+            )
+        return choose_inventory_count(all_values, config_count), list(dict.fromkeys(all_texts)), roi_details
 
     for resource in FATIGUE_MEDICINE_RESOURCES:
         allowed, skip_reason, limit, used = _manual_two_city_medicine_limit_state(state, resource)
@@ -6002,14 +6179,18 @@ def _manual_two_city_probe_medicine_actual_budget(
             "提神口香糖": "Gum",
             "仙人掌提神跳糖": "CactusCandy",
         }.get(resource, "Medicine")
-        inventory, inventory_texts = read_int_from_roi(
+        config_count, config_payload = _manual_two_city_config_remaining_count(state, resource, "medicine")
+        inventory, inventory_texts, inventory_roi_details = read_inventory_count(
             f"ManualTwoCityStrengthBudget{resource_key}Count",
-            medicine_count_rois.get(resource, [0, 0, 0, 0]),
+            FATIGUE_MEDICINE_COUNT_ROIS.get(resource, []),
+            config_count,
         )
         detail["inventory"] = inventory
         detail["texts"] = inventory_texts[:20]
+        detail["inventory_roi_details"] = inventory_roi_details
         card_unavailable, card_texts = _manual_two_city_medicine_card_unavailable(context, resource, resource_key)
         detail["card_texts"] = card_texts[:20]
+        detail["config"] = config_payload
         if card_unavailable:
             reason = "卡片不可用"
             _manual_two_city_recovery_mark_unavailable(recovery, resource, reason)
@@ -6024,11 +6205,7 @@ def _manual_two_city_probe_medicine_actual_budget(
             actual_details.append(detail)
             continue
 
-        config_count, config_payload = _manual_two_city_config_remaining_count(state, resource, "medicine")
-        if inventory is None:
-            actual_count = config_count if config_count < 999 else max(1, math.ceil(gap / restore))
-        else:
-            actual_count = min(config_count, max(0, inventory))
+        actual_count = min(config_count, max(0, inventory))
         if config_count >= 999 and inventory is not None:
             actual_count = max(0, inventory)
         restore_budget = max(0, actual_count) * restore
@@ -6037,7 +6214,6 @@ def _manual_two_city_probe_medicine_actual_budget(
             {
                 "actual_count": actual_count,
                 "restore_budget": restore_budget,
-                "config": config_payload,
             }
         )
         actual_details.append(detail)
@@ -6289,7 +6465,15 @@ def _manual_two_city_parse_buy_page_cargo_load(
     candidates: list[dict[str, Any]] = []
     roi_x, roi_y, roi_w, roi_h = roi or BUY_PAGE_CARGO_LOAD_ROI
 
-    def add_candidate(used: int, capacity: int, raw_text: str, normalized_text: str, entry: dict[str, Any]) -> None:
+    def add_candidate(
+        used: int,
+        capacity: int,
+        raw_text: str,
+        normalized_text: str,
+        entry: dict[str, Any],
+        *,
+        priority: int = 0,
+    ) -> None:
         if capacity <= 0 or used < 0:
             return
         if used > capacity * 2:
@@ -6303,6 +6487,7 @@ def _manual_two_city_parse_buy_page_cargo_load(
                 "ratio": used / capacity,
                 "text": raw_text,
                 "normalized_text": normalized_text,
+                "priority": priority,
                 "box": [x, y, int(entry.get("w") or 0), int(entry.get("h") or 0)],
             }
         )
@@ -6330,6 +6515,14 @@ def _manual_two_city_parse_buy_page_cargo_load(
             digits = re.sub(r"\D+", "", candidate_text)
             if len(digits) < 4 or "%" in candidate_text:
                 continue
+            if digits.startswith("0"):
+                for start in (1, 2):
+                    capacity_text = digits[start:]
+                    if not capacity_text:
+                        continue
+                    capacity = int(capacity_text)
+                    if 100 <= capacity <= 9999:
+                        add_candidate(0, capacity, raw_text, f"0/{capacity_text}", entry, priority=1)
             for split in range(1, len(digits)):
                 used = int(digits[:split])
                 capacity = int(digits[split:])
@@ -6337,7 +6530,17 @@ def _manual_two_city_parse_buy_page_cargo_load(
                     add_candidate(used, capacity, raw_text, f"{digits[:split]}/{digits[split:]}", entry)
     if not candidates:
         return None
-    return max(candidates, key=lambda item: (item["capacity"], item["used"]))
+    return max(candidates, key=lambda item: (item["capacity"], item.get("priority", 0), item["used"]))
+
+
+def _manual_two_city_read_buy_page_tax_rate(context: Context, name: str) -> tuple[float | None, list[str]]:
+    _hit, _entries, texts = _manual_two_city_ocr_entries(
+        context,
+        name,
+        r"(税率|\d{1,2}(?:\.\d{1,2})?\s*%)",
+        roi=BUY_PAGE_TAX_RATE_ROI,
+    )
+    return parse_trade_tax_rate(texts), texts
 
 
 def _manual_two_city_read_buy_page_cargo_load(
@@ -6369,6 +6572,35 @@ def _manual_two_city_planned_goods_total(leg: dict[str, Any] | None) -> int:
         except (TypeError, ValueError):
             continue
     return total
+
+
+def _manual_two_city_cargo_load_full(cargo_load: dict[str, Any] | None) -> bool:
+    if not isinstance(cargo_load, dict):
+        return False
+    try:
+        capacity = int(cargo_load.get("capacity") or 0)
+        used = int(cargo_load.get("used") or 0)
+    except (TypeError, ValueError):
+        return False
+    if capacity <= 0:
+        return False
+    return used >= capacity or used / capacity >= BUY_SELECTION_CARGO_FULL_RATIO
+
+
+def _manual_two_city_selected_buy_actual_loads(state: dict[str, Any]) -> dict[str, int]:
+    raw = state.get("selected_buy_goods_actual_load")
+    if not isinstance(raw, dict):
+        return {}
+    actual_loads: dict[str, int] = {}
+    for key, value in raw.items():
+        good = str(key).strip()
+        if not good:
+            continue
+        try:
+            actual_loads[good] = int(value)
+        except (TypeError, ValueError):
+            continue
+    return actual_loads
 
 
 def _manual_two_city_probe_buy_page_cargo_load(
@@ -6452,6 +6684,104 @@ def _manual_two_city_product_status_for_city(city_name: Any) -> dict[str, str]:
     account = _manual_two_city_load_account_config_for_result(result)[1]
     city = normalize_city_name(str(city_name or "").strip())
     return (_manual_two_city_product_status_by_city_for_account(account).get(city) or {}) if city else {}
+
+
+def _manual_two_city_city_trade_data_for_account(account: dict[str, Any]) -> tuple[
+    dict[str, float],
+    dict[str, dict[str, int]],
+    dict[str, dict[str, Any]],
+]:
+    trade = account.get("trade") if isinstance(account.get("trade"), dict) else {}
+    planner = account.get("planner") if isinstance(account.get("planner"), dict) else {}
+    return (
+        _city_tax_rate_by_city(
+            trade.get("city_tax_rate_by_city"),
+            planner.get("city_tax_rate_by_city"),
+        ),
+        _product_buy_lot_by_city(
+            trade.get("product_buy_lot_by_city"),
+            planner.get("product_buy_lot_by_city"),
+        ),
+        _city_trade_read_meta_by_city(
+            trade.get("city_trade_read"),
+            planner.get("city_trade_read"),
+            account.get("city_trade_read"),
+        ),
+    )
+
+
+def _manual_two_city_city_trade_read_status(city_name: Any) -> dict[str, Any]:
+    city = normalize_city_name(str(city_name or "").strip())
+    state = _manual_two_city_state()
+    mode = _manual_two_city_account_read_mode(state.get("account_profile_read_mode"))
+    interval = _manual_two_city_smart_scan_interval(state.get("account_profile_smart_scan_interval"))
+    result = state.get("result") if isinstance(state.get("result"), dict) else {}
+    path, account, uid, has_context = _manual_two_city_known_account_context(result)
+    if not city:
+        return {"due": False, "reason": "missing_city", "mode": mode, "interval": interval}
+    if mode == MANUAL_TWO_CITY_ACCOUNT_READ_NONE:
+        return {
+            "due": False,
+            "reason": "mode_none",
+            "city": city,
+            "mode": mode,
+            "interval": interval,
+            "uid": uid,
+            "account_config": str(path),
+        }
+    if not has_context:
+        return {
+            "due": False,
+            "reason": "missing_account_config",
+            "city": city,
+            "mode": mode,
+            "interval": interval,
+            "uid": uid,
+            "account_config": str(path),
+        }
+    _tax_rates, _lots, meta_by_city = _manual_two_city_city_trade_data_for_account(account)
+    meta = meta_by_city.get(city) or {}
+    if mode == MANUAL_TWO_CITY_ACCOUNT_READ_FULL:
+        return {
+            "due": True,
+            "reason": "full_read_mode",
+            "city": city,
+            "mode": mode,
+            "interval": interval,
+            "uid": uid,
+            "account_config": str(path),
+            "last_read_date": meta.get("last_read_date"),
+        }
+    last_date = _parse_profile_read_date(
+        meta.get("last_smart_scan_date")
+        or meta.get("last_smart_scan_at")
+        or meta.get("last_read_date")
+        or meta.get("last_read_at")
+    )
+    if last_date is None:
+        return {
+            "due": True,
+            "reason": "missing_last_city_trade_read_date",
+            "city": city,
+            "mode": mode,
+            "interval": interval,
+            "uid": uid,
+            "account_config": str(path),
+        }
+    today = date.today()
+    next_date = _manual_two_city_smart_scan_next_date(last_date, interval)
+    return {
+        "due": today >= next_date,
+        "reason": "interval_elapsed" if today >= next_date else "interval_not_elapsed",
+        "city": city,
+        "mode": mode,
+        "interval": interval,
+        "uid": uid,
+        "account_config": str(path),
+        "last_read_date": last_date.isoformat(),
+        "next_read_date": next_date.isoformat(),
+        "today": today.isoformat(),
+    }
 
 
 PRODUCT_STATUS_LABELS = {
@@ -6842,6 +7172,139 @@ def _manual_two_city_update_city_product_statuses(
         "updates": updates,
         "account_config": str(path),
         "counts": counts,
+    }
+
+
+def _manual_two_city_update_city_trade_observation(
+    city_name: Any,
+    *,
+    product_buy_lots: dict[str, Any] | None = None,
+    city_tax_rate: Any = None,
+    mark_read: bool = False,
+    reason: str,
+) -> dict[str, Any]:
+    city = normalize_city_name(str(city_name or "").strip())
+    if not city:
+        return {"changed": False, "reason": "missing_city"}
+    lots_update = _product_buy_lot_by_city({city: product_buy_lots or {}}).get(city, {})
+    tax_update = _city_tax_rate_by_city({city: city_tax_rate}).get(city) if city_tax_rate is not None else None
+    if not lots_update and tax_update is None and not mark_read:
+        return {"changed": False, "city": city, "reason": "no_trade_observation"}
+
+    state = _manual_two_city_state()
+    task_entry = _manual_two_city_current_task_entry(state)
+    result = state.get("result") if isinstance(state.get("result"), dict) else {}
+    path, account = _manual_two_city_load_account_config_for_result(result)
+    uid = _safe_account_uid(account.get("uid") or result.get("uid") or _PROFILE_UID)
+    if not account:
+        return {"changed": False, "reason": "missing_account_config", "uid": uid, "city": city}
+
+    trade = account.setdefault("trade", {})
+    if not isinstance(trade, dict):
+        trade = {}
+        account["trade"] = trade
+    planner = account.setdefault("planner", {})
+    if not isinstance(planner, dict):
+        planner = {}
+        account["planner"] = planner
+
+    tax_rates, buy_lots, read_meta = _manual_two_city_city_trade_data_for_account(account)
+    before = {
+        "city_tax_rate_by_city": copy.deepcopy(tax_rates),
+        "product_buy_lot_by_city": copy.deepcopy(buy_lots),
+        "city_trade_read": copy.deepcopy(read_meta),
+    }
+    if tax_update is not None:
+        tax_rates[city] = tax_update
+    if lots_update:
+        city_lots = buy_lots.setdefault(city, {})
+        city_lots.update(lots_update)
+    if mark_read:
+        now = time.strftime("%Y-%m-%d %H:%M:%S")
+        today = date.today().isoformat()
+        mode = _manual_two_city_account_read_mode(state.get("account_profile_read_mode"))
+        interval = _manual_two_city_smart_scan_interval(state.get("account_profile_smart_scan_interval"))
+        city_meta = read_meta.setdefault(city, {})
+        city_meta.update(
+            {
+                "last_read_at": now,
+                "last_read_date": today,
+                "last_read_mode": mode,
+                "smart_scan_interval": interval,
+                "tax_rate_read": tax_update is not None,
+                "product_buy_lot_count": len(lots_update),
+                "reason": reason,
+            }
+        )
+        if mode == MANUAL_TWO_CITY_ACCOUNT_READ_SMART:
+            city_meta["last_smart_scan_at"] = now
+            city_meta["last_smart_scan_date"] = today
+        elif mode == MANUAL_TWO_CITY_ACCOUNT_READ_FULL:
+            city_meta["last_full_read_at"] = now
+            city_meta["last_full_read_date"] = today
+
+    tax_rates = _city_tax_rate_by_city(tax_rates)
+    buy_lots = _product_buy_lot_by_city(buy_lots)
+    read_meta = _city_trade_read_meta_by_city(read_meta)
+    after = {
+        "city_tax_rate_by_city": tax_rates,
+        "product_buy_lot_by_city": buy_lots,
+        "city_trade_read": read_meta,
+    }
+    changed = after != before
+    if not changed:
+        return {
+            "changed": False,
+            "city": city,
+            "reason": reason,
+            "city_tax_rate": tax_update,
+            "product_buy_lots": lots_update,
+        }
+
+    trade["city_tax_rate_by_city"] = copy.deepcopy(tax_rates)
+    trade["product_buy_lot_by_city"] = copy.deepcopy(buy_lots)
+    trade["city_trade_read"] = copy.deepcopy(read_meta)
+    planner["city_tax_rate_by_city"] = copy.deepcopy(tax_rates)
+    planner["product_buy_lot_by_city"] = copy.deepcopy(buy_lots)
+    planner["city_trade_read"] = copy.deepcopy(read_meta)
+    completed_parts = set(account.get("completed_parts") or [])
+    completed_parts.add("read_city_trade")
+    account["completed_parts"] = sorted(completed_parts)
+    account["updated_at"] = time.strftime("%Y-%m-%d %H:%M:%S")
+    account.setdefault("_source", {})["last_task_entry"] = task_entry
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(account, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+
+    _append_user_log(
+        task_entry,
+        (
+            f"城市交易数据更新：{city} 税率 "
+            f"{tax_update * 100:.1f}%" if tax_update is not None else f"城市交易数据更新：{city} 税率未识别"
+        )
+        + f"，商品单批量 {len(lots_update)} 个（{reason}）。",
+        run_id=str(state.get("run_id") or ""),
+        level="info" if tax_update is not None and lots_update else "warning",
+        event="manual_two_city_city_trade_observation_updated",
+        data={
+            "uid": uid,
+            "city": city,
+            "city_tax_rate": tax_update,
+            "product_buy_lots": lots_update,
+            "mark_read": mark_read,
+            "reason": reason,
+            "account_config": str(path),
+            "city_trade_read": read_meta.get(city, {}),
+        },
+    )
+    state["city_trade_observation_changed"] = True
+    return {
+        "changed": True,
+        "uid": uid,
+        "city": city,
+        "city_tax_rate": tax_update,
+        "product_buy_lots": lots_update,
+        "account_config": str(path),
     }
 
 
@@ -9360,10 +9823,18 @@ class ManualTwoCityBusinessProductScanNeededAction(CustomAction):
             if str(item or "").strip()
         }
         required_goods = _manual_two_city_product_scan_required_goods(city)
-        if not city or city in completed or not required_goods:
+        city_trade_status = _manual_two_city_city_trade_read_status(city)
+        city_trade_due = bool(city_trade_status.get("due"))
+        if not city or city in completed or (not required_goods and not city_trade_due):
             _json_payload(
                 "manual_two_city_business_product_scan_needed",
-                {"ok": False, "city": city, "completed": sorted(completed), "required_goods": required_goods},
+                {
+                    "ok": False,
+                    "city": city,
+                    "completed": sorted(completed),
+                    "required_goods": required_goods,
+                    "city_trade_status": city_trade_status,
+                },
             )
             return False
 
@@ -9383,35 +9854,52 @@ class ManualTwoCityBusinessProductScanNeededAction(CustomAction):
         state["product_scan_city"] = city
         state["product_scan_targets"] = targets
         state["product_scan_statuses"] = {}
+        state["product_scan_buy_lots"] = {}
+        state["product_scan_tax_rate"] = None
+        state["product_scan_tax_rate_texts"] = []
+        state["product_scan_city_trade_due"] = city_trade_due
+        state["product_scan_city_trade_status"] = city_trade_status
         state["product_scan_pages"] = []
         state["product_scan_page_signatures"] = []
         state["product_scan_good_signatures"] = []
         state["product_scan_stop_reason"] = ""
         state["selected_buy_goods"] = []
+        scan_reasons = []
+        if required_goods:
+            scan_reasons.append(f"{len(required_goods)} 个待复核交易品")
+        if city_trade_due:
+            scan_reasons.append("城市税率/商品单批量需要读取")
         _append_user_log(
             MANUAL_TWO_CITY_TASK_ENTRY,
             (
-                f"{city} 存在 {len(required_goods)} 个待复核交易品"
-                f"（未解锁 {required_counts[PRODUCT_STATUS_LOCKED]}，"
+                f"{city} 需要扫描交易所：{'，'.join(scan_reasons)}。"
+                f"商品状态待复核（未解锁 {required_counts[PRODUCT_STATUS_LOCKED]}，"
                 f"未出现 {required_counts[PRODUCT_STATUS_MISSING]}，"
                 f"未扫描过 {required_counts[PRODUCT_STATUS_NEVER_SCANNED]}），"
-                "进店后先扫描商品状态再重新计算。"
+                "扫描完成后重新计算。"
             ),
             run_id=str(state.get("run_id") or ""),
-            level="warning",
+            level="warning" if required_goods else "info",
             event="manual_two_city_product_scan_needed",
             data={
                 "city": city,
                 "required_goods": required_goods,
                 "required_statuses": required_statuses,
                 "required_counts": required_counts,
+                "city_trade_status": city_trade_status,
                 "targets": targets,
                 "leg": leg,
             },
         )
         _json_payload(
             "manual_two_city_business_product_scan_needed",
-            {"ok": True, "city": city, "required_goods": required_goods, "targets": targets},
+            {
+                "ok": True,
+                "city": city,
+                "required_goods": required_goods,
+                "city_trade_status": city_trade_status,
+                "targets": targets,
+            },
         )
         return True
 
@@ -9426,14 +9914,32 @@ class ManualTwoCityBusinessProductScanPageAction(CustomAction):
         targets = [str(item) for item in (state.get("product_scan_targets") or []) if str(item).strip()]
         entries = _ocr_entries(argv)
         texts = _ocr_texts(argv)
+        tax_rate = state.get("product_scan_tax_rate")
+        tax_texts: list[str] = []
+        if state.get("product_scan_city_trade_due") and tax_rate is None:
+            tax_rate, tax_texts = _manual_two_city_read_buy_page_tax_rate(
+                context,
+                f"ManualTwoCityProductScanTaxRate{page_index:03d}",
+            )
+            if tax_texts:
+                state["product_scan_tax_rate_texts"] = tax_texts[:20]
+            if tax_rate is not None:
+                state["product_scan_tax_rate"] = tax_rate
         visible = visible_product_unlock_status(entries, targets) or visible_product_unlock_status_from_texts(texts, targets)
         statuses = state.setdefault("product_scan_statuses", {})
+        buy_lots = state.setdefault("product_scan_buy_lots", {})
         records: list[dict[str, Any]] = []
         for good, item in visible.items():
             status = PRODUCT_STATUS_LOCKED if item.get("locked") else PRODUCT_STATUS_NORMAL
             # 锁定状态优先，避免后续 OCR 把同一商品误覆盖成正常。
             if statuses.get(good) != PRODUCT_STATUS_LOCKED:
                 statuses[good] = status
+            try:
+                buy_lot = int(item.get("buy_lot") or 0)
+            except (TypeError, ValueError):
+                buy_lot = 0
+            if buy_lot > 0:
+                buy_lots[good] = buy_lot
             records.append(
                 {
                     "good": good,
@@ -9442,6 +9948,7 @@ class ManualTwoCityBusinessProductScanPageAction(CustomAction):
                     "center_y": item.get("center_y"),
                     "locked": bool(item.get("locked")),
                     "out_of_stock": bool(item.get("out_of_stock")),
+                    "buy_lot": buy_lot or None,
                 }
             )
 
@@ -9494,6 +10001,8 @@ class ManualTwoCityBusinessProductScanPageAction(CustomAction):
                 "page_index": page_index,
                 "records": records,
                 "entry_count": len(entries),
+                "tax_rate": tax_rate,
+                "tax_texts": tax_texts[:20],
                 "signature_repeated": repeated,
                 "good_signature": good_signature,
                 "good_signature_repeated": good_signature_repeated,
@@ -9514,6 +10023,9 @@ class ManualTwoCityBusinessProductScanPageAction(CustomAction):
                 "records": records,
                 "seen": sorted(seen),
                 "targets": targets,
+                "buy_lots": dict(buy_lots),
+                "tax_rate": state.get("product_scan_tax_rate"),
+                "tax_texts": tax_texts[:20],
                 "good_signature": good_signature,
                 "good_signature_repeated": good_signature_repeated,
                 "stop_reason": stop_reason,
@@ -9528,6 +10040,9 @@ class ManualTwoCityBusinessProductScanPageAction(CustomAction):
                 "page_index": page_index,
                 "records": records,
                 "stop_reason": stop_reason,
+                "buy_lots": dict(buy_lots),
+                "tax_rate": state.get("product_scan_tax_rate"),
+                "tax_texts": tax_texts[:20],
                 "page_write_result": page_write_result,
             },
         )
@@ -9569,6 +10084,22 @@ class ManualTwoCityBusinessProductScanCompleteAction(CustomAction):
             updates,
             reason="交易所买入页预扫描",
         )
+        city_trade_due = bool(state.get("product_scan_city_trade_due"))
+        product_buy_lots = {
+            str(good): int(value)
+            for good, value in (state.get("product_scan_buy_lots") or {}).items()
+            if str(good).strip()
+            and isinstance(value, int)
+            and int(value) > 0
+        }
+        city_tax_rate = state.get("product_scan_tax_rate")
+        trade_observation_result = _manual_two_city_update_city_trade_observation(
+            city,
+            product_buy_lots=product_buy_lots,
+            city_tax_rate=city_tax_rate,
+            mark_read=city_trade_due,
+            reason="交易所买入页预扫描",
+        )
         completed = list(state.get("product_scan_completed_cities") or [])
         if city and city not in completed:
             completed.append(city)
@@ -9580,10 +10111,17 @@ class ManualTwoCityBusinessProductScanCompleteAction(CustomAction):
             MANUAL_TWO_CITY_TASK_ENTRY,
             (
                 f"{city} 商品状态扫描完成：正常 {len(normal)}，"
-                f"未解锁 {len(locked)}，未出现 {len(missing)}，准备重算。"
-            ),
+                f"未解锁 {len(locked)}，未出现 {len(missing)}，"
+                f"读取单批量 {len(product_buy_lots)} 个，"
+                f"税率 {city_tax_rate * 100:.1f}%" if isinstance(city_tax_rate, (int, float)) else (
+                    f"{city} 商品状态扫描完成：正常 {len(normal)}，"
+                    f"未解锁 {len(locked)}，未出现 {len(missing)}，"
+                    f"读取单批量 {len(product_buy_lots)} 个，税率未识别"
+                )
+            )
+            + "，准备重算。",
             run_id=str(state.get("run_id") or ""),
-            level="warning" if locked or missing else "info",
+            level="warning" if locked or missing or (city_trade_due and not isinstance(city_tax_rate, (int, float))) else "info",
             event="manual_two_city_product_scan_complete",
             data={
                 "city": city,
@@ -9591,15 +10129,28 @@ class ManualTwoCityBusinessProductScanCompleteAction(CustomAction):
                 "locked": locked,
                 "missing": missing,
                 "updates": updates,
+                "product_buy_lots": product_buy_lots,
+                "city_tax_rate": city_tax_rate,
+                "city_trade_due": city_trade_due,
                 "write_result": result,
+                "trade_observation_result": trade_observation_result,
                 "pages": state.get("product_scan_pages") or [],
                 "stop_reason": state.get("product_scan_stop_reason") or "",
+                "tax_texts": state.get("product_scan_tax_rate_texts") or [],
             },
         )
         ok = _manual_two_city_recalculate_after_product_scan(city)
         _json_payload(
             "manual_two_city_business_product_scan_complete",
-            {"ok": ok, "city": city, "normal": normal, "locked": locked, "missing": missing},
+            {
+                "ok": ok,
+                "city": city,
+                "normal": normal,
+                "locked": locked,
+                "missing": missing,
+                "product_buy_lots": product_buy_lots,
+                "city_tax_rate": city_tax_rate,
+            },
         )
         return ok
 
@@ -10374,14 +10925,31 @@ class ManualTwoCityBusinessSelectBuyGoodsAction(CustomAction):
         }
         if page_index <= 1:
             state["buy_selection_locked_goods"] = []
+            state["selected_buy_goods_actual_load"] = {}
+            state["buy_selection_full_cargo"] = False
+            state.pop("buy_selection_last_cargo_load", None)
         cumulative_locked = {
             str(item)
             for item in (state.get("buy_selection_locked_goods") or [])
             if str(item).strip()
         }
+        actual_loads = _manual_two_city_selected_buy_actual_loads(state)
+        planned_index = {good: index for index, good in enumerate(planned_goods)}
+        cargo_load, cargo_texts = _manual_two_city_probe_buy_page_cargo_load(
+            context,
+            f"ManualTwoCityBuySelectionCargoBeforePage{page_index:03d}",
+        )
+        if cargo_load is not None:
+            state["buy_selection_last_cargo_load"] = cargo_load
+        cargo_full = _manual_two_city_cargo_load_full(cargo_load)
+        if cargo_full:
+            state["buy_selection_full_cargo"] = True
         clicked: list[str] = []
         locked: list[str] = []
         restored: list[str] = []
+        no_delta: list[str] = []
+        visible_entries: list[tuple[int, float, float, dict[str, Any], str, list[str]]] = []
+        seen_page_goods: set[str] = set()
         for entry in sorted(entries, key=lambda item: (float(item.get("center_y") or 0), float(item.get("center_x") or 0))):
             good = match_trade_good(entry.get("text"), scan_targets)
             if not good:
@@ -10396,6 +10964,16 @@ class ManualTwoCityBusinessSelectBuyGoodsAction(CustomAction):
             if not (450 <= x <= 980 and 90 <= y <= 710):
                 continue
             row_texts = trade_good_row_texts(entries, float(entry.get("center_y") or 0))
+            if good in seen_page_goods:
+                continue
+            seen_page_goods.add(good)
+            visible_entries.append((planned_index.get(good, 9999), float(y), float(x), entry, good, row_texts))
+
+        for _planned_order, _y, _x, entry, good, row_texts in sorted(visible_entries):
+            if cargo_full:
+                break
+            x = int(float(entry.get("center_x") or 0))
+            y = int(float(entry.get("center_y") or 0))
             row_locked = any(
                 any(keyword in clean_text(text) for keyword in TRADE_PRODUCT_LOCK_TEXTS)
                 for text in row_texts
@@ -10420,8 +10998,14 @@ class ManualTwoCityBusinessSelectBuyGoodsAction(CustomAction):
                         data={"city": buy_city, "good": good, "texts": row_texts[:20]},
                     )
                     continue
+                before_used = None
+                if cargo_load is not None:
+                    try:
+                        before_used = int(cargo_load.get("used") or 0)
+                    except (TypeError, ValueError):
+                        before_used = None
                 context.tasker.controller.post_click(x, y).wait()
-                time.sleep(0.25)
+                time.sleep(0.35)
                 is_locked, lock_texts = _manual_two_city_product_locked_after_click(
                     context,
                     f"ManualTwoCityProductLockCheck{page_index:03d}_{len(clicked) + len(locked) + len(restored) + 1:03d}",
@@ -10448,6 +11032,42 @@ class ManualTwoCityBusinessSelectBuyGoodsAction(CustomAction):
                     _manual_two_city_close_product_detail_if_needed(context)
                     continue
 
+                after_cargo, after_cargo_texts = _manual_two_city_probe_buy_page_cargo_load(
+                    context,
+                    f"ManualTwoCityBuySelectionCargoAfter{page_index:03d}_{len(clicked) + len(no_delta) + 1:03d}",
+                )
+                if after_cargo is not None:
+                    state["buy_selection_last_cargo_load"] = after_cargo
+                cargo_delta = None
+                if before_used is not None and after_cargo is not None:
+                    try:
+                        cargo_delta = int(after_cargo.get("used") or 0) - before_used
+                    except (TypeError, ValueError):
+                        cargo_delta = None
+                if cargo_delta is not None and cargo_delta <= 0:
+                    no_delta.append(good)
+                    cargo_load = after_cargo or cargo_load
+                    cargo_full = _manual_two_city_cargo_load_full(cargo_load)
+                    if cargo_full:
+                        state["buy_selection_full_cargo"] = True
+                    _append_user_log(
+                        MANUAL_TWO_CITY_TASK_ENTRY,
+                        (
+                            f"买入页点击计划商品后载量未增加：{buy_city}/{good}，"
+                            "按未选中处理，避免把载货量不足的点击计入计划。"
+                        ),
+                        level="warning",
+                        event="manual_two_city_buy_good_click_no_cargo_delta",
+                        data={
+                            "city": buy_city,
+                            "good": good,
+                            "before_cargo": cargo_load if after_cargo is None else {"used": before_used, "capacity": after_cargo.get("capacity")},
+                            "after_cargo": after_cargo,
+                            "texts": after_cargo_texts[:20],
+                        },
+                    )
+                    continue
+
                 _manual_two_city_update_product_status(
                     buy_city,
                     good,
@@ -10457,6 +11077,13 @@ class ManualTwoCityBusinessSelectBuyGoodsAction(CustomAction):
                 if is_planned:
                     selected.add(good)
                     clicked.append(good)
+                    if cargo_delta is not None and cargo_delta > 0:
+                        actual_loads[good] = actual_loads.get(good, 0) + cargo_delta
+                cargo_load = after_cargo or cargo_load
+                cargo_full = _manual_two_city_cargo_load_full(cargo_load)
+                if cargo_full:
+                    state["buy_selection_full_cargo"] = True
+                    break
             except Exception as exc:
                 _append_user_log(
                     MANUAL_TWO_CITY_TASK_ENTRY,
@@ -10468,8 +11095,12 @@ class ManualTwoCityBusinessSelectBuyGoodsAction(CustomAction):
 
         state["selected_buy_goods"] = list(selected)
         state["buy_selection_locked_goods"] = sorted(cumulative_locked)
+        state["selected_buy_goods_actual_load"] = actual_loads
+        if cargo_load is not None:
+            state["buy_selection_last_cargo_load"] = cargo_load
+        cargo_full = bool(state.get("buy_selection_full_cargo")) or _manual_two_city_cargo_load_full(cargo_load)
         missing = [good for good in planned_goods if good not in selected and good not in cumulative_locked]
-        needs_replan = bool((missing or cumulative_locked) and page_index >= 4)
+        needs_replan = bool((missing or cumulative_locked) and page_index >= 4 and not cargo_full)
         if needs_replan:
             for good in missing:
                 _manual_two_city_update_product_status(
@@ -10491,6 +11122,7 @@ class ManualTwoCityBusinessSelectBuyGoodsAction(CustomAction):
                 f"已选 {len(selected)}/{len(planned_goods)}，"
                 f"本页未解锁 {len(locked)} 个，累计未解锁 {len(cumulative_locked)} 个，"
                 f"恢复 {len(restored)} 个"
+                f"{'，载量已满，剩余计划商品跳过' if cargo_full and missing else ''}"
             ),
             event="manual_two_city_buy_goods_page",
             data={
@@ -10503,25 +11135,156 @@ class ManualTwoCityBusinessSelectBuyGoodsAction(CustomAction):
                 "locked": locked,
                 "cumulative_locked": sorted(cumulative_locked),
                 "restored": restored,
+                "no_delta": no_delta,
                 "selected": list(selected),
+                "actual_loads": actual_loads,
+                "cargo_load": cargo_load,
+                "cargo_probe_texts": cargo_texts[:20],
+                "cargo_full": cargo_full,
                 "missing": missing,
                 "needs_replan": needs_replan,
             },
         )
+        selection_ok = set(planned_goods).issubset(selected) or (cargo_full and bool(selected))
         _json_payload(
             "manual_two_city_business_select_buy_goods",
             {
-                "ok": set(planned_goods).issubset(selected),
+                "ok": selection_ok,
                 "clicked": clicked,
                 "locked": locked,
                 "cumulative_locked": sorted(cumulative_locked),
                 "restored": restored,
+                "no_delta": no_delta,
                 "selected": list(selected),
+                "actual_loads": actual_loads,
+                "cargo_load": cargo_load,
+                "cargo_full": cargo_full,
                 "missing": missing,
                 "needs_replan": needs_replan,
             },
         )
-        return set(planned_goods).issubset(selected)
+        return selection_ok
+
+
+@AgentServer.custom_action("manual_two_city_business_confirm_buy_selection")
+class ManualTwoCityBusinessConfirmBuySelectionAction(CustomAction):
+    def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
+        state = _manual_two_city_state()
+        leg = _manual_two_city_active_leg()
+        planned_goods = [str(item) for item in (leg.get("goods") or []) if str(item).strip()]
+        selected = [str(item) for item in (state.get("selected_buy_goods") or []) if str(item).strip()]
+        actual_loads = _manual_two_city_selected_buy_actual_loads(state)
+        planned_total = _manual_two_city_planned_goods_total(leg)
+        cargo_load, texts = _manual_two_city_probe_buy_page_cargo_load(
+            context,
+            "ManualTwoCityConfirmBuySelectionCargo",
+        )
+        if cargo_load is None and isinstance(state.get("buy_selection_last_cargo_load"), dict):
+            cargo_load = dict(state.get("buy_selection_last_cargo_load") or {})
+        if not selected:
+            _append_user_log(
+                MANUAL_TWO_CITY_TASK_ENTRY,
+                "买入前选货复核：没有记录到任何已选商品，停止买入以避免空买或误买。",
+                level="error",
+                event="manual_two_city_confirm_buy_selection_empty",
+                data={"leg": leg, "texts": texts[:20]},
+            )
+            _json_payload(
+                "manual_two_city_business_confirm_buy_selection",
+                {"ok": False, "reason": "empty_selection", "leg": leg, "texts": texts[:20]},
+            )
+            return False
+
+        if cargo_load is None:
+            _append_user_log(
+                MANUAL_TWO_CITY_TASK_ENTRY,
+                "买入前选货复核：未能读取右侧载货量，已选商品非空，继续进入砍价/买入。",
+                level="warning",
+                event="manual_two_city_confirm_buy_selection_cargo_unreadable",
+                data={"leg": leg, "selected": selected, "actual_loads": actual_loads, "texts": texts[:20]},
+            )
+            _json_payload(
+                "manual_two_city_business_confirm_buy_selection",
+                {"ok": True, "reason": "cargo_unreadable", "leg": leg, "selected": selected, "actual_loads": actual_loads},
+            )
+            return True
+
+        capacity = int(cargo_load.get("capacity") or 0)
+        used = int(cargo_load.get("used") or 0)
+        planned_ratio = planned_total / capacity if capacity > 0 else 0
+        actual_ratio = used / capacity if capacity > 0 else 0
+        strict = capacity > 0 and planned_ratio >= POST_BUY_CARGO_VERIFY_PLANNED_RATIO
+        passed = (not strict) or actual_ratio >= POST_BUY_CARGO_VERIFY_PASS_RATIO
+        missing = [good for good in planned_goods if good not in selected]
+        if not passed:
+            _append_user_log(
+                MANUAL_TWO_CITY_TASK_ENTRY,
+                (
+                    f"买入前选货复核：实际已选载量 {used}/{capacity}，计划 {planned_total}/{capacity}，"
+                    "计划应接近满载但实际未满，停止买入。"
+                ),
+                level="error",
+                event="manual_two_city_confirm_buy_selection_insufficient",
+                data={
+                    "leg": leg,
+                    "selected": selected,
+                    "missing": missing,
+                    "actual_loads": actual_loads,
+                    "cargo_load": cargo_load,
+                    "planned_total": planned_total,
+                    "planned_ratio": planned_ratio,
+                    "actual_ratio": actual_ratio,
+                    "texts": texts[:20],
+                },
+            )
+            _json_payload(
+                "manual_two_city_business_confirm_buy_selection",
+                {
+                    "ok": False,
+                    "reason": "cargo_insufficient",
+                    "leg": leg,
+                    "selected": selected,
+                    "missing": missing,
+                    "cargo_load": cargo_load,
+                    "planned_total": planned_total,
+                },
+            )
+            return False
+
+        _append_user_log(
+            MANUAL_TWO_CITY_TASK_ENTRY,
+            (
+                f"买入前选货复核：实际已选载量 {used}/{capacity}，计划 {planned_total}/{capacity}，"
+                f"已选 {len(selected)}/{len(planned_goods)}。"
+                f"{' 载量已满，剩余计划商品按实际满仓跳过。' if missing and _manual_two_city_cargo_load_full(cargo_load) else ''}"
+            ),
+            event="manual_two_city_confirm_buy_selection_ok",
+            data={
+                "leg": leg,
+                "selected": selected,
+                "missing": missing,
+                "actual_loads": actual_loads,
+                "cargo_load": cargo_load,
+                "planned_total": planned_total,
+                "planned_ratio": planned_ratio,
+                "actual_ratio": actual_ratio,
+                "strict": strict,
+                "texts": texts[:20],
+            },
+        )
+        _json_payload(
+            "manual_two_city_business_confirm_buy_selection",
+            {
+                "ok": True,
+                "leg": leg,
+                "selected": selected,
+                "missing": missing,
+                "actual_loads": actual_loads,
+                "cargo_load": cargo_load,
+                "planned_total": planned_total,
+            },
+        )
+        return True
 
 
 @AgentServer.custom_action("manual_two_city_business_buy_goods_missing")

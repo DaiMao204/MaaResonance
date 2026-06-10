@@ -78,6 +78,49 @@ def _blocked_product_unlock_status_by_city(*sources: Any) -> dict[str, dict[str,
     }
 
 
+def _city_tax_rate_by_city(*sources: Any) -> dict[str, float]:
+    rates: dict[str, float] = {}
+    for source in sources:
+        if not isinstance(source, dict):
+            continue
+        for city, value in source.items():
+            city_name = normalize_city_name(str(city or "").strip())
+            if not city_name:
+                continue
+            try:
+                rate = float(value)
+            except (TypeError, ValueError):
+                continue
+            if rate > 1:
+                rate /= 100
+            if 0 <= rate <= 1:
+                rates[city_name] = rate
+    return rates
+
+
+def _product_buy_lot_by_city(*sources: Any) -> dict[str, dict[str, int]]:
+    lots: dict[str, dict[str, int]] = {}
+    for source in sources:
+        if not isinstance(source, dict):
+            continue
+        for city, goods in source.items():
+            city_name = normalize_city_name(str(city or "").strip())
+            if not city_name or not isinstance(goods, dict):
+                continue
+            city_lots = lots.setdefault(city_name, {})
+            for good, value in goods.items():
+                good_name = str(good or "").strip()
+                if not good_name:
+                    continue
+                try:
+                    lot = int(value)
+                except (TypeError, ValueError):
+                    continue
+                if lot > 0:
+                    city_lots[good_name] = lot
+    return {city: goods for city, goods in lots.items() if goods}
+
+
 def _city_set(values: Any) -> set[str]:
     if values is None:
         return set()
@@ -211,6 +254,14 @@ def _planner_options_from_account(
         trade.get("product_unlock_status_by_city"),
         planner.get("product_unlock_status_by_city"),
     )
+    city_tax_rate_by_city = _city_tax_rate_by_city(
+        trade.get("city_tax_rate_by_city"),
+        planner.get("city_tax_rate_by_city"),
+    )
+    product_buy_lot_by_city = _product_buy_lot_by_city(
+        trade.get("product_buy_lot_by_city"),
+        planner.get("product_buy_lot_by_city"),
+    )
     transient_blocked_by_city = _blocked_product_unlock_status_by_city(transient_product_status_by_city)
     for city, goods in transient_blocked_by_city.items():
         product_unlock_status_by_city.setdefault(city, {}).update(goods)
@@ -254,6 +305,8 @@ def _planner_options_from_account(
         use_columba_onegraph=True,
         product_unlock_status={str(good): bool(unlocked) for good, unlocked in product_unlock_status.items()},
         product_unlock_status_by_city=product_unlock_status_by_city,
+        city_tax_rate_by_city=city_tax_rate_by_city,
+        product_buy_lot_by_city=product_buy_lot_by_city,
     )
 
 
@@ -298,6 +351,14 @@ def _auto_planner_options_from_account(
         trade.get("product_unlock_status_by_city"),
         planner.get("product_unlock_status_by_city"),
     )
+    city_tax_rate_by_city = _city_tax_rate_by_city(
+        trade.get("city_tax_rate_by_city"),
+        planner.get("city_tax_rate_by_city"),
+    )
+    product_buy_lot_by_city = _product_buy_lot_by_city(
+        trade.get("product_buy_lot_by_city"),
+        planner.get("product_buy_lot_by_city"),
+    )
     transient_blocked_by_city = _blocked_product_unlock_status_by_city(transient_product_status_by_city)
     for city, goods in transient_blocked_by_city.items():
         product_unlock_status_by_city.setdefault(city, {}).update(goods)
@@ -323,6 +384,8 @@ def _auto_planner_options_from_account(
         use_columba_onegraph=True,
         product_unlock_status={str(good): bool(unlocked) for good, unlocked in product_unlock_status.items()},
         product_unlock_status_by_city=product_unlock_status_by_city,
+        city_tax_rate_by_city=city_tax_rate_by_city,
+        product_buy_lot_by_city=product_buy_lot_by_city,
     )
 
 

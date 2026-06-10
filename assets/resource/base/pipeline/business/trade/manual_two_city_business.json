@@ -1226,7 +1226,7 @@
             }
         },
         "post_delay": 200,
-        "next": "ManualTwoCityBusinessProductScanPage001",
+        "next": "ManualTwoCityBusinessProductScanResetTop001",
         "on_error": "ManualTwoCityBusinessBuyDrinkCheck"
     },
     "ManualTwoCityBusinessProductScanResetTop001": {
@@ -2962,7 +2962,10 @@
             }
         },
         "action": {
-            "type": "DoNothing"
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_confirm_buy_selection"
+            }
         },
         "next": "ManualTwoCityBusinessApplyBuyHaggle",
         "on_error": "ManualTwoCityBusinessBuyGoodsMissing"
