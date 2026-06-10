@@ -692,11 +692,44 @@
             }
         },
         "next": [
+            "ManualTwoCityBusinessCloseDrinkResultAfterDrink",
+            "ManualTwoCityBusinessCloseRestAreaMenuForCurrentCity",
             "ManualTwoCityBusinessCurrentCityReady",
             "ManualTwoCityBusinessReadCurrentCityOnMainMap",
             "ManualTwoCityBusinessOpenCurrentCityByOcr",
             "ManualTwoCityBusinessOpenCurrentCityFallback"
-        ]
+        ],
+        "on_error": "ManualTwoCityBusinessRecoverToCurrentCity"
+    },
+    "ManualTwoCityBusinessCloseRestAreaMenuForCurrentCity": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "休息区",
+                    "喝一杯",
+                    "黑月商店",
+                    "交谈"
+                ],
+                "roi": [
+                    650,
+                    80,
+                    600,
+                    520
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    83,
+                    36
+                ]
+            }
+        },
+        "post_delay": 1200,
+        "next": "ManualTwoCityBusinessOpenCurrentCityStart"
     },
     "ManualTwoCityBusinessReadCurrentCityOnMainMap": {
         "recognition": {
@@ -946,6 +979,35 @@
             "ManualTwoCityBusinessBuyPageReady"
         ],
         "on_error": "ManualTwoCityBusinessRecoverToTradePage"
+    },
+    "ManualTwoCityBusinessTradeOutletMenuReady": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "我要买",
+                    "我要卖"
+                ],
+                "roi": [
+                    680,
+                    260,
+                    560,
+                    230
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_should_open_sell"
+            }
+        },
+        "post_delay": 1200,
+        "next": [
+            "ManualTwoCityBusinessSellPageReady",
+            "ManualTwoCityBusinessBuyPageReady"
+        ],
+        "on_error": "ManualTwoCityBusinessOpenCurrentCityStart"
     },
     "ManualTwoCityBusinessOpenSellPage": {
         "recognition": {
@@ -1226,8 +1288,22 @@
             }
         },
         "post_delay": 200,
-        "next": "ManualTwoCityBusinessProductScanResetTop001",
+        "next": "ManualTwoCityBusinessProductScanPrepare",
         "on_error": "ManualTwoCityBusinessBuyDrinkCheck"
+    },
+    "ManualTwoCityBusinessProductScanPrepare": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_product_scan_prepare"
+            }
+        },
+        "post_delay": 200,
+        "next": "ManualTwoCityBusinessProductScanPage001",
+        "on_error": "ManualTwoCityBusinessProductScanPage001"
     },
     "ManualTwoCityBusinessProductScanResetTop001": {
         "recognition": {
@@ -1406,7 +1482,7 @@
                 ],
                 "end": [
                     690,
-                    210
+                    430
                 ],
                 "duration": 600
             }
@@ -1476,7 +1552,7 @@
                 ],
                 "end": [
                     690,
-                    210
+                    430
                 ],
                 "duration": 600
             }
@@ -1546,7 +1622,7 @@
                 ],
                 "end": [
                     690,
-                    210
+                    430
                 ],
                 "duration": 600
             }
@@ -1616,7 +1692,7 @@
                 ],
                 "end": [
                     690,
-                    210
+                    430
                 ],
                 "duration": 600
             }
@@ -1686,7 +1762,7 @@
                 ],
                 "end": [
                     690,
-                    210
+                    430
                 ],
                 "duration": 600
             }
@@ -1756,7 +1832,7 @@
                 ],
                 "end": [
                     690,
-                    210
+                    430
                 ],
                 "duration": 600
             }
@@ -1826,7 +1902,7 @@
                 ],
                 "end": [
                     690,
-                    210
+                    430
                 ],
                 "duration": 600
             }
@@ -1872,6 +1948,20 @@
         },
         "post_delay": 300,
         "next": "ManualTwoCityBusinessBuyDrinkCheck",
+        "on_error": "ManualTwoCityBusinessProductScanRetryMissingTradeFields"
+    },
+    "ManualTwoCityBusinessProductScanRetryMissingTradeFields": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_product_scan_retry_missing_trade_fields"
+            }
+        },
+        "post_delay": 200,
+        "next": "ManualTwoCityBusinessProductScanPrepare",
         "on_error": "ManualTwoCityBusinessTradeEntryFailed"
     },
     "ManualTwoCityBusinessSellPageReady": {
@@ -2111,12 +2201,60 @@
                 }
             }
         },
-        "next": "ManualTwoCityBusinessReturnCityAfterDrink",
+        "next": [
+            "ManualTwoCityBusinessCloseDrinkResultAfterDrink",
+            "ManualTwoCityBusinessReturnCityAfterDrink",
+            "ManualTwoCityBusinessReturnCityFromRestAreaAfterDrink",
+            "ManualTwoCityBusinessAfterDrinkReturnCity"
+        ],
         "on_error": "ManualTwoCityBusinessCloseStrengthAfterDrinkSkipped"
+    },
+    "ManualTwoCityBusinessCloseDrinkResultAfterDrink": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "疲劳值已消除",
+                    "疲劳已消除",
+                    "已消除",
+                    "亚莉奈的心意",
+                    "心意"
+                ],
+                "roi": [
+                    420,
+                    300,
+                    450,
+                    210
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    640,
+                    500
+                ]
+            }
+        },
+        "post_delay": 800,
+        "next": [
+            "ManualTwoCityBusinessReturnCityFromRestAreaAfterDrink",
+            "ManualTwoCityBusinessReturnCityAfterDrink",
+            "ManualTwoCityBusinessAfterDrinkReturnCity"
+        ],
+        "on_error": "ManualTwoCityBusinessAfterDrinkReturnCity"
     },
     "ManualTwoCityBusinessReturnCityAfterDrink": {
         "recognition": {
-            "type": "DirectHit"
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "FATIGUE",
+                    "请选择恢复疲劳值方式",
+                    "前往便当柜"
+                ]
+            }
         },
         "action": {
             "type": "Click",
@@ -2128,7 +2266,39 @@
             }
         },
         "post_delay": 1200,
-        "next": "ManualTwoCityBusinessReturnCityAfterDrinkSecondBack"
+        "next": "ManualTwoCityBusinessAfterDrinkReturnCity",
+        "on_error": "ManualTwoCityBusinessAfterDrinkReturnCity"
+    },
+    "ManualTwoCityBusinessReturnCityFromRestAreaAfterDrink": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "休息区",
+                    "喝一杯",
+                    "黑月商店",
+                    "交谈"
+                ],
+                "roi": [
+                    650,
+                    80,
+                    600,
+                    520
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    83,
+                    36
+                ]
+            }
+        },
+        "post_delay": 1200,
+        "next": "ManualTwoCityBusinessAfterDrinkReturnCity",
+        "on_error": "ManualTwoCityBusinessAfterDrinkReturnCity"
     },
     "ManualTwoCityBusinessReturnCityAfterDrinkSecondBack": {
         "recognition": {
@@ -2156,7 +2326,12 @@
                 "custom_action": "manual_two_city_business_after_drink_return_city"
             }
         },
-        "next": "ManualTwoCityBusinessOpenCurrentCityStart"
+        "next": [
+            "ManualTwoCityBusinessSellPageReady",
+            "ManualTwoCityBusinessBuyPageReady",
+            "ManualTwoCityBusinessTradeOutletMenuReady",
+            "ManualTwoCityBusinessOpenCurrentCityStart"
+        ]
     },
     "ManualTwoCityBusinessCloseStrengthAfterDrinkSkipped": {
         "recognition": {
@@ -2187,6 +2362,7 @@
         "next": [
             "ManualTwoCityBusinessSellPageReady",
             "ManualTwoCityBusinessBuyPageReady",
+            "ManualTwoCityBusinessTradeOutletMenuReady",
             "ManualTwoCityBusinessOpenCurrentCityStart"
         ]
     },
@@ -2758,7 +2934,28 @@
             }
         },
         "post_delay": 450,
-        "next": "ManualTwoCityBusinessSelectBuyGoodsPage001",
+        "next": "ManualTwoCityBusinessQuickBuySelection",
+        "on_error": "ManualTwoCityBusinessSelectBuyGoodsPage001"
+    },
+    "ManualTwoCityBusinessQuickBuySelection": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "预计买入",
+                    "全部买入",
+                    "全部取消"
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_quick_buy_selection"
+            }
+        },
+        "post_delay": 300,
+        "next": "ManualTwoCityBusinessConfirmBuySelection",
         "on_error": "ManualTwoCityBusinessSelectBuyGoodsPage001"
     },
     "ManualTwoCityBusinessSelectBuyGoodsPage001": {

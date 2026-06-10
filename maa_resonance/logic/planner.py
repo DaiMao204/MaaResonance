@@ -808,6 +808,28 @@ def get_game_event_buy_more_percent(
     return percent
 
 
+def calculate_product_buy_lot(
+    trade_data: dict[str, Any],
+    product: dict[str, Any],
+    from_city: str,
+    options: RoutePlanOptions,
+) -> int | None:
+    static_buy_lot = (product.get("buyLot") or {}).get(from_city)
+    if static_buy_lot is None:
+        return None
+
+    roles = get_trade_roles(trade_data, options)
+    events_config = get_events_config(trade_data, options)
+    buy_prestige = get_prestige_config(trade_data, from_city, options)
+
+    buy_more_percent = get_resonance_skill_buy_more_percent(trade_data, roles, product, from_city)
+    buy_more_percent += get_prestige_buy_more_percent(buy_prestige, from_city)
+    buy_more_percent += get_game_event_buy_more_percent(trade_data, product, from_city, events_config)
+    calculated_buy_lot = js_round(float(static_buy_lot) * (100 + buy_more_percent) / 100)
+    calculated_buy_lot += get_resonance_skill_buy_more_flat_amount(trade_data, roles, product)
+    return int(calculated_buy_lot) if calculated_buy_lot > 0 else None
+
+
 def get_game_event_tax_variation(
     trade_data: dict[str, Any],
     product: dict[str, Any],
@@ -970,11 +992,9 @@ def calculate_columba_price_items(
         if single_profit < options.min_profit:
             continue
 
-        buy_more_percent = get_resonance_skill_buy_more_percent(trade_data, roles, product, from_city)
-        buy_more_percent += get_prestige_buy_more_percent(buy_prestige, from_city)
-        buy_more_percent += get_game_event_buy_more_percent(trade_data, product, from_city, events_config)
-        calculated_buy_lot = js_round(float(static_buy_lot) * (100 + buy_more_percent) / 100)
-        calculated_buy_lot += get_resonance_skill_buy_more_flat_amount(trade_data, roles, product)
+        calculated_buy_lot = calculate_product_buy_lot(trade_data, product, from_city, options)
+        if calculated_buy_lot is None:
+            continue
         observed_buy_lot = get_observed_product_buy_lot(options, from_city, product_name)
         buy_lot = max(calculated_buy_lot, observed_buy_lot) if observed_buy_lot is not None else calculated_buy_lot
         if buy_lot <= 0:

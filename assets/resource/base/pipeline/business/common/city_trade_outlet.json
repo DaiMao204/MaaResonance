@@ -11,7 +11,8 @@
             "CityTradeOutletCloseStrengthPage",
             "CityTradeOutletMenuReady",
             "CityTradeOutletCityReady"
-        ]
+        ],
+        "on_error": "CityTradeOutletOpenFailed"
     },
     "CityTradeOutletCloseSettlementReport": {
         "recognition": {
@@ -120,7 +121,8 @@
         "next": [
             "CityTradeOutletMenuReadyAfterTap001",
             "CityTradeOutletTapByOcr001"
-        ]
+        ],
+        "on_error": "CityTradeOutletOpenFailed"
     },
     "CityTradeOutletTapByOcr001": {
         "recognition": {
@@ -160,7 +162,8 @@
         "next": [
             "CityTradeOutletMenuReadyAfterTap001",
             "CityTradeOutletSwipeSlight"
-        ]
+        ],
+        "on_error": "CityTradeOutletOpenFailed"
     },
     "CityTradeOutletMenuReadyAfterTap001": {
         "recognition": {
@@ -236,7 +239,8 @@
         "next": [
             "CityTradeOutletMenuReadyAfterTap002",
             "CityTradeOutletTapByOcr002"
-        ]
+        ],
+        "on_error": "CityTradeOutletOpenFailed"
     },
     "CityTradeOutletTapByOcr002": {
         "recognition": {
@@ -276,7 +280,8 @@
         "next": [
             "CityTradeOutletMenuReadyAfterTap002",
             "CityTradeOutletSwipeLeft"
-        ]
+        ],
+        "on_error": "CityTradeOutletOpenFailed"
     },
     "CityTradeOutletMenuReadyAfterTap002": {
         "recognition": {
@@ -352,7 +357,8 @@
         "next": [
             "CityTradeOutletMenuReadyAfterTap003",
             "CityTradeOutletTapByOcr003"
-        ]
+        ],
+        "on_error": "CityTradeOutletOpenFailed"
     },
     "CityTradeOutletTapByOcr003": {
         "recognition": {
@@ -392,7 +398,8 @@
         "next": [
             "CityTradeOutletMenuReadyAfterTap003",
             "CityTradeOutletSwipeRight"
-        ]
+        ],
+        "on_error": "CityTradeOutletOpenFailed"
     },
     "CityTradeOutletMenuReadyAfterTap003": {
         "recognition": {
@@ -468,7 +475,8 @@
         "next": [
             "CityTradeOutletMenuReadyAfterTap004",
             "CityTradeOutletTapByOcr004"
-        ]
+        ],
+        "on_error": "CityTradeOutletOpenFailed"
     },
     "CityTradeOutletTapByOcr004": {
         "recognition": {
@@ -508,7 +516,8 @@
         "next": [
             "CityTradeOutletMenuReadyAfterTap004",
             "CityTradeOutletSwipeDown"
-        ]
+        ],
+        "on_error": "CityTradeOutletOpenFailed"
     },
     "CityTradeOutletMenuReadyAfterTap004": {
         "recognition": {
@@ -584,7 +593,8 @@
         "next": [
             "CityTradeOutletMenuReadyAfterTap005",
             "CityTradeOutletTapByOcr005"
-        ]
+        ],
+        "on_error": "CityTradeOutletOpenFailed"
     },
     "CityTradeOutletTapByOcr005": {
         "recognition": {

@@ -61,6 +61,9 @@ from maa_resonance.logic.manual_trade import calculate_manual_two_city_trade
 from maa_resonance.logic.manual_trade import save_manual_two_city_result
 from maa_resonance.logic.planner import COLUMBA_LOCAL_MARKET_DATA_PATH
 from maa_resonance.logic.planner import COLUMBA_TRADE_DATA_PATH
+from maa_resonance.logic.planner import RoutePlanOptions
+from maa_resonance.logic.planner import calculate_product_buy_lot
+from maa_resonance.logic.planner import load_columba_trade_data
 from maa_resonance.logic.planner import load_default_tired_data
 from maa_resonance.logic.planner import load_station_world_coords
 from maa_resonance.logic.planner import normalize_city_name
@@ -140,15 +143,37 @@ BUY_PAGE_READY_TEXTS = ["预计买入", "全部买入", "全部取消"]
 BUY_PAGE_CARGO_LOAD_ROI = [880, 360, 390, 85]
 BUY_PAGE_CARGO_LOAD_PROBE_ROI = [1070, 345, 210, 120]
 BUY_PAGE_TAX_RATE_ROI = [880, 480, 390, 75]
+BUY_PAGE_ICON_LOT_ROI = [520, 130, 120, 570]
+BUY_PAGE_ROW_ICON_LOT_X = 560
+BUY_PAGE_ROW_ICON_LOT_WIDTH = 92
+BUY_PAGE_ROW_ICON_LOT_TOP_OFFSET = 38
+BUY_PAGE_ROW_ICON_LOT_HEIGHT = 68
+BUY_PAGE_ROW_ICON_LOT_MAX_BOTTOM = 712
+BUY_PAGE_DIGIT_LOT_X = 578
+BUY_PAGE_DIGIT_LOT_WIDTH = 56
+BUY_PAGE_DIGIT_LOT_TOP_OFFSET = 54
+BUY_PAGE_DIGIT_LOT_HEIGHT = 25
+BUY_PAGE_DIGIT_LOT_SCALE = 6
+BUY_SELECTION_TOP_ALL_BUY_TARGET = (1060, 126)
+BUY_SELECTION_TOP_ALL_BUY_ROI = [860, 80, 400, 90]
+PRODUCT_SCAN_LIST_ROI = [500, 105, 430, 585]
+PRODUCT_SCAN_VISIBLE_FULL_ROWS = 4
+PRODUCT_SCAN_RESET_TOP_MAX_SWIPES = 2
+PRODUCT_SCAN_RESET_TOP_BEGIN = (690, 210)
+PRODUCT_SCAN_RESET_TOP_END = (690, 560)
+PRODUCT_SCAN_PAGE_SCROLL_BEGIN = (690, 560)
+PRODUCT_SCAN_PAGE_SCROLL_END = (690, 430)
+PRODUCT_SCAN_TARGET_NUDGE_END = (690, 470)
 BUY_SELECTION_CARGO_FULL_RATIO = 0.995
 POST_BUY_CARGO_VERIFY_PLANNED_RATIO = 0.95
 POST_BUY_CARGO_VERIFY_PASS_RATIO = 0.98
+POST_BUY_CARGO_VERIFY_PLANNED_LOAD_PASS_RATIO = 0.90
 TRADE_SWITCH_TO_SELL_ROI = [0, 600, 430, 100]
 TRADE_SWITCH_TO_SELL_TARGET = (336, 669)
 TRADE_SWITCH_TO_BUY_ROI = [0, 600, 430, 100]
 TRADE_SWITCH_TO_BUY_TARGET = (116, 669)
 TRADE_STRENGTH_ENTRY_TARGET = (974, 32)
-TRADE_STRENGTH_STATUS_ROI = [820, 0, 300, 65]
+TRADE_STRENGTH_STATUS_ROI = [820, 0, 460, 70]
 TRADE_STRENGTH_STATUS_TEXT = r"\d+\s*/\s*\d+"
 RECOVERY_PAGE_BACK_TARGET = (83, 36)
 PRE_BUY_CLEANUP_WARN_RATIO = 0.10
@@ -215,6 +240,9 @@ PRODUCT_SCAN_REQUIRED_STATUSES = {
     PRODUCT_STATUS_NEVER_SCANNED,
 }
 PRODUCT_SCAN_MAX_PAGES = 8
+PRODUCT_SCAN_BUY_LOT_TRUST_RATIO = 3.0
+PRODUCT_SCAN_BUY_LOT_MIN_TRUST_RATIO = 0.5
+PRODUCT_SCAN_MISSING_TRADE_FIELD_RETRY_LIMIT = 2
 BUY_BOOK_MENU_TEXTS = ["使用进货书", "使用进货采购书", "进货采购书", "进货采买书", "进货书", "采购书", "采买书"]
 BUY_BOOK_POPUP_TEXTS = ["是否使用", "增加交易品库存", "进货采购书", "进货采买书", "进货书", "确认"]
 BUY_HAGGLE_BUTTON_TEXTS = ["议价", "砍价", "降价", "抬价"]
@@ -339,6 +367,7 @@ FATIGUE_DRINK_INFO_DISMISS_TARGET = (640, 650)
 FATIGUE_DRINK_INFO_TEXTS = ["剩余次数", "剩余", "次数", "今日", "每日", "喝酒", "饮酒", r"\d+\s*/\s*\d+"]
 FATIGUE_DRINK_INFO_COUNT_KEYWORDS = ["银枝气泡水", "气泡水", "免材料次数", "材料次数", "免费次数", "剩余次数", "休息区"]
 FATIGUE_DRINK_INFO_RATIO_RE = re.compile(r"(\d{1,2})\s*[/／|｜丨\\lI]\s*(\d{1,2})")
+FATIGUE_DRINK_ENTRY_TARGET = (1112, 343)
 FATIGUE_DRINK_SKIP_CONFIRM_CHECKBOX_TARGET = (562, 670)
 FATIGUE_DRINK_SKIP_CONFIRM_BUTTON_TARGET = (963, 505)
 FATIGUE_DRINK_REPEAT_CONFIRM_CHECKBOX_TARGET = (580, 672)
@@ -970,15 +999,37 @@ def _read_json_file(path: Path, default: Any) -> Any:
 
 
 _TRADE_PRODUCTS_BY_CITY_CACHE: dict[str, list[str]] | None = None
+_TRADE_BUY_LOTS_BY_CITY_CACHE: dict[str, dict[str, int]] | None = None
 
 
 def _all_buy_goods_by_city() -> dict[str, list[str]]:
     global _TRADE_PRODUCTS_BY_CITY_CACHE
     if _TRADE_PRODUCTS_BY_CITY_CACHE is not None:
         return {city: list(goods) for city, goods in _TRADE_PRODUCTS_BY_CITY_CACHE.items()}
+    local_market = _read_json_file(COLUMBA_LOCAL_MARKET_DATA_PATH, {})
     trade_data = _read_json_file(COLUMBA_TRADE_DATA_PATH, {})
+    local_buy_prices = local_market.get("buy_prices") if isinstance(local_market, dict) else {}
     products = trade_data.get("products") if isinstance(trade_data, dict) else []
-    by_city: dict[str, list[str]] = {}
+    by_city: dict[str, dict[str, tuple[int, int]]] = {}
+    sequence = 0
+    if isinstance(local_buy_prices, dict):
+        for city, goods in local_buy_prices.items():
+            city_name = normalize_city_name(str(city or "").strip())
+            if not city_name or not isinstance(goods, dict):
+                continue
+            city_goods = by_city.setdefault(city_name, {})
+            for name, info in goods.items():
+                good_name = str(name or "").strip()
+                if not good_name or not isinstance(info, dict):
+                    continue
+                try:
+                    price = int(info.get("base_price") or info.get("price") or 0)
+                except (TypeError, ValueError):
+                    price = 0
+                if price <= 0:
+                    continue
+                city_goods.setdefault(good_name, (price, sequence))
+                sequence += 1
     for product in (products if isinstance(products, list) else []):
         if not isinstance(product, dict):
             continue
@@ -986,19 +1037,66 @@ def _all_buy_goods_by_city() -> dict[str, list[str]]:
         buy_prices = product.get("buyPrices") if isinstance(product.get("buyPrices"), dict) else {}
         if not name:
             continue
-        for city in buy_prices:
+        for city, raw_price in buy_prices.items():
             city_name = normalize_city_name(str(city or "").strip())
             if not city_name:
                 continue
-            goods = by_city.setdefault(city_name, [])
-            if name not in goods:
-                goods.append(name)
+            try:
+                price = int(raw_price or 0)
+            except (TypeError, ValueError):
+                price = 0
+            by_city.setdefault(city_name, {}).setdefault(name, (price, sequence))
+            sequence += 1
     _TRADE_PRODUCTS_BY_CITY_CACHE = {
-        city: sorted(goods)
+        city: [
+            name
+            for name, _meta in sorted(
+                goods.items(),
+                key=lambda item: (-int(item[1][0] or 0), int(item[1][1]), item[0]),
+            )
+        ]
         for city, goods in sorted(by_city.items())
         if goods
     }
     return {city: list(goods) for city, goods in _TRADE_PRODUCTS_BY_CITY_CACHE.items()}
+
+
+def _all_buy_lots_by_city() -> dict[str, dict[str, int]]:
+    global _TRADE_BUY_LOTS_BY_CITY_CACHE
+    if _TRADE_BUY_LOTS_BY_CITY_CACHE is not None:
+        return {
+            city: dict(goods)
+            for city, goods in _TRADE_BUY_LOTS_BY_CITY_CACHE.items()
+        }
+    trade_data = _read_json_file(COLUMBA_TRADE_DATA_PATH, {})
+    products = trade_data.get("products") if isinstance(trade_data, dict) else []
+    by_city: dict[str, dict[str, int]] = {}
+    for product in (products if isinstance(products, list) else []):
+        if not isinstance(product, dict):
+            continue
+        name = str(product.get("name") or "").strip()
+        buy_lots = product.get("buyLot") if isinstance(product.get("buyLot"), dict) else {}
+        if not name:
+            continue
+        for city, raw_lot in buy_lots.items():
+            city_name = normalize_city_name(str(city or "").strip())
+            if not city_name:
+                continue
+            try:
+                lot = int(raw_lot)
+            except (TypeError, ValueError):
+                continue
+            if lot > 0:
+                by_city.setdefault(city_name, {})[name] = lot
+    _TRADE_BUY_LOTS_BY_CITY_CACHE = {
+        city: {good: lot for good, lot in sorted(goods.items())}
+        for city, goods in sorted(by_city.items())
+        if goods
+    }
+    return {
+        city: dict(goods)
+        for city, goods in _TRADE_BUY_LOTS_BY_CITY_CACHE.items()
+    }
 
 
 def _normalize_product_status(value: Any) -> str:
@@ -1060,6 +1158,13 @@ def _merge_product_status_by_city(*values: Any, include_defaults: bool = False) 
                 normalized = _normalize_product_status(status)
                 previous = city_status.get(good)
                 if previous and previous != PRODUCT_STATUS_NEVER_SCANNED and normalized == PRODUCT_STATUS_NEVER_SCANNED:
+                    continue
+                if (
+                    isinstance(status, bool)
+                    and status is False
+                    and previous
+                    and previous != PRODUCT_STATUS_NEVER_SCANNED
+                ):
                     continue
                 city_status[good] = normalized
     if include_defaults:
@@ -1252,6 +1357,9 @@ def _planner_overrides(result: dict[str, Any]) -> dict[str, Any]:
     product_buy_lot_by_city = _product_buy_lot_by_city(result.get("product_buy_lot_by_city"))
     if product_buy_lot_by_city:
         overrides["product_buy_lot_by_city"] = product_buy_lot_by_city
+    events = result.get("events")
+    if isinstance(events, dict) and events:
+        overrides["events"] = copy.deepcopy(events)
     return overrides
 
 
@@ -3870,6 +3978,18 @@ def _fatigue_config_decrement_note(result: dict[str, Any]) -> str:
     return "，已同步递减配置"
 
 
+def _fatigue_config_decrement_note_from_state_update(state_update: dict[str, Any] | None) -> str:
+    if not isinstance(state_update, dict):
+        return ""
+    try:
+        value = int(state_update.get("new_value"))
+    except (TypeError, ValueError):
+        return ""
+    if value < 0:
+        return ""
+    return f"，配置剩余 {value} 次"
+
+
 def _fatigue_read_option_config_values(
     *,
     task_name: str,
@@ -6356,7 +6476,9 @@ def _manual_two_city_resource_used(
             pending_values = state.setdefault("pending_medicine_option_values", {})
             if isinstance(pending_values, dict):
                 pending_values[limit_key] = new_limit
-    config_note = _fatigue_config_decrement_note(config_update)
+    config_note = _fatigue_config_decrement_note_from_state_update(state_limit_update)
+    if not config_note:
+        config_note = _fatigue_config_decrement_note(config_update)
     delayed_config_update: dict[str, Any] | None = None
     forced_config_rewrite: dict[str, Any] | None = None
     pending_option_values = state.get("pending_medicine_option_values")
@@ -6464,6 +6586,26 @@ def _manual_two_city_parse_buy_page_cargo_load(
 ) -> dict[str, Any] | None:
     candidates: list[dict[str, Any]] = []
     roi_x, roi_y, roi_w, roi_h = roi or BUY_PAGE_CARGO_LOAD_ROI
+    roi_entries: list[dict[str, Any]] = []
+    used_fragments: list[tuple[int, dict[str, Any], str]] = []
+    capacity_fragments: list[int] = []
+
+    def cargo_text_variants(raw_text: str) -> set[str]:
+        text = clean_text(raw_text)
+        normalized_digit_text = (
+            text.replace("U", "0")
+            .replace("u", "0")
+            .replace("I", "1")
+            .replace("l", "1")
+        )
+        return {
+            text,
+            text.replace(".", "").replace("·", "").replace("。", ""),
+            text.replace("／", "/").replace("|", "/").replace("I", "/").replace("l", "/"),
+            normalized_digit_text,
+            normalized_digit_text.replace("／", "/").replace("|", "/"),
+            normalized_digit_text.replace(".", "").replace("·", "").replace("。", ""),
+        }
 
     def add_candidate(
         used: int,
@@ -6500,14 +6642,20 @@ def _manual_two_city_parse_buy_page_cargo_load(
             continue
         if not (roi_x <= x <= roi_x + roi_w and roi_y <= y <= roi_y + roi_h):
             continue
+        roi_entries.append(entry)
         raw_text = str(entry.get("text") or "")
-        text = clean_text(raw_text)
-        text_variants = {
-            text,
-            text.replace(".", "").replace("·", "").replace("。", ""),
-            text.replace("／", "/").replace("|", "/").replace("I", "/").replace("l", "/"),
-        }
-        for candidate_text in text_variants:
+        for candidate_text in cargo_text_variants(raw_text):
+            for match in re.finditer(r"(\d{1,5})\+(\d{1,5})", candidate_text):
+                used_fragments.append((int(match.group(1)) + int(match.group(2)), entry, raw_text))
+            for match in re.finditer(r"(?:^|[^\d])0?\+(\d{2,5})", candidate_text):
+                used_fragments.append((int(match.group(1)), entry, raw_text))
+            digits = re.sub(r"\D+", "", candidate_text)
+            if digits and "%" not in candidate_text:
+                if len(digits) == 4 and 100 <= int(digits) <= 9999:
+                    capacity_fragments.append(int(digits))
+                elif len(digits) == 5 and digits[0] in {"0", "1"} and 100 <= int(digits[1:]) <= 9999:
+                    capacity_fragments.append(int(digits[1:]))
+
             for match in re.finditer(r"(\d{1,5})\s*/\s*[^\d]{0,3}(\d{1,5})\+?", candidate_text):
                 used = int(match.group(1))
                 capacity = int(match.group(2))
@@ -6515,7 +6663,7 @@ def _manual_two_city_parse_buy_page_cargo_load(
             digits = re.sub(r"\D+", "", candidate_text)
             if len(digits) < 4 or "%" in candidate_text:
                 continue
-            if digits.startswith("0"):
+            if digits.startswith("0") and "+" not in candidate_text:
                 for start in (1, 2):
                     capacity_text = digits[start:]
                     if not capacity_text:
@@ -6527,10 +6675,28 @@ def _manual_two_city_parse_buy_page_cargo_load(
                 used = int(digits[:split])
                 capacity = int(digits[split:])
                 if 100 <= capacity <= 9999:
-                    add_candidate(used, capacity, raw_text, f"{digits[:split]}/{digits[split:]}", entry)
+                    add_candidate(used, capacity, raw_text, f"{digits[:split]}/{digits[split:]}", entry, priority=-1)
+
+    if used_fragments and capacity_fragments:
+        capacity = max(capacity_fragments)
+        valid_used_fragments = [
+            item
+            for item in used_fragments
+            if 0 <= item[0] <= capacity * 2
+        ]
+        if valid_used_fragments:
+            used, entry, raw_text = max(valid_used_fragments, key=lambda item: item[0])
+            add_candidate(
+                used,
+                capacity,
+                " ".join(str(item.get("text") or "") for item in roi_entries[:8]),
+                f"{used}/{capacity}",
+                entry,
+                priority=4,
+            )
     if not candidates:
         return None
-    return max(candidates, key=lambda item: (item["capacity"], item.get("priority", 0), item["used"]))
+    return max(candidates, key=lambda item: (item.get("priority", 0), item["capacity"], item["used"]))
 
 
 def _manual_two_city_read_buy_page_tax_rate(context: Context, name: str) -> tuple[float | None, list[str]]:
@@ -6574,6 +6740,242 @@ def _manual_two_city_planned_goods_total(leg: dict[str, Any] | None) -> int:
     return total
 
 
+def _manual_two_city_planned_goods_loads(leg: dict[str, Any] | None) -> dict[str, int]:
+    if not isinstance(leg, dict):
+        return {}
+    loads: dict[str, int] = {}
+    for item in leg.get("goods_detail") or []:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name") or "").strip()
+        if not name:
+            continue
+        try:
+            value = int(item.get("num") or item.get("buyLot") or 0)
+        except (TypeError, ValueError):
+            continue
+        if value > 0:
+            loads[name] = value
+    return loads
+
+
+def _manual_two_city_click_top_all_buy_target(
+    context: Context,
+    entries: list[dict[str, Any]] | None = None,
+) -> tuple[int, int]:
+    roi_x, roi_y, roi_w, roi_h = BUY_SELECTION_TOP_ALL_BUY_ROI
+    for entry in entries or []:
+        text = clean_text(entry.get("text"))
+        if "全部买入" not in text:
+            continue
+        try:
+            x = int(float(entry.get("center_x") or 0))
+            y = int(float(entry.get("center_y") or 0))
+        except (TypeError, ValueError):
+            continue
+        if roi_x <= x <= roi_x + roi_w and roi_y <= y <= roi_y + roi_h:
+            context.tasker.controller.post_click(x, y).wait()
+            return x, y
+    x, y = BUY_SELECTION_TOP_ALL_BUY_TARGET
+    context.tasker.controller.post_click(x, y).wait()
+    return int(x), int(y)
+
+
+def _manual_two_city_available_lots_for_leg(leg: dict[str, Any] | None) -> tuple[dict[str, int], dict[str, Any]]:
+    if not isinstance(leg, dict):
+        return {}, {"reason": "invalid_leg"}
+    buy_city = normalize_city_name(str(leg.get("buy_city") or "").strip())
+    planned_goods = [str(item) for item in (leg.get("goods") or []) if str(item).strip()]
+    if not buy_city or not planned_goods:
+        return {}, {"reason": "missing_city_or_goods", "buy_city": buy_city, "planned_goods": planned_goods}
+    try:
+        restock = max(0, int(leg.get("restock") or 0))
+    except (TypeError, ValueError):
+        restock = 0
+    try:
+        trade_data = load_columba_trade_data()
+    except Exception as exc:
+        return {}, {"reason": "load_trade_data_failed", "error": f"{type(exc).__name__}: {exc}"}
+
+    products = {
+        str(product.get("name") or ""): product
+        for product in (trade_data.get("products") or [])
+        if isinstance(product, dict) and str(product.get("name") or "").strip()
+    }
+    state = _manual_two_city_state()
+    result = state.get("result") if isinstance(state.get("result"), dict) else {}
+    options = _manual_two_city_product_scan_plan_options(result)
+    observed_lots = _product_buy_lot_by_city(result.get("product_buy_lot_by_city")).get(buy_city, {})
+    available: dict[str, int] = {}
+    detail: dict[str, Any] = {"restock": restock, "per_good": {}}
+    for good in planned_goods:
+        product = products.get(good)
+        calculated = None
+        if product:
+            calculated = calculate_product_buy_lot(trade_data, product, buy_city, options)
+        try:
+            observed = int(observed_lots.get(good) or 0)
+        except (TypeError, ValueError):
+            observed = 0
+        base_lot = max(
+            [value for value in (calculated, observed) if isinstance(value, int) and value > 0],
+            default=0,
+        )
+        if base_lot > 0:
+            available[good] = base_lot * (restock + 1)
+        detail["per_good"][good] = {
+            "calculated_buy_lot": calculated,
+            "observed_buy_lot": observed,
+            "base_buy_lot": base_lot,
+            "available_lot": available.get(good),
+        }
+    return available, detail
+
+
+def _manual_two_city_quick_buy_selection_plan(
+    leg: dict[str, Any] | None,
+    cargo_load: dict[str, Any] | None,
+) -> dict[str, Any]:
+    if not isinstance(leg, dict):
+        return {"ok": False, "reason": "invalid_leg"}
+    buy_city = normalize_city_name(str(leg.get("buy_city") or "").strip())
+    planned_goods = [str(item) for item in (leg.get("goods") or []) if str(item).strip()]
+    planned_set = set(planned_goods)
+    if not buy_city or len(planned_goods) < 2:
+        return {"ok": False, "reason": "not_enough_planned_goods", "buy_city": buy_city, "planned_goods": planned_goods}
+    if not isinstance(cargo_load, dict):
+        return {"ok": False, "reason": "cargo_unreadable", "planned_goods": planned_goods}
+    try:
+        used = int(cargo_load.get("used") or 0)
+        capacity = int(cargo_load.get("capacity") or 0)
+    except (TypeError, ValueError):
+        return {"ok": False, "reason": "invalid_cargo_load", "cargo_load": cargo_load}
+    if capacity <= 0:
+        return {"ok": False, "reason": "invalid_capacity", "cargo_load": cargo_load}
+    remaining_capacity = max(0, capacity - used)
+    if remaining_capacity <= 0:
+        return {"ok": False, "reason": "cargo_already_full", "cargo_load": cargo_load}
+
+    planned_total = _manual_two_city_planned_goods_total(leg)
+    if planned_total <= 0 or planned_total > capacity:
+        return {
+            "ok": False,
+            "reason": "invalid_planned_total",
+            "planned_total": planned_total,
+            "capacity": capacity,
+            "remaining_capacity": remaining_capacity,
+        }
+    if planned_total / remaining_capacity < POST_BUY_CARGO_VERIFY_PLANNED_RATIO:
+        return {
+            "ok": False,
+            "reason": "planned_not_near_remaining_full",
+            "planned_total": planned_total,
+            "capacity": capacity,
+            "used": used,
+            "remaining_capacity": remaining_capacity,
+        }
+
+    ordered_goods = _known_buy_goods_for_city(buy_city)
+    order_index = {good: index for index, good in enumerate(ordered_goods)}
+    missing_order = [good for good in planned_goods if good not in order_index]
+    if missing_order:
+        return {"ok": False, "reason": "planned_goods_not_in_trade_order", "missing_order": missing_order}
+    positions = sorted(order_index[good] for good in planned_goods)
+    start, end = positions[0], positions[-1]
+    block_goods = ordered_goods[start : end + 1]
+    if len(block_goods) != len(planned_set) or set(block_goods) != planned_set:
+        return {
+            "ok": False,
+            "reason": "planned_goods_not_contiguous",
+            "planned_goods": planned_goods,
+            "block_goods": block_goods,
+        }
+
+    status_by_good = _manual_two_city_product_status_for_city(buy_city)
+    unsafe_before = [
+        good
+        for good in ordered_goods[:start]
+        if status_by_good.get(good, PRODUCT_STATUS_NEVER_SCANNED)
+        not in {PRODUCT_STATUS_LOCKED, PRODUCT_STATUS_MISSING}
+    ]
+    if unsafe_before:
+        return {
+            "ok": False,
+            "reason": "buyable_unplanned_goods_before_block",
+            "unsafe_before": unsafe_before,
+            "block_goods": block_goods,
+        }
+    unsafe_block = [
+        good
+        for good in block_goods
+        if status_by_good.get(good, PRODUCT_STATUS_NEVER_SCANNED) != PRODUCT_STATUS_NORMAL
+    ]
+    if unsafe_block:
+        return {
+            "ok": False,
+            "reason": "planned_block_not_all_normal",
+            "unsafe_block": unsafe_block,
+            "block_goods": block_goods,
+        }
+
+    planned_loads = _manual_two_city_planned_goods_loads(leg)
+    available_lots, available_detail = _manual_two_city_available_lots_for_leg(leg)
+    missing_available = [good for good in block_goods if available_lots.get(good, 0) <= 0]
+    if missing_available:
+        return {
+            "ok": False,
+            "reason": "missing_available_lots",
+            "missing_available": missing_available,
+            "available_detail": available_detail,
+        }
+    block_tail_good = block_goods[-1]
+    partial_goods = [
+        good
+        for good in block_goods
+        if 0 < planned_loads.get(good, 0) < available_lots.get(good, 0)
+    ]
+    if len(partial_goods) > 1:
+        return {
+            "ok": False,
+            "reason": "multiple_partial_goods",
+            "partial_goods": partial_goods,
+            "block_tail_good": block_tail_good,
+            "planned_loads": planned_loads,
+            "available_lots": available_lots,
+        }
+    fill_good = partial_goods[0] if partial_goods else block_tail_good
+    overflow_goods = [
+        good
+        for good in block_goods
+        if planned_loads.get(good, 0) > available_lots.get(good, 0)
+    ]
+    if overflow_goods:
+        return {
+            "ok": False,
+            "reason": "planned_load_exceeds_available",
+            "overflow_goods": overflow_goods,
+            "planned_loads": planned_loads,
+            "available_lots": available_lots,
+        }
+    return {
+        "ok": True,
+        "buy_city": buy_city,
+        "planned_goods": planned_goods,
+        "block_goods": block_goods,
+        "fill_good": fill_good,
+        "block_tail_good": block_tail_good,
+        "planned_total": planned_total,
+        "capacity": capacity,
+        "used": used,
+        "remaining_capacity": remaining_capacity,
+        "cargo_load": cargo_load,
+        "planned_loads": planned_loads,
+        "available_lots": available_lots,
+        "partial_goods": partial_goods,
+        "available_detail": available_detail,
+    }
+
+
 def _manual_two_city_cargo_load_full(cargo_load: dict[str, Any] | None) -> bool:
     if not isinstance(cargo_load, dict):
         return False
@@ -6585,6 +6987,45 @@ def _manual_two_city_cargo_load_full(cargo_load: dict[str, Any] | None) -> bool:
     if capacity <= 0:
         return False
     return used >= capacity or used / capacity >= BUY_SELECTION_CARGO_FULL_RATIO
+
+
+def _manual_two_city_cargo_remaining_capacity(cargo_load: dict[str, Any] | None) -> int | None:
+    if not isinstance(cargo_load, dict):
+        return None
+    try:
+        capacity = int(cargo_load.get("capacity") or 0)
+        used = int(cargo_load.get("used") or 0)
+    except (TypeError, ValueError):
+        return None
+    if capacity <= 0 or used < 0:
+        return None
+    return max(0, capacity - used)
+
+
+def _manual_two_city_cargo_blocks_missing_goods(
+    leg: dict[str, Any] | None,
+    cargo_load: dict[str, Any] | None,
+    missing_goods: list[str],
+) -> bool:
+    remaining = _manual_two_city_cargo_remaining_capacity(cargo_load)
+    if remaining is None or not missing_goods:
+        return False
+    loads = _manual_two_city_planned_goods_loads(leg)
+    candidate_loads = [
+        loads[good]
+        for good in missing_goods
+        if good in loads and loads[good] > 0
+    ]
+    return bool(candidate_loads) and remaining < min(candidate_loads)
+
+
+def _manual_two_city_existing_cargo_limited_buy(state: dict[str, Any]) -> bool:
+    return bool(state.get("buy_selection_limited_by_existing_cargo"))
+
+
+def _manual_two_city_clear_existing_cargo_limit(state: dict[str, Any]) -> None:
+    state.pop("buy_selection_limited_by_existing_cargo", None)
+    state.pop("buy_selection_existing_cargo_load", None)
 
 
 def _manual_two_city_selected_buy_actual_loads(state: dict[str, Any]) -> dict[str, int]:
@@ -6608,6 +7049,7 @@ def _manual_two_city_probe_buy_page_cargo_load(
     name: str,
 ) -> tuple[dict[str, Any] | None, list[str]]:
     all_texts: list[str] = []
+    candidates: list[dict[str, Any]] = []
     for index, roi in enumerate((BUY_PAGE_CARGO_LOAD_PROBE_ROI, BUY_PAGE_CARGO_LOAD_ROI), start=1):
         _hit, entries, texts = _manual_two_city_ocr_entries(
             context,
@@ -6618,8 +7060,12 @@ def _manual_two_city_probe_buy_page_cargo_load(
         all_texts.extend(texts)
         cargo_load = _manual_two_city_parse_buy_page_cargo_load(entries, roi=roi)
         if cargo_load is not None:
-            return cargo_load, all_texts
-    return None, all_texts
+            cargo_load = dict(cargo_load)
+            cargo_load["probe_index"] = index
+            candidates.append(cargo_load)
+    if not candidates:
+        return None, all_texts
+    return max(candidates, key=lambda item: (item.get("priority", 0), item.get("capacity", 0), item.get("used", 0))), all_texts
 
 
 def _known_buy_goods_for_city(city_name: Any) -> list[str]:
@@ -6627,6 +7073,13 @@ def _known_buy_goods_for_city(city_name: Any) -> list[str]:
     if not city:
         return []
     return _all_buy_goods_by_city().get(city, [])
+
+
+def _known_buy_lots_for_city(city_name: Any) -> dict[str, int]:
+    city = normalize_city_name(str(city_name or "").strip())
+    if not city:
+        return {}
+    return dict(_all_buy_lots_by_city().get(city, {}))
 
 
 def _manual_two_city_product_status_by_city_for_account(account: dict[str, Any]) -> dict[str, dict[str, str]]:
@@ -6710,6 +7163,83 @@ def _manual_two_city_city_trade_data_for_account(account: dict[str, Any]) -> tup
     )
 
 
+def _manual_two_city_required_buy_lot_goods(
+    city_name: Any,
+    status_by_good: dict[str, Any] | None = None,
+) -> list[str]:
+    city = normalize_city_name(str(city_name or "").strip())
+    if not city:
+        return []
+    status = (
+        {
+            str(good): _normalize_product_status(value)
+            for good, value in (status_by_good or {}).items()
+            if str(good).strip()
+        }
+        if isinstance(status_by_good, dict)
+        else _manual_two_city_product_status_for_city(city)
+    )
+    return [
+        good
+        for good in _known_buy_goods_for_city(city)
+        if status.get(good, PRODUCT_STATUS_NEVER_SCANNED) == PRODUCT_STATUS_NORMAL
+    ]
+
+
+def _manual_two_city_city_trade_completion(
+    city_name: Any,
+    *,
+    status_by_good: dict[str, Any] | None = None,
+    product_buy_lots: dict[str, Any] | None = None,
+    city_tax_rate: Any = None,
+    require_observed_buy_lots: bool = False,
+) -> dict[str, Any]:
+    city = normalize_city_name(str(city_name or "").strip())
+    if not city:
+        return {"complete": False, "reason": "missing_city"}
+    state = _manual_two_city_state()
+    result = state.get("result") if isinstance(state.get("result"), dict) else {}
+    _path, account, _uid, _has_context = _manual_two_city_known_account_context(result)
+    tax_rates, saved_lots, _meta_by_city = _manual_two_city_city_trade_data_for_account(account)
+    observed_lots = _product_buy_lot_by_city({city: product_buy_lots or {}}).get(city, {})
+    effective_lots = dict(saved_lots.get(city) or {})
+    effective_lots.update(observed_lots)
+    effective_tax_rate = _city_tax_rate_by_city({city: city_tax_rate}).get(city)
+    if effective_tax_rate is None:
+        effective_tax_rate = tax_rates.get(city)
+    required_goods = _manual_two_city_required_buy_lot_goods(city, status_by_good)
+    missing_observed_buy_lots = [good for good in required_goods if good not in observed_lots]
+    missing_effective_buy_lots = [good for good in required_goods if good not in effective_lots]
+    missing_buy_lots = missing_observed_buy_lots if require_observed_buy_lots else missing_effective_buy_lots
+    saved_fallback_buy_lots = [
+        good
+        for good in missing_observed_buy_lots
+        if good in (saved_lots.get(city) or {})
+    ]
+    missing_tax_rate = effective_tax_rate is None
+    return {
+        "complete": not missing_tax_rate and not missing_buy_lots,
+        "city": city,
+        "required_buy_lot_goods": required_goods,
+        "missing_buy_lot_goods": missing_buy_lots,
+        "missing_observed_buy_lot_goods": missing_observed_buy_lots,
+        "missing_effective_buy_lot_goods": missing_effective_buy_lots,
+        "saved_fallback_buy_lot_goods": saved_fallback_buy_lots,
+        "require_observed_buy_lots": require_observed_buy_lots,
+        "observed_product_buy_lots": observed_lots,
+        "saved_product_buy_lots": saved_lots.get(city) or {},
+        "effective_product_buy_lots": {
+            good: effective_lots[good]
+            for good in required_goods
+            if good in effective_lots
+        },
+        "missing_tax_rate": missing_tax_rate,
+        "observed_city_tax_rate": _city_tax_rate_by_city({city: city_tax_rate}).get(city),
+        "saved_city_tax_rate": tax_rates.get(city),
+        "effective_city_tax_rate": effective_tax_rate,
+    }
+
+
 def _manual_two_city_city_trade_read_status(city_name: Any) -> dict[str, Any]:
     city = normalize_city_name(str(city_name or "").strip())
     state = _manual_two_city_state()
@@ -6751,6 +7281,31 @@ def _manual_two_city_city_trade_read_status(city_name: Any) -> dict[str, Any]:
             "uid": uid,
             "account_config": str(path),
             "last_read_date": meta.get("last_read_date"),
+        }
+    completion = _manual_two_city_city_trade_completion(city)
+    if not completion.get("complete"):
+        missing_lots = completion.get("missing_buy_lot_goods") or []
+        missing_tax = bool(completion.get("missing_tax_rate"))
+        if missing_tax and missing_lots:
+            reason = "missing_city_tax_rate_and_product_buy_lots"
+        elif missing_tax:
+            reason = "missing_city_tax_rate"
+        else:
+            reason = "missing_product_buy_lots"
+        return {
+            "due": True,
+            "reason": reason,
+            "city": city,
+            "mode": mode,
+            "interval": interval,
+            "uid": uid,
+            "account_config": str(path),
+            "last_read_date": meta.get("last_read_date"),
+            "missing_tax_rate": missing_tax,
+            "missing_buy_lot_goods": missing_lots,
+            "required_buy_lot_goods": completion.get("required_buy_lot_goods") or [],
+            "saved_product_buy_lots": completion.get("saved_product_buy_lots") or {},
+            "saved_city_tax_rate": completion.get("saved_city_tax_rate"),
         }
     last_date = _parse_profile_read_date(
         meta.get("last_smart_scan_date")
@@ -7282,7 +7837,7 @@ def _manual_two_city_update_city_trade_observation(
             f"城市交易数据更新：{city} 税率 "
             f"{tax_update * 100:.1f}%" if tax_update is not None else f"城市交易数据更新：{city} 税率未识别"
         )
-        + f"，商品单批量 {len(lots_update)} 个（{reason}）。",
+        + f"，商品可购入量 {len(lots_update)} 个（{reason}）。",
         run_id=str(state.get("run_id") or ""),
         level="info" if tax_update is not None and lots_update else "warning",
         event="manual_two_city_city_trade_observation_updated",
@@ -7305,6 +7860,817 @@ def _manual_two_city_update_city_trade_observation(
         "city_tax_rate": tax_update,
         "product_buy_lots": lots_update,
         "account_config": str(path),
+    }
+
+
+def _manual_two_city_product_scan_plan_options(result: dict[str, Any]) -> RoutePlanOptions:
+    current_result = result if isinstance(result, dict) else {}
+    try:
+        _path, account = _manual_two_city_load_account_config_for_result(current_result)
+    except Exception:
+        account = {}
+    account_result = _profile_result_from_account_config(account) if isinstance(account, dict) else {}
+    merged_result = copy.deepcopy(account_result)
+    for key, value in current_result.items():
+        merged_result[key] = copy.deepcopy(value)
+    overrides = _planner_overrides(merged_result)
+    return RoutePlanOptions(
+        max_goods_num=overrides.get("max_goods_num"),
+        prestige_by_city=overrides.get("prestige_by_city"),
+        roles=overrides.get("roles"),
+        product_unlock_status_by_city=overrides.get("product_unlock_status_by_city"),
+        city_tax_rate_by_city=overrides.get("city_tax_rate_by_city"),
+        product_buy_lot_by_city=overrides.get("product_buy_lot_by_city"),
+        events=overrides.get("events"),
+        use_columba_onegraph=True,
+    )
+
+
+def _manual_two_city_positive_int(value: Any) -> int:
+    try:
+        number = int(value)
+    except (TypeError, ValueError):
+        return 0
+    return number if number > 0 else 0
+
+
+def _manual_two_city_calculated_buy_lots_for_city(
+    city_name: Any,
+    result: dict[str, Any] | None = None,
+) -> dict[str, int]:
+    city = normalize_city_name(str(city_name or "").strip())
+    if not city:
+        return {}
+    known_goods = _known_buy_goods_for_city(city)
+    if not known_goods:
+        return {}
+    current_result = result if isinstance(result, dict) else {}
+    if not current_result:
+        state = _manual_two_city_state()
+        current_result = state.get("result") if isinstance(state.get("result"), dict) else {}
+    try:
+        trade_data = load_columba_trade_data()
+    except Exception:
+        return _known_buy_lots_for_city(city)
+    products = {
+        str(product.get("name") or ""): product
+        for product in (trade_data.get("products") or [])
+        if isinstance(product, dict) and str(product.get("name") or "").strip()
+    }
+    options = _manual_two_city_product_scan_plan_options(current_result)
+    calculated_lots: dict[str, int] = {}
+    for good in known_goods:
+        product = products.get(good)
+        if not product:
+            continue
+        calculated = calculate_product_buy_lot(trade_data, product, city, options)
+        lot = _manual_two_city_positive_int(calculated)
+        if lot > 0:
+            calculated_lots[good] = lot
+    return calculated_lots or _known_buy_lots_for_city(city)
+
+
+def _manual_two_city_product_scan_buy_lot_trusted(observed: Any, expected_lot: Any) -> bool:
+    observed_lot = _manual_two_city_positive_int(observed)
+    if observed_lot <= 0:
+        return False
+    expected = _manual_two_city_positive_int(expected_lot)
+    if expected <= 0:
+        return True
+    min_trusted = int(math.floor(expected * PRODUCT_SCAN_BUY_LOT_MIN_TRUST_RATIO))
+    max_trusted = int(math.ceil(expected * PRODUCT_SCAN_BUY_LOT_TRUST_RATIO))
+    if min_trusted > 0 and observed_lot <= min_trusted:
+        return False
+    if max_trusted > 0 and observed_lot > max_trusted:
+        return False
+    return True
+
+
+def _manual_two_city_icon_lot_candidates(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    candidates: list[dict[str, Any]] = []
+    for entry in entries:
+        raw_text = str(entry.get("text") or "")
+        for text in _manual_two_city_icon_lot_text_variants(raw_text):
+            if "%" in text or "/" in text or "." in text:
+                continue
+            match = re.fullmatch(r"\D*(\d{1,5})\D*", text)
+            if not match:
+                continue
+            value = _manual_two_city_positive_int(match.group(1))
+            if value <= 0 or value > 99999:
+                continue
+            try:
+                center_x = float(entry.get("center_x") or 0)
+                center_y = float(entry.get("center_y") or 0)
+            except (TypeError, ValueError):
+                center_x = 0.0
+                center_y = 0.0
+            candidates.append(
+                {
+                    "value": value,
+                    "text": raw_text,
+                    "center_x": center_x,
+                    "center_y": center_y,
+                    "box": [
+                        int(entry.get("x") or 0),
+                        int(entry.get("y") or 0),
+                        int(entry.get("w") or 0),
+                        int(entry.get("h") or 0),
+                    ],
+                }
+            )
+    candidates.sort(key=lambda item: (float(item.get("center_y") or 0), float(item.get("center_x") or 0)))
+    return candidates
+
+
+def _manual_two_city_assign_icon_lots_by_order(
+    city_name: Any,
+    icon_lot_entries: list[dict[str, Any]],
+    expected_buy_lots: dict[str, Any],
+    visible_records: list[dict[str, Any]],
+    focus_targets: list[str],
+    existing_buy_lots: dict[str, Any],
+) -> list[dict[str, Any]]:
+    city = normalize_city_name(str(city_name or "").strip())
+    ordered_goods = _known_buy_goods_for_city(city)
+    if not city or not ordered_goods or not icon_lot_entries:
+        return []
+    order_index = {good: index for index, good in enumerate(ordered_goods)}
+    visible_rows: list[dict[str, Any]] = []
+    for record in visible_records:
+        good = str(record.get("good") or "").strip()
+        if good not in order_index:
+            continue
+        try:
+            center_y = float(record.get("center_y") or 0)
+        except (TypeError, ValueError):
+            center_y = 0.0
+        if center_y <= 0:
+            continue
+        visible_rows.append({"good": good, "order": order_index[good], "center_y": center_y})
+    if not visible_rows:
+        return []
+    visible_rows.sort(key=lambda item: (float(item.get("center_y") or 0), int(item.get("order") or 0)))
+
+    spacings: list[float] = []
+    for previous, current in zip(visible_rows, visible_rows[1:]):
+        order_delta = int(current["order"]) - int(previous["order"])
+        y_delta = float(current["center_y"]) - float(previous["center_y"])
+        if order_delta > 0 and y_delta > 20:
+            spacings.append(y_delta / order_delta)
+    row_spacing = sorted(spacings)[len(spacings) // 2] if spacings else 119.0
+    row_spacing = max(80.0, min(150.0, row_spacing))
+
+    candidates = _manual_two_city_icon_lot_candidates(icon_lot_entries)
+    if not candidates:
+        return []
+
+    offsets: list[float] = []
+    for row in visible_rows:
+        expected = _manual_two_city_positive_int(expected_buy_lots.get(row["good"]))
+        if expected <= 0:
+            continue
+        matching = [
+            candidate
+            for candidate in candidates
+            if int(candidate.get("value") or 0) == expected
+            and 35.0 <= float(candidate.get("center_y") or 0) - float(row["center_y"]) <= 95.0
+        ]
+        if matching:
+            best = min(matching, key=lambda item: abs(float(item.get("center_y") or 0) - float(row["center_y"]) - 66.0))
+            offsets.append(float(best.get("center_y") or 0) - float(row["center_y"]))
+    digit_offset = sorted(offsets)[len(offsets) // 2] if offsets else 66.0
+    digit_offset = max(45.0, min(85.0, digit_offset))
+    tolerance = max(42.0, row_spacing * 0.42)
+
+    focus_set = {str(item) for item in focus_targets if str(item).strip()}
+    target_goods = [
+        good
+        for good in ordered_goods
+        if good in expected_buy_lots
+        and (not focus_set or good in focus_set)
+        and not _manual_two_city_product_scan_buy_lot_trusted(
+            existing_buy_lots.get(good),
+            expected_buy_lots.get(good),
+        )
+    ]
+    assignments: list[dict[str, Any]] = []
+    used_candidate_indices: set[int] = set()
+    for good in target_goods:
+        expected = _manual_two_city_positive_int(expected_buy_lots.get(good))
+        if expected <= 0:
+            continue
+        good_order = order_index.get(good)
+        if good_order is None:
+            continue
+        anchors: list[dict[str, Any]] = []
+        for row in visible_rows:
+            order_delta = good_order - int(row["order"])
+            projected_row_y = float(row["center_y"]) + order_delta * row_spacing
+            anchors.append(
+                {
+                    "anchor_good": row["good"],
+                    "projected_digit_y": projected_row_y + digit_offset,
+                    "projected_row_y": projected_row_y,
+                    "order_delta": order_delta,
+                }
+            )
+        best_assignment: dict[str, Any] | None = None
+        for candidate_index, candidate in enumerate(candidates):
+            if candidate_index in used_candidate_indices:
+                continue
+            candidate_value = _manual_two_city_positive_int(candidate.get("value"))
+            if not _manual_two_city_product_scan_buy_lot_trusted(candidate_value, expected):
+                continue
+            best_anchor = min(
+                anchors,
+                key=lambda item: abs(float(candidate.get("center_y") or 0) - float(item["projected_digit_y"])),
+            )
+            distance = abs(float(candidate.get("center_y") or 0) - float(best_anchor["projected_digit_y"]))
+            if distance > tolerance:
+                continue
+            score = distance + abs(int(best_anchor["order_delta"])) * 3.0
+            assignment = {
+                "good": good,
+                "buy_lot": candidate_value,
+                "expected_buy_lot": expected,
+                "candidate": candidate,
+                "anchor": best_anchor,
+                "distance": distance,
+                "tolerance": tolerance,
+                "row_spacing": row_spacing,
+                "digit_offset": digit_offset,
+                "score": score,
+                "source": "icon_lot_order_inference",
+            }
+            if best_assignment is None or score < float(best_assignment.get("score") or 999999):
+                best_assignment = assignment
+                best_assignment["candidate_index"] = candidate_index
+        if best_assignment is not None:
+            used_candidate_indices.add(int(best_assignment.pop("candidate_index")))
+            assignments.append(best_assignment)
+    return assignments
+
+
+def _manual_two_city_filter_product_scan_buy_lots(
+    city_name: Any,
+    product_buy_lots: dict[str, Any],
+) -> tuple[dict[str, int], dict[str, dict[str, Any]]]:
+    city = normalize_city_name(str(city_name or "").strip())
+    normalized = _product_buy_lot_by_city({city: product_buy_lots or {}}).get(city, {}) if city else {}
+    if not city or not normalized:
+        return {}, {}
+
+    try:
+        trade_data = load_columba_trade_data()
+    except Exception as exc:
+        return normalized, {
+            "_filter_error": {
+                "reason": "load_trade_data_failed",
+                "error": f"{type(exc).__name__}: {exc}",
+            }
+        }
+
+    products = {
+        str(product.get("name") or ""): product
+        for product in (trade_data.get("products") or [])
+        if isinstance(product, dict) and str(product.get("name") or "").strip()
+    }
+    state = _manual_two_city_state()
+    result = state.get("result") if isinstance(state.get("result"), dict) else {}
+    options = _manual_two_city_product_scan_plan_options(result)
+    trusted: dict[str, int] = {}
+    rejected: dict[str, dict[str, Any]] = {}
+
+    for good, observed in sorted(normalized.items()):
+        product = products.get(good)
+        if not product:
+            trusted[good] = observed
+            continue
+        calculated = calculate_product_buy_lot(trade_data, product, city, options)
+        if calculated is None or calculated <= 0:
+            trusted[good] = observed
+            continue
+        min_trusted = int(math.floor(calculated * PRODUCT_SCAN_BUY_LOT_MIN_TRUST_RATIO))
+        max_trusted = int(math.ceil(calculated * PRODUCT_SCAN_BUY_LOT_TRUST_RATIO))
+        if min_trusted > 0 and observed <= min_trusted:
+            rejected[good] = {
+                "reason": "below_trusted_range",
+                "observed": observed,
+                "calculated_buy_lot": calculated,
+                "min_trusted": min_trusted,
+                "trust_ratio": PRODUCT_SCAN_BUY_LOT_MIN_TRUST_RATIO,
+            }
+            continue
+        if observed > max_trusted:
+            rejected[good] = {
+                "reason": "above_trusted_range",
+                "observed": observed,
+                "calculated_buy_lot": calculated,
+                "max_trusted": max_trusted,
+                "trust_ratio": PRODUCT_SCAN_BUY_LOT_TRUST_RATIO,
+            }
+            continue
+        trusted[good] = observed
+    return trusted, rejected
+
+
+def _manual_two_city_product_icon_lot_row_roi(center_y: Any) -> list[int] | None:
+    try:
+        row_center_y = float(center_y)
+    except (TypeError, ValueError):
+        return None
+    top = max(120, int(round(row_center_y + BUY_PAGE_ROW_ICON_LOT_TOP_OFFSET)))
+    bottom = min(BUY_PAGE_ROW_ICON_LOT_MAX_BOTTOM, top + BUY_PAGE_ROW_ICON_LOT_HEIGHT)
+    height = bottom - top
+    if height < 24:
+        return None
+    return [BUY_PAGE_ROW_ICON_LOT_X, top, BUY_PAGE_ROW_ICON_LOT_WIDTH, height]
+
+
+def _manual_two_city_product_icon_lot_digit_roi(center_y: Any) -> list[int] | None:
+    try:
+        row_center_y = float(center_y)
+    except (TypeError, ValueError):
+        return None
+    top = max(120, int(round(row_center_y + BUY_PAGE_DIGIT_LOT_TOP_OFFSET)))
+    return [
+        BUY_PAGE_DIGIT_LOT_X,
+        top,
+        BUY_PAGE_DIGIT_LOT_WIDTH,
+        BUY_PAGE_DIGIT_LOT_HEIGHT,
+    ]
+
+
+def _manual_two_city_product_icon_lot_digit_rois(center_y: Any, expected_lot: Any = None) -> list[list[int]]:
+    roi = _manual_two_city_product_icon_lot_digit_roi(center_y)
+    if roi is None:
+        return []
+    rois = [roi]
+    expected = _manual_two_city_positive_int(expected_lot)
+    if 0 < expected < 10:
+        _x, top, _width, height = roi
+        rois.extend(
+            [
+                [588, top, 42, height],
+                [592, top + 2, 34, max(18, height - 3)],
+                [596, top + 4, 26, max(16, height - 5)],
+                [600, top + 5, 20, max(15, height - 6)],
+            ]
+        )
+    unique: list[list[int]] = []
+    seen: set[tuple[int, int, int, int]] = set()
+    for item in rois:
+        key = tuple(int(value) for value in item)
+        if key not in seen:
+            seen.add(key)
+            unique.append([int(value) for value in item])
+    return unique
+
+
+def _manual_two_city_icon_lot_text_variants(text: Any) -> list[str]:
+    normalized = clean_text(text).replace(",", "").replace("，", "")
+    variants = {
+        normalized,
+        normalized.replace("O", "0").replace("o", "0"),
+        normalized.replace("I", "1").replace("l", "1").replace("|", "1"),
+    }
+    return [item for item in variants if item]
+
+
+def _manual_two_city_parse_icon_lot_entries(
+    entries: list[dict[str, Any]],
+    *,
+    max_width: int = 48,
+    max_height: int = 32,
+) -> int | None:
+    candidates: list[tuple[int, float, float, int, str]] = []
+    fragments: list[tuple[float, float, float, float, str, str]] = []
+    for entry in entries:
+        try:
+            width = float(entry.get("w") or 0)
+            height = float(entry.get("h") or 0)
+        except (TypeError, ValueError):
+            width = 0
+            height = 0
+        if width > max_width or height > max_height:
+            continue
+        raw_text = str(entry.get("text") or "")
+        for text in _manual_two_city_icon_lot_text_variants(raw_text):
+            if "%" in text or "/" in text or "." in text:
+                continue
+            match = re.fullmatch(r"\D*(\d{1,5})\D*", text)
+            if not match:
+                continue
+            try:
+                value = int(match.group(1))
+            except ValueError:
+                continue
+            if value <= 0 or value > 99999:
+                continue
+            digits = match.group(1)
+            try:
+                center_x = float(entry.get("center_x") or 0)
+                center_y = float(entry.get("center_y") or 0)
+            except (TypeError, ValueError):
+                center_x = 0
+                center_y = 0
+            candidates.append((len(digits), center_x, center_y, value, raw_text))
+            fragments.append((center_x, center_y, width, height, digits, raw_text))
+
+    fragments.sort(key=lambda item: (item[1], item[0]))
+    for start, fragment in enumerate(fragments):
+        group = [fragment]
+        base_y = fragment[1]
+        prev_x = fragment[0]
+        prev_w = max(1.0, fragment[2])
+        max_line_delta = max(8.0, fragment[3] * 0.85)
+        for next_fragment in fragments[start + 1:]:
+            next_x, next_y, next_w, next_h, _, _ = next_fragment
+            if abs(next_y - base_y) > max(max_line_delta, next_h * 0.85):
+                continue
+            edge_gap = next_x - prev_x - (prev_w + next_w) / 2
+            if edge_gap < -max(prev_w, next_w) * 0.35:
+                continue
+            if edge_gap > max(12.0, max(prev_w, next_w, fragment[3], next_h) * 1.8):
+                break
+            group.append(next_fragment)
+            prev_x = next_x
+            prev_w = max(1.0, next_w)
+            if sum(len(item[4]) for item in group) >= 5:
+                break
+        if len(group) < 2:
+            continue
+        digits = "".join(item[4] for item in group)
+        if not re.fullmatch(r"\d{2,5}", digits):
+            continue
+        try:
+            value = int(digits)
+        except ValueError:
+            continue
+        if value <= 0 or value > 99999:
+            continue
+        center_x = group[-1][0]
+        center_y = sum(item[1] for item in group) / len(group)
+        candidates.append((len(digits) + 1, center_x, center_y, value, "+".join(item[5] for item in group)))
+
+    if not candidates:
+        return None
+    return max(candidates, key=lambda item: (item[0], item[1], item[2]))[3]
+
+
+def _manual_two_city_scaled_digit_lot_ocr(
+    context: Context,
+    name: str,
+    image: Any,
+    roi: list[int],
+    *,
+    expected_lot: Any = None,
+) -> dict[str, Any]:
+    result: dict[str, Any] = {
+        "roi": roi,
+        "scale": BUY_PAGE_DIGIT_LOT_SCALE,
+        "expected_lot": _manual_two_city_positive_int(expected_lot) or None,
+        "buy_lot": None,
+        "variants": [],
+    }
+    try:
+        import numpy as np
+    except Exception as exc:
+        result["reason"] = "numpy_unavailable"
+        result["error"] = f"{type(exc).__name__}: {exc}"
+        return result
+
+    try:
+        raw_image = image.get() if hasattr(image, "get") and not isinstance(image, np.ndarray) else image
+        array = np.asarray(raw_image)
+        if array.ndim < 3:
+            result["reason"] = "image_not_array"
+            result["shape"] = list(array.shape)
+            return result
+        image_height, image_width = array.shape[:2]
+        x, y, width, height = [int(value) for value in roi]
+        x = max(0, min(image_width, x))
+        y = max(0, min(image_height, y))
+        right = max(x, min(image_width, x + max(1, width)))
+        bottom = max(y, min(image_height, y + max(1, height)))
+        if right <= x or bottom <= y:
+            result["reason"] = "empty_crop"
+            result["shape"] = [image_height, image_width]
+            return result
+        crop = array[y:bottom, x:right, :3]
+        if crop.size <= 0:
+            result["reason"] = "empty_crop"
+            return result
+        if crop.dtype != np.uint8:
+            crop = np.clip(crop, 0, 255).astype(np.uint8)
+        crop = np.ascontiguousarray(crop)
+        scale = max(1, int(BUY_PAGE_DIGIT_LOT_SCALE))
+
+        def scaled_rgb(image: Any) -> Any:
+            return np.ascontiguousarray(np.repeat(np.repeat(image, scale, axis=0), scale, axis=1))
+
+        def gray_to_rgb(mask: Any) -> Any:
+            return np.ascontiguousarray(np.stack([mask, mask, mask], axis=2).astype(np.uint8))
+
+        def dilate_mask(mask: Any, radius: int = 1) -> Any:
+            radius = max(0, int(radius))
+            if radius <= 0:
+                return mask
+            mask_height, mask_width = mask.shape[:2]
+            padded = np.pad(mask, radius, mode="constant", constant_values=0)
+            output = np.zeros_like(mask)
+            for y_offset in range(radius * 2 + 1):
+                for x_offset in range(radius * 2 + 1):
+                    output = np.maximum(
+                        output,
+                        padded[y_offset : y_offset + mask_height, x_offset : x_offset + mask_width],
+                    )
+            return output
+
+        scaled = scaled_rgb(crop)
+        variants: list[tuple[str, Any]] = [("scaled", scaled)]
+        gray = crop.astype(np.float32).mean(axis=2)
+        threshold = min(235.0, max(145.0, float(gray.mean() + gray.std() * 0.25)))
+        white_mask = np.zeros(gray.shape, dtype=np.uint8)
+        white_mask[gray >= threshold] = 255
+        contrast = gray_to_rgb(white_mask)
+        variants.append(("contrast", scaled_rgb(contrast)))
+        variants.append(("black_on_white", scaled_rgb(255 - contrast)))
+        dilated = gray_to_rgb(dilate_mask(white_mask, radius=1))
+        variants.append(("dilated_black_on_white", scaled_rgb(255 - dilated)))
+
+        ys, xs = np.where(white_mask > 0)
+        if len(xs) and len(ys):
+            x0 = max(0, int(xs.min()) - 3)
+            x1 = min(white_mask.shape[1], int(xs.max()) + 4)
+            y0 = max(0, int(ys.min()) - 3)
+            y1 = min(white_mask.shape[0], int(ys.max()) + 4)
+            tight = white_mask[y0:y1, x0:x1]
+            if tight.size and tight.shape[0] >= 4 and tight.shape[1] >= 4:
+                padded_height = max(24, tight.shape[0] + 10)
+                padded_width = max(28, tight.shape[1] + 10)
+                canvas = np.zeros((padded_height, padded_width), dtype=np.uint8)
+                top = max(0, (padded_height - tight.shape[0]) // 2)
+                left = max(0, (padded_width - tight.shape[1]) // 2)
+                canvas[top : top + tight.shape[0], left : left + tight.shape[1]] = tight
+                tight_rgb = gray_to_rgb(dilate_mask(canvas, radius=1))
+                variants.append(("tight_black_on_white", scaled_rgb(255 - tight_rgb)))
+        if 0 < _manual_two_city_positive_int(expected_lot) < 10:
+            right_half = white_mask[
+                max(0, white_mask.shape[0] // 5) : white_mask.shape[0],
+                max(0, white_mask.shape[1] // 2 - 3) : white_mask.shape[1],
+            ]
+            ys, xs = np.where(right_half > 0)
+            if len(xs) and len(ys):
+                x0 = max(0, int(xs.min()) - 2)
+                x1 = min(right_half.shape[1], int(xs.max()) + 3)
+                y0 = max(0, int(ys.min()) - 2)
+                y1 = min(right_half.shape[0], int(ys.max()) + 3)
+                single = right_half[y0:y1, x0:x1]
+                if single.size and single.shape[0] >= 4 and single.shape[1] >= 3:
+                    padded_height = max(24, single.shape[0] + 12)
+                    padded_width = max(24, single.shape[1] + 12)
+                    canvas = np.zeros((padded_height, padded_width), dtype=np.uint8)
+                    top = max(0, (padded_height - single.shape[0]) // 2)
+                    left = max(0, (padded_width - single.shape[1]) // 2)
+                    canvas[top : top + single.shape[0], left : left + single.shape[1]] = single
+                    single_rgb = gray_to_rgb(dilate_mask(canvas, radius=1))
+                    variants.append(("single_digit_right_black_on_white", scaled_rgb(255 - single_rgb)))
+    except Exception as exc:
+        result["reason"] = "crop_failed"
+        result["error"] = f"{type(exc).__name__}: {exc}"
+        return result
+
+    max_width = max(256, int(roi[2]) * max(1, int(BUY_PAGE_DIGIT_LOT_SCALE)) + 16)
+    max_height = max(160, int(roi[3]) * max(1, int(BUY_PAGE_DIGIT_LOT_SCALE)) + 16)
+    first_positive_value: int | None = None
+    first_positive_source = ""
+    expected_value = _manual_two_city_positive_int(expected_lot)
+    for variant_name, variant_image in variants:
+        _hit, entries, texts = _manual_two_city_ocr_entries_from_image(
+            context,
+            f"{name}{variant_name.title()}",
+            r"\d{1,5}",
+            variant_image,
+        )
+        value = _manual_two_city_parse_icon_lot_entries(entries, max_width=max_width, max_height=max_height)
+        variant_result = {
+            "variant": variant_name,
+            "texts": texts[:20],
+            "entries": [
+                {
+                    "text": str(entry.get("text") or ""),
+                    "box": [
+                        int(entry.get("x") or 0),
+                        int(entry.get("y") or 0),
+                        int(entry.get("w") or 0),
+                        int(entry.get("h") or 0),
+                    ],
+                }
+                for entry in entries[:12]
+            ],
+            "buy_lot": value,
+        }
+        trusted = _manual_two_city_product_scan_buy_lot_trusted(value, expected_value)
+        variant_result["trusted"] = trusted
+        result["variants"].append(variant_result)
+        if value is not None and value > 0:
+            if first_positive_value is None:
+                first_positive_value = value
+                first_positive_source = variant_name
+            if trusted:
+                result["buy_lot"] = value
+                result["source"] = variant_name
+                result["trusted"] = True
+                return result
+    if first_positive_value is not None:
+        result["raw_buy_lot"] = first_positive_value
+        result["raw_source"] = first_positive_source
+        result["reason"] = "no_trusted_digit_ocr"
+        return result
+    result["reason"] = "no_digit_ocr"
+    return result
+
+
+def _manual_two_city_direct_digit_lot_ocr(
+    context: Context,
+    name: str,
+    image: Any,
+    roi: list[int],
+) -> dict[str, Any]:
+    result: dict[str, Any] = {
+        "roi": roi,
+        "buy_lot": None,
+        "texts": [],
+        "entries": [],
+    }
+    if image is None:
+        result["reason"] = "image_missing"
+        return result
+    _hit, entries, texts = _manual_two_city_ocr_entries_from_image(
+        context,
+        name,
+        r"\d{1,5}",
+        image,
+        roi=roi,
+    )
+    max_width = max(48, int(roi[2]) + 8)
+    max_height = max(32, int(roi[3]) + 8)
+    value = _manual_two_city_parse_icon_lot_entries(
+        entries,
+        max_width=max_width,
+        max_height=max_height,
+    )
+    result["texts"] = texts[:20]
+    result["entries"] = [
+        {
+            "text": str(entry.get("text") or ""),
+            "box": [
+                int(entry.get("x") or 0),
+                int(entry.get("y") or 0),
+                int(entry.get("w") or 0),
+                int(entry.get("h") or 0),
+            ],
+        }
+        for entry in entries[:12]
+    ]
+    if value is not None and value > 0:
+        result["buy_lot"] = value
+        result["source"] = "direct"
+    else:
+        result["reason"] = "no_digit_ocr"
+    return result
+
+
+def _manual_two_city_read_product_icon_lot_by_row(
+    context: Context,
+    page_index: int,
+    row_index: int,
+    good: str,
+    center_y: Any,
+    *,
+    image: Any = None,
+    expected_lot: Any = None,
+) -> dict[str, Any]:
+    roi = _manual_two_city_product_icon_lot_row_roi(center_y)
+    if roi is None:
+        return {
+            "good": good,
+            "center_y": center_y,
+            "buy_lot": None,
+            "reason": "row_out_of_range",
+        }
+    page_image = image if image is not None else _manual_two_city_screencap(context)
+    digit_rois = _manual_two_city_product_icon_lot_digit_rois(center_y, expected_lot)
+    digit_roi = digit_rois[0] if digit_rois else None
+    digit_roi_attempts: list[dict[str, Any]] = []
+    direct_digit_ocr: dict[str, Any] | None = None
+    scaled_digit_ocr: dict[str, Any] | None = None
+    if page_image is not None:
+        for attempt_index, digit_roi_item in enumerate(digit_rois, start=1):
+            direct_digit_ocr = _manual_two_city_direct_digit_lot_ocr(
+                context,
+                f"ManualTwoCityProductScanDigitLot{page_index:03d}_{row_index:02d}_{attempt_index:02d}Direct",
+                page_image,
+                digit_roi_item,
+            )
+            try:
+                direct_value = int(direct_digit_ocr.get("buy_lot") or 0)
+            except (TypeError, ValueError):
+                direct_value = 0
+            direct_trusted = _manual_two_city_product_scan_buy_lot_trusted(direct_value, expected_lot)
+            direct_digit_ocr["attempt_index"] = attempt_index
+            direct_digit_ocr["trusted"] = direct_trusted
+            digit_roi_attempts.append({"roi": digit_roi_item, "direct_digit_ocr": direct_digit_ocr})
+            if direct_value > 0 and direct_trusted:
+                return {
+                    "good": good,
+                    "center_y": center_y,
+                    "roi": roi,
+                    "digit_roi": digit_roi_item,
+                    "digit_roi_attempts": digit_roi_attempts,
+                    "direct_digit_ocr": direct_digit_ocr,
+                    "scaled_digit_ocr": None,
+                    "texts": [],
+                    "entries": [],
+                    "raw_buy_lot": direct_value,
+                    "trusted": True,
+                    "buy_lot": direct_value,
+                }
+            scaled_digit_ocr = _manual_two_city_scaled_digit_lot_ocr(
+                context,
+                f"ManualTwoCityProductScanDigitLot{page_index:03d}_{row_index:02d}_{attempt_index:02d}",
+                page_image,
+                digit_roi_item,
+                expected_lot=expected_lot,
+            )
+            try:
+                scaled_value = int(scaled_digit_ocr.get("buy_lot") or 0)
+            except (TypeError, ValueError):
+                scaled_value = 0
+            scaled_trusted = _manual_two_city_product_scan_buy_lot_trusted(scaled_value, expected_lot)
+            scaled_digit_ocr["attempt_index"] = attempt_index
+            scaled_digit_ocr["trusted"] = scaled_trusted
+            digit_roi_attempts[-1]["scaled_digit_ocr"] = scaled_digit_ocr
+            if scaled_value > 0 and scaled_trusted:
+                return {
+                    "good": good,
+                    "center_y": center_y,
+                    "roi": roi,
+                    "digit_roi": digit_roi_item,
+                    "digit_roi_attempts": digit_roi_attempts,
+                    "direct_digit_ocr": direct_digit_ocr,
+                    "scaled_digit_ocr": scaled_digit_ocr,
+                    "texts": [],
+                    "entries": [],
+                    "raw_buy_lot": scaled_value,
+                    "trusted": True,
+                    "buy_lot": scaled_value,
+                }
+
+    if page_image is not None:
+        _hit, entries, texts = _manual_two_city_ocr_entries_from_image(
+            context,
+            f"ManualTwoCityProductScanRowLot{page_index:03d}_{row_index:02d}",
+            r"\d{1,5}",
+            page_image,
+            roi=roi,
+        )
+    else:
+        _hit, entries, texts = _manual_two_city_ocr_entries(
+            context,
+            f"ManualTwoCityProductScanRowLot{page_index:03d}_{row_index:02d}",
+            r"\d{1,5}",
+            roi=roi,
+        )
+    value = _manual_two_city_parse_icon_lot_entries(entries)
+    raw_value = _manual_two_city_positive_int(value)
+    trusted = _manual_two_city_product_scan_buy_lot_trusted(raw_value, expected_lot)
+    return {
+        "good": good,
+        "center_y": center_y,
+        "roi": roi,
+        "digit_roi": digit_roi,
+        "digit_roi_attempts": digit_roi_attempts,
+        "direct_digit_ocr": direct_digit_ocr,
+        "scaled_digit_ocr": scaled_digit_ocr,
+        "texts": texts[:20],
+        "entries": [
+            {
+                "text": str(entry.get("text") or ""),
+                "box": [
+                    int(entry.get("x") or 0),
+                    int(entry.get("y") or 0),
+                    int(entry.get("w") or 0),
+                    int(entry.get("h") or 0),
+                ],
+            }
+            for entry in entries[:12]
+        ],
+        "raw_buy_lot": raw_value or None,
+        "trusted": trusted,
+        "buy_lot": raw_value if trusted else None,
     }
 
 
@@ -7588,25 +8954,48 @@ def _manual_two_city_click(context: Context, target: tuple[int, int], delay: flo
         time.sleep(delay)
 
 
+def _manual_two_city_swipe(
+    context: Context,
+    begin: tuple[int, int],
+    end: tuple[int, int],
+    *,
+    duration: int = 500,
+    delay: float = 0.35,
+) -> None:
+    context.tasker.controller.post_swipe(
+        int(begin[0]),
+        int(begin[1]),
+        int(end[0]),
+        int(end[1]),
+        int(duration),
+    ).wait()
+    if delay > 0:
+        time.sleep(delay)
+
+
 def _manual_two_city_screencap(context: Context) -> Any:
     try:
         job = context.tasker.controller.post_screencap().wait()
         image = getattr(job, "result", None)
         if image is not None:
             return image
+        if hasattr(job, "get"):
+            image = job.get()
+            if image is not None:
+                return image
     except Exception:
         pass
     return getattr(context.tasker.controller, "cached_image", None)
 
 
-def _manual_two_city_ocr_detail(
+def _manual_two_city_ocr_detail_from_image(
     context: Context,
     name: str,
     expected: str | list[str],
+    image: Any,
     *,
     roi: list[int] | None = None,
 ) -> Any:
-    image = _manual_two_city_screencap(context)
     if image is None:
         return None
     node: dict[str, Any] = {
@@ -7620,6 +9009,31 @@ def _manual_two_city_ocr_detail(
         return context.run_recognition(name, image, {name: node})
     except Exception:
         return None
+
+
+def _manual_two_city_ocr_detail(
+    context: Context,
+    name: str,
+    expected: str | list[str],
+    *,
+    roi: list[int] | None = None,
+) -> Any:
+    image = _manual_two_city_screencap(context)
+    return _manual_two_city_ocr_detail_from_image(context, name, expected, image, roi=roi)
+
+
+def _manual_two_city_ocr_entries_from_image(
+    context: Context,
+    name: str,
+    expected: str | list[str],
+    image: Any,
+    *,
+    roi: list[int] | None = None,
+) -> tuple[bool, list[dict[str, Any]], list[str]]:
+    detail = _manual_two_city_ocr_detail_from_image(context, name, expected, image, roi=roi)
+    entries = _ocr_entries_from_detail(detail)
+    texts = _ocr_texts_from_detail(detail)
+    return bool(getattr(detail, "hit", False)), entries, texts
 
 
 def _manual_two_city_ocr_entries(
@@ -7736,6 +9150,72 @@ def _manual_two_city_click_ocr_text(
         _manual_two_city_click(context, fallback, delay)
         return True, texts
     return False, texts
+
+
+def _manual_two_city_dismiss_bento_success_notice(
+    context: Context,
+    name: str,
+    *,
+    attempts: int = 4,
+    delay: float = 0.75,
+) -> tuple[bool, list[str]]:
+    seen_texts: list[str] = []
+    for index in range(max(1, attempts)):
+        success_hit, _, success_texts = _manual_two_city_ocr_entries(
+            context,
+            f"{name}Success{index + 1:03d}",
+            FATIGUE_BENTO_SUCCESS_TEXTS,
+        )
+        seen_texts.extend(success_texts[:20])
+        if success_hit or _manual_two_city_texts_contain(success_texts, FATIGUE_BENTO_SUCCESS_TEXTS):
+            _manual_two_city_click(context, RECOVERY_PAGE_BACK_TARGET, delay)
+            continue
+
+        bento_hit, _, bento_texts = _manual_two_city_ocr_entries(
+            context,
+            f"{name}BentoPage{index + 1:03d}",
+            FATIGUE_BENTO_PAGE_TEXTS,
+        )
+        seen_texts.extend(bento_texts[:20])
+        if bento_hit or _manual_two_city_texts_contain(bento_texts, FATIGUE_BENTO_PAGE_TEXTS):
+            return True, list(dict.fromkeys(seen_texts))
+
+        if index < attempts - 1:
+            _manual_two_city_click(context, RECOVERY_PAGE_BACK_TARGET, delay)
+    return False, list(dict.fromkeys(seen_texts))
+
+
+def _manual_two_city_return_from_bento_to_strength_page(
+    context: Context,
+    name: str,
+    *,
+    attempts: int = 4,
+    delay: float = 0.8,
+) -> tuple[bool, list[str]]:
+    seen_texts: list[str] = []
+    for index in range(max(1, attempts)):
+        strength_hit, _, strength_texts = _manual_two_city_ocr_entries(
+            context,
+            f"{name}StrengthPage{index + 1:03d}",
+            FATIGUE_STRENGTH_PAGE_TEXTS,
+        )
+        seen_texts.extend(strength_texts[:20])
+        if strength_hit or _manual_two_city_texts_contain(strength_texts, FATIGUE_STRENGTH_PAGE_TEXTS):
+            return True, list(dict.fromkeys(seen_texts))
+
+        bento_hit, _, bento_texts = _manual_two_city_ocr_entries(
+            context,
+            f"{name}BentoPage{index + 1:03d}",
+            FATIGUE_BENTO_PAGE_TEXTS,
+        )
+        seen_texts.extend(bento_texts[:20])
+        if index >= attempts - 1:
+            break
+        if bento_hit or _manual_two_city_texts_contain(bento_texts, FATIGUE_BENTO_PAGE_TEXTS) or not seen_texts:
+            _manual_two_city_click(context, RECOVERY_PAGE_BACK_TARGET, delay)
+            continue
+        _manual_two_city_click(context, RECOVERY_PAGE_BACK_TARGET, delay)
+    return False, list(dict.fromkeys(seen_texts))
 
 
 def _manual_two_city_settlement_report_visible(context: Context, name: str) -> tuple[bool, list[str]]:
@@ -7874,7 +9354,7 @@ def _manual_two_city_try_bento_recovery(
             FATIGUE_BENTO_SUCCESS_TEXTS,
         )
         if success_hit:
-            _manual_two_city_click(context, (640, 510), 0.9)
+            _manual_two_city_click(context, RECOVERY_PAGE_BACK_TARGET, 0.9)
             break
         confirm_clicked, confirm_texts = _manual_two_city_click_ocr_text(
             context,
@@ -7901,6 +9381,28 @@ def _manual_two_city_try_bento_recovery(
 
     _manual_two_city_resource_used(state, "便当", "bento")
     _manual_two_city_recovery_mark_unavailable(recovery, "便当", "已全部使用")
+    dismissed, dismiss_texts = _manual_two_city_dismiss_bento_success_notice(
+        context,
+        "ManualTwoCityStrengthBentoDismiss",
+    )
+    if not dismissed:
+        _append_user_log(
+            MANUAL_TWO_CITY_TASK_ENTRY,
+            "跑商补疲劳：便当使用后未能确认关闭成功提示，交给外层恢复流程处理。",
+            level="warning",
+            event="manual_two_city_strength_bento_success_notice_stuck",
+            data={"phase": phase, "texts": dismiss_texts[:30]},
+        )
+        return {
+            "used": True,
+            "resource": "便当",
+            "enough": False,
+            "return_trade": False,
+            "strength_page_ready": False,
+            "reason": "bento_success_notice_stuck",
+            "texts": dismiss_texts[:30],
+        }
+
     status, status_texts = _manual_two_city_read_strength_status(context, "ManualTwoCityStrengthBentoStatus")
     if isinstance(status, dict):
         state["strength_recovery_last_status"] = status
@@ -7908,7 +9410,7 @@ def _manual_two_city_try_bento_recovery(
         _append_user_log(
             MANUAL_TWO_CITY_TASK_ENTRY,
             (
-                f"跑商补疲劳：便当页确认剩余疲劳 {status['remaining']}，"
+                f"跑商补疲劳：便当后确认剩余疲劳 {status['remaining']}，"
                 f"已满足安全需求 {required}，返回交易页。"
             ),
             event="manual_two_city_strength_bento_enough",
@@ -7917,12 +9419,19 @@ def _manual_two_city_try_bento_recovery(
         _manual_two_city_click(context, RECOVERY_PAGE_BACK_TARGET, 0.8)
         _manual_two_city_click(context, RECOVERY_PAGE_BACK_TARGET, 0.8)
         state["skip_next_drink_check"] = True
-        return {"used": True, "resource": "便当", "enough": True, "return_trade": True, "status": status}
+        return {
+            "used": True,
+            "resource": "便当",
+            "enough": True,
+            "return_trade": True,
+            "strength_page_ready": True,
+            "status": status,
+        }
 
     if status:
-        message = f"跑商补疲劳：便当页确认剩余疲劳 {status['remaining']}，仍低于安全需求 {required}，继续尝试体力药。"
+        message = f"跑商补疲劳：便当后确认剩余疲劳 {status['remaining']}，仍低于安全需求 {required}，继续尝试体力药。"
     else:
-        message = "跑商补疲劳：便当页未读到疲劳值，继续尝试体力药。"
+        message = "跑商补疲劳：便当后未读到疲劳值，继续尝试体力药。"
     _append_user_log(
         MANUAL_TWO_CITY_TASK_ENTRY,
         message,
@@ -7930,8 +9439,36 @@ def _manual_two_city_try_bento_recovery(
         event="manual_two_city_strength_bento_not_enough",
         data={"phase": phase, "status": status, "required": required, "texts": status_texts[:20]},
     )
-    _manual_two_city_click(context, RECOVERY_PAGE_BACK_TARGET, 0.8)
-    return {"used": True, "resource": "便当", "enough": False, "return_trade": False, "status": status}
+    returned, return_texts = _manual_two_city_return_from_bento_to_strength_page(
+        context,
+        "ManualTwoCityStrengthBentoReturn",
+    )
+    if not returned:
+        _append_user_log(
+            MANUAL_TWO_CITY_TASK_ENTRY,
+            "跑商补疲劳：便当后未能回到疲劳页，交给外层恢复流程处理。",
+            level="warning",
+            event="manual_two_city_strength_bento_return_failed",
+            data={"phase": phase, "status": status, "required": required, "texts": return_texts[:30]},
+        )
+        return {
+            "used": True,
+            "resource": "便当",
+            "enough": False,
+            "return_trade": False,
+            "strength_page_ready": False,
+            "reason": "strength_page_return_failed",
+            "status": status,
+            "texts": return_texts[:30],
+        }
+    return {
+        "used": True,
+        "resource": "便当",
+        "enough": False,
+        "return_trade": False,
+        "strength_page_ready": True,
+        "status": status,
+    }
 
 
 def _manual_two_city_try_medicine_recovery(
@@ -8249,13 +9786,51 @@ def _fatigue_click_drink_text(
     return _manual_two_city_click_ocr_text(context, name, expected, roi=roi, fallback=fallback, delay=delay)
 
 
+def _fatigue_click_drink_select(context: Context, name: str, *, delay: float = 0.9) -> tuple[bool, list[str]]:
+    expected = ["本次免费", "银枝气泡水", "喝一杯吗"]
+    _hit, entries, texts = _manual_two_city_ocr_entries(
+        context,
+        name,
+        expected,
+        roi=[700, 330, 520, 170],
+    )
+    for preferred in ("本次免费", "银枝气泡水", "喝一杯吗"):
+        for entry in entries:
+            text = clean_text(entry.get("text"))
+            if preferred not in text:
+                continue
+            x = int(float(entry.get("center_x") or 0))
+            y = int(float(entry.get("center_y") or 0))
+            if preferred == "银枝气泡水":
+                x = max(1020, min(1165, x + 225))
+            _manual_two_city_click(context, (x, y), delay)
+            return True, texts
+    full_texts = _fatigue_drink_texts(context, f"{name}Full")
+    if _fatigue_drink_page_kind(full_texts) != "drink_select":
+        return False, texts + full_texts
+    _manual_two_city_click(context, (1068, 421), delay)
+    return True, texts + full_texts
+
+
+def _fatigue_is_drink_cost_confirm(texts: list[str]) -> bool:
+    cleaned_texts = _fatigue_clean_texts(texts)
+    joined = "".join(cleaned_texts)
+    if not joined:
+        return False
+    if _fatigue_has_any_text(texts, FATIGUE_DRINK_COST_CONFIRM_TEXTS):
+        return True
+    if "银枝" not in joined:
+        return False
+    has_cost_word = any(keyword in joined for keyword in ("使用", "消耗"))
+    has_modal_action = any(keyword in joined for keyword in ("取消", "确认", "确定"))
+    if has_cost_word and has_modal_action:
+        return True
+    return False
+
+
 def _fatigue_dismiss_drink_cost_confirm(context: Context, texts: list[str] | None = None) -> bool:
     current_texts = texts if texts is not None else _fatigue_drink_texts(context, "FatigueDrinkCostConfirmProbe")
-    joined = "".join(_fatigue_clean_texts(current_texts))
-    if not (
-        any(clean_text(keyword) in joined for keyword in FATIGUE_DRINK_COST_CONFIRM_TEXTS)
-        or ("银枝气泡水" in joined and "使用" in joined)
-    ):
+    if not _fatigue_is_drink_cost_confirm(current_texts):
         return False
     clicked, confirm_texts = _fatigue_click_drink_text(
         context,
@@ -8358,9 +9933,16 @@ def _fatigue_handle_drink_skip_confirm(context: Context, *, attempt: int) -> boo
 
 def _fatigue_drink_page_kind(texts: list[str]) -> str:
     joined = "".join(_fatigue_clean_texts(texts))
-    if _fatigue_has_any_text(texts, FATIGUE_DRINK_COST_CONFIRM_TEXTS) or (
-        "银枝气泡水" in joined and "使用" in joined
-    ):
+    has_strength_recovery_page = any(
+        keyword in joined
+        for keyword in ("请选择恢复疲劳值方式", "前往便当柜", "前往休息区", "FATIGUE")
+    )
+    has_drink_select = (
+        "本次免费" in joined
+        or ("喝一杯吗" in joined and "再喝一杯" not in joined)
+        or ("银枝气泡水" in joined and not has_strength_recovery_page)
+    )
+    if _fatigue_is_drink_cost_confirm(texts):
         return "cost_confirm"
     if _fatigue_has_any_text(texts, FATIGUE_DRINK_UNAVAILABLE_TEXTS):
         return "unavailable"
@@ -8372,12 +9954,12 @@ def _fatigue_drink_page_kind(texts: list[str]) -> str:
         return "repeat_confirm"
     if _fatigue_has_any_text(texts, FATIGUE_DRINK_RESULT_TEXTS):
         return "result_popup"
-    if "银枝气泡水" in joined or "本次免费" in joined or ("喝一杯吗" in joined and "再喝一杯" not in joined):
+    if has_strength_recovery_page:
+        return "strength_page"
+    if has_drink_select:
         return "drink_select"
     if "休息区" in joined or "所有城市合计每日提供" in joined:
         return "rest_area"
-    if _fatigue_has_any_text(texts, FATIGUE_STRENGTH_PAGE_TEXTS):
-        return "strength_page"
     if _fatigue_has_any_text(texts, FATIGUE_DRINK_SKIP_TEXTS):
         return "skip"
     if _fatigue_has_any_text(texts, FATIGUE_DRINK_CONFIRM_TEXTS) or _fatigue_has_any_text(texts, FATIGUE_NO_REMIND_TEXTS):
@@ -8389,7 +9971,7 @@ def _fatigue_finish_one_drink(context: Context, *, attempt: int, timeout: float 
     start = time.monotonic()
     skip_fallback_clicked = False
     confirm_clicked = False
-    saw_progress = True
+    saw_drink_flow = False
     while time.monotonic() - start < timeout:
         texts = _fatigue_drink_texts(context, f"FatigueDrinkFinishProbe{attempt:03d}")
         if _fatigue_dismiss_drink_cost_confirm(context, texts):
@@ -8397,19 +9979,20 @@ def _fatigue_finish_one_drink(context: Context, *, attempt: int, timeout: float 
         if _fatigue_has_any_text(texts, FATIGUE_DRINK_UNAVAILABLE_TEXTS):
             return "unavailable"
         kind = _fatigue_drink_page_kind(texts)
-        if saw_progress and time.monotonic() - start > 1.2 and kind in {"drink_select", "rest_area", "strength_page"}:
+        if saw_drink_flow and time.monotonic() - start > 1.2 and kind in {"drink_select", "rest_area", "strength_page"}:
             return "done"
         if kind == "result_popup" and time.monotonic() - start > 0.8:
+            _manual_two_city_click(context, (640, 500), 0.8)
             return "done"
         if kind == "repeat_confirm":
             if not _fatigue_handle_drink_repeat_confirm(context, attempt=attempt):
                 return "repeat_confirm_stuck"
-            saw_progress = True
+            saw_drink_flow = True
             continue
         if kind == "skip_confirm":
             if not _fatigue_handle_drink_skip_confirm(context, attempt=attempt):
                 return "skip_confirm_stuck"
-            saw_progress = True
+            saw_drink_flow = True
             continue
         if kind == "skip":
             clicked, _ = _fatigue_click_drink_text(
@@ -8420,7 +10003,7 @@ def _fatigue_finish_one_drink(context: Context, *, attempt: int, timeout: float 
                 fallback=(1218, 42),
                 delay=0.8,
             )
-            saw_progress = saw_progress or clicked
+            saw_drink_flow = saw_drink_flow or clicked
             continue
         if kind == "confirm_popup":
             _fatigue_tap_no_remind_if_present(context, f"FatigueDrinkConfirmNoRemind{attempt:03d}")
@@ -8433,12 +10016,11 @@ def _fatigue_finish_one_drink(context: Context, *, attempt: int, timeout: float 
                 delay=0.9,
             )
             confirm_clicked = confirm_clicked or clicked
-            saw_progress = saw_progress or clicked
+            saw_drink_flow = saw_drink_flow or clicked
             continue
-        if not skip_fallback_clicked and time.monotonic() - start > 2.0:
+        if saw_drink_flow and not skip_fallback_clicked and time.monotonic() - start > 2.0:
             _manual_two_city_click(context, (1218, 42), 0.8)
             skip_fallback_clicked = True
-            saw_progress = True
             continue
         if confirm_clicked and kind in {"unknown", "confirm_popup"}:
             time.sleep(0.45)
@@ -8513,7 +10095,7 @@ def _run_fatigue_drink_until_cost(
                     f"FatigueDrinkTapEntry{attempt:03d}",
                     FATIGUE_DRINK_ACTION_TEXTS,
                     roi=[1010, 150, 240, 495],
-                    fallback=(1112, 343),
+                    fallback=FATIGUE_DRINK_ENTRY_TARGET,
                     delay=1.0,
                 )
                 if not clicked:
@@ -8558,20 +10140,16 @@ def _run_fatigue_drink_until_cost(
                         f"FatigueDrinkEnsureEntry{attempt:03d}",
                         FATIGUE_DRINK_ACTION_TEXTS,
                         roi=[1010, 150, 240, 495],
-                        fallback=(1112, 343),
+                        fallback=None,
                         delay=1.0,
                     )
                     if not clicked:
                         stop_reason = "ensure_entry_failed"
                         break
                     continue
-                clicked, _ = _fatigue_click_drink_text(
+                clicked, _ = _fatigue_click_drink_select(
                     context,
                     f"FatigueDrinkTapSilverSoda{attempt:03d}",
-                    ["银枝气泡水"],
-                    roi=[700, 330, 520, 170],
-                    fallback=(1162, 421),
-                    delay=0.9,
                 )
                 if not clicked:
                     stop_reason = "drink_select_click_failed"
@@ -8692,7 +10270,25 @@ class ManualTwoCityBusinessShouldReadCityPageAction(CustomAction):
 @AgentServer.custom_action("manual_two_city_business_use_buy_books")
 class ManualTwoCityBusinessUseBuyBooksAction(CustomAction):
     def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
+        state = _manual_two_city_state()
         leg = _manual_two_city_active_leg()
+        if _manual_two_city_existing_cargo_limited_buy(state):
+            cargo_load = state.get("buy_selection_existing_cargo_load")
+            _append_user_log(
+                MANUAL_TWO_CITY_TASK_ENTRY,
+                (
+                    "进货书：货仓已有本地货且只能补剩余仓位，本段跳过进货书，"
+                    "避免库存扩充后因容量不足反复重选。"
+                ),
+                level="warning",
+                event="manual_two_city_buy_books_skipped_existing_cargo_limit",
+                data={"leg": leg, "cargo_load": cargo_load},
+            )
+            _json_payload(
+                "manual_two_city_business_use_buy_books",
+                {"ok": True, "restock": 0, "reason": "existing_cargo_limited", "leg": leg, "cargo_load": cargo_load},
+            )
+            return True
         restock_count = leg.get("restock")
         batches = _manual_two_city_book_batches(restock_count)
         if not batches:
@@ -8953,6 +10549,7 @@ class ManualTwoCityBusinessBuyPageReadyAction(CustomAction):
         planned_goods = [str(item) for item in (leg.get("goods") or []) if str(item).strip()]
         cargo_load, cargo_probe_texts, cargo_probe_used = _manual_two_city_read_buy_page_cargo_load(context, entries)
         cleanup_signature = None
+        existing_cargo_limit = False
         if cargo_load is not None:
             cleanup_signature = (
                 f"{state.get('active_leg_index')}|{current_city or leg.get('buy_city') or ''}|"
@@ -8960,7 +10557,12 @@ class ManualTwoCityBusinessBuyPageReadyAction(CustomAction):
             )
         if cargo_load is not None and cargo_load["ratio"] > PRE_BUY_CLEANUP_WARN_RATIO:
             if cleanup_signature and state.get("pre_buy_cleanup_skip_signature") == cleanup_signature:
-                if cargo_load["ratio"] >= PRE_BUY_SKIP_BUY_FULL_RATIO:
+                remaining_blocks_all_planned = _manual_two_city_cargo_blocks_missing_goods(
+                    leg,
+                    cargo_load,
+                    planned_goods,
+                )
+                if cargo_load["ratio"] >= PRE_BUY_SKIP_BUY_FULL_RATIO or remaining_blocks_all_planned:
                     state.pop("pre_buy_cleanup", None)
                     state.pop("pre_buy_cleanup_raise_percent", None)
                     state.pop("pre_buy_cleanup_cargo", None)
@@ -8971,13 +10573,18 @@ class ManualTwoCityBusinessBuyPageReadyAction(CustomAction):
                     state["skip_buy_due_full_cargo"] = True
                     state["skip_buy_due_full_cargo_load"] = cargo_load
                     state["skip_buy_due_full_cargo_leg"] = leg
+                    _manual_two_city_clear_existing_cargo_limit(state)
                     state["trade_phase"] = "travel"
                     _append_user_log(
                         MANUAL_TWO_CITY_TASK_ENTRY,
                         (
                             f"买入前清仓：货仓 {cargo_load['used']}/{cargo_load['capacity']} "
                             f"({cargo_load['ratio']:.1%})，卖出页已确认无法继续卖出。"
-                            "本段视为已带货，跳过买入并直接前往卖出城市。"
+                            + (
+                                "剩余载量已装不下计划商品，跳过买入并直接前往卖出城市。"
+                                if remaining_blocks_all_planned
+                                else "本段视为已带货，跳过买入并直接前往卖出城市。"
+                            )
                         ),
                         level="warning",
                         event="manual_two_city_pre_buy_cleanup_full_cargo_skip_buy",
@@ -8987,6 +10594,7 @@ class ManualTwoCityBusinessBuyPageReadyAction(CustomAction):
                             "leg": leg,
                             "cargo_load": cargo_load,
                             "cleanup_signature": cleanup_signature,
+                            "remaining_blocks_all_planned": remaining_blocks_all_planned,
                         },
                     )
                     _json_payload(
@@ -9016,6 +10624,9 @@ class ManualTwoCityBusinessBuyPageReadyAction(CustomAction):
                         "cleanup_signature": cleanup_signature,
                     },
                 )
+                existing_cargo_limit = True
+                state["buy_selection_limited_by_existing_cargo"] = True
+                state["buy_selection_existing_cargo_load"] = cargo_load
                 state.pop("pre_buy_cleanup", None)
                 state.pop("pre_buy_cleanup_raise_percent", None)
                 state.pop("pre_buy_cleanup_cargo", None)
@@ -9028,6 +10639,7 @@ class ManualTwoCityBusinessBuyPageReadyAction(CustomAction):
                 state["pre_buy_cleanup_raise_percent"] = raise_percent
                 state["pre_buy_cleanup_cargo"] = cargo_load
                 state["pre_buy_cleanup_strength_required"] = cleanup_required
+                _manual_two_city_clear_existing_cargo_limit(state)
                 if cleanup_signature:
                     state["pre_buy_cleanup_signature"] = cleanup_signature
                 state["selected_buy_goods"] = []
@@ -9103,6 +10715,8 @@ class ManualTwoCityBusinessBuyPageReadyAction(CustomAction):
         state.pop("pre_buy_cleanup_cargo", None)
         state.pop("pre_buy_cleanup_strength_required", None)
         state.pop("pre_buy_cleanup_signature", None)
+        if not existing_cargo_limit:
+            _manual_two_city_clear_existing_cargo_limit(state)
         cargo_note = (
             f"，货仓 {cargo_load['used']}/{cargo_load['capacity']} ({cargo_load['ratio']:.1%})"
             if cargo_load is not None
@@ -9677,6 +11291,183 @@ def _manual_two_city_product_scan_required_goods(city_name: Any) -> list[str]:
     ]
 
 
+def _manual_two_city_product_scan_context_targets(
+    city_name: Any,
+    focus_targets: list[str],
+    *,
+    radius: int = 1,
+) -> list[str]:
+    city = normalize_city_name(str(city_name or "").strip())
+    ordered = _known_buy_goods_for_city(city)
+    if not ordered or not focus_targets:
+        return list(dict.fromkeys(str(item) for item in focus_targets if str(item).strip()))
+    order_index = {good: index for index, good in enumerate(ordered)}
+    selected: list[str] = []
+    for target in focus_targets:
+        if target not in order_index:
+            selected.append(target)
+            continue
+        index = order_index[target]
+        for neighbor_index in range(max(0, index - radius), min(len(ordered), index + radius + 1)):
+            selected.append(ordered[neighbor_index])
+    return [item for item in dict.fromkeys(selected) if item]
+
+
+def _manual_two_city_product_scan_order_indices(city_name: Any, goods: list[str]) -> dict[str, int]:
+    city = normalize_city_name(str(city_name or "").strip())
+    ordered = _known_buy_goods_for_city(city)
+    order_index = {good: index for index, good in enumerate(ordered)}
+    return {
+        good: order_index[good]
+        for good in goods
+        if good in order_index
+    }
+
+
+def _manual_two_city_product_scan_visible_snapshot(
+    context: Context,
+    name: str,
+    city_name: Any,
+) -> dict[str, Any]:
+    targets = _known_buy_goods_for_city(city_name)
+    _hit, entries, texts = _manual_two_city_ocr_entries(
+        context,
+        name,
+        r".+",
+        roi=PRODUCT_SCAN_LIST_ROI,
+    )
+    visible = visible_product_unlock_status(entries, targets) or visible_product_unlock_status_from_texts(texts, targets)
+    signature = trade_list_page_signature(entries) or trade_list_text_signature(texts)
+    return {
+        "signature": signature,
+        "visible_goods": [
+            str(item.get("good") or "")
+            for item in sorted(
+                (
+                    {"good": good, "center_y": data.get("center_y")}
+                    for good, data in visible.items()
+                    if str(good).strip()
+                ),
+                key=lambda item: (float(item.get("center_y") or 0), str(item.get("good") or "")),
+            )
+        ],
+        "texts": texts[:20],
+    }
+
+
+def _manual_two_city_product_scan_reset_top_if_needed(
+    context: Context,
+    city_name: Any,
+    *,
+    max_swipes: int = PRODUCT_SCAN_RESET_TOP_MAX_SWIPES,
+) -> dict[str, Any]:
+    snapshots: list[dict[str, Any]] = []
+    previous = _manual_two_city_product_scan_visible_snapshot(context, "ManualTwoCityProductScanPrepareTop000", city_name)
+    snapshots.append(previous)
+    for index in range(max(0, max_swipes)):
+        _manual_two_city_swipe(
+            context,
+            PRODUCT_SCAN_RESET_TOP_BEGIN,
+            PRODUCT_SCAN_RESET_TOP_END,
+            duration=520,
+            delay=0.42,
+        )
+        current = _manual_two_city_product_scan_visible_snapshot(
+            context,
+            f"ManualTwoCityProductScanPrepareTop{index + 1:03d}",
+            city_name,
+        )
+        snapshots.append(current)
+        if current.get("signature") and current.get("signature") == previous.get("signature"):
+            return {
+                "swipes": index + 1,
+                "stopped": "signature_unchanged",
+                "snapshots": snapshots,
+            }
+        visible_indices = _manual_two_city_product_scan_order_indices(
+            city_name,
+            [str(item) for item in current.get("visible_goods") or []],
+        )
+        if visible_indices and min(visible_indices.values()) <= 0:
+            return {
+                "swipes": index + 1,
+                "stopped": "top_visible",
+                "snapshots": snapshots,
+            }
+        previous = current
+    return {
+        "swipes": max(0, max_swipes),
+        "stopped": "max_swipes",
+        "snapshots": snapshots,
+    }
+
+
+@AgentServer.custom_action("manual_two_city_business_product_scan_prepare")
+class ManualTwoCityBusinessProductScanPrepareAction(CustomAction):
+    def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
+        state = _manual_two_city_state()
+        city = normalize_city_name(str(state.get("product_scan_city") or "").strip())
+        try:
+            retry_count = int(state.get("product_scan_missing_trade_field_retry_count") or 0)
+        except (TypeError, ValueError):
+            retry_count = 0
+        focus_targets = [
+            str(item)
+            for item in (state.get("product_scan_focus_targets") or state.get("product_scan_active_targets") or [])
+            if str(item).strip()
+        ]
+        target_indices = _manual_two_city_product_scan_order_indices(city, focus_targets)
+        reset_result: dict[str, Any] | None = None
+        nudge = False
+        if retry_count > 0:
+            reset_result = _manual_two_city_product_scan_reset_top_if_needed(context, city)
+            if target_indices:
+                first_index = min(target_indices.values())
+                nudge = PRODUCT_SCAN_VISIBLE_FULL_ROWS <= first_index <= PRODUCT_SCAN_VISIBLE_FULL_ROWS + 1
+                if nudge:
+                    _manual_two_city_swipe(
+                        context,
+                        PRODUCT_SCAN_PAGE_SCROLL_BEGIN,
+                        PRODUCT_SCAN_TARGET_NUDGE_END,
+                        duration=360,
+                        delay=0.4,
+                    )
+
+        _append_user_log(
+            MANUAL_TWO_CITY_TASK_ENTRY,
+            (
+                f"{city or '当前城市'} 商品扫描准备："
+                + ("重试定位完成" if retry_count > 0 else "刚进入买入页，跳过回到列表顶部")
+                + (f"，目标序号 {target_indices}" if target_indices else "")
+                + ("，已轻微下滑避免边缘半截行。" if nudge else "。")
+            ),
+            run_id=str(state.get("run_id") or ""),
+            event="manual_two_city_product_scan_prepare",
+            data={
+                "city": city,
+                "retry_count": retry_count,
+                "focus_targets": focus_targets,
+                "active_targets": state.get("product_scan_active_targets") or [],
+                "target_indices": target_indices,
+                "reset_result": reset_result,
+                "nudged": nudge,
+            },
+        )
+        _json_payload(
+            "manual_two_city_business_product_scan_prepare",
+            {
+                "ok": True,
+                "city": city,
+                "retry_count": retry_count,
+                "focus_targets": focus_targets,
+                "target_indices": target_indices,
+                "reset_result": reset_result,
+                "nudged": nudge,
+            },
+        )
+        return True
+
+
 def _manual_two_city_recalculate_after_product_scan(city_name: Any) -> bool:
     state = _manual_two_city_state()
     task_entry = _manual_two_city_current_task_entry(state)
@@ -9853,6 +11644,12 @@ class ManualTwoCityBusinessProductScanNeededAction(CustomAction):
                 required_counts[status] += 1
         state["product_scan_city"] = city
         state["product_scan_targets"] = targets
+        state["product_scan_active_targets"] = targets
+        state["product_scan_focus_targets"] = targets
+        state["product_scan_expected_buy_lots"] = _manual_two_city_calculated_buy_lots_for_city(
+            city,
+            state.get("result") if isinstance(state.get("result"), dict) else {},
+        )
         state["product_scan_statuses"] = {}
         state["product_scan_buy_lots"] = {}
         state["product_scan_tax_rate"] = None
@@ -9862,13 +11659,16 @@ class ManualTwoCityBusinessProductScanNeededAction(CustomAction):
         state["product_scan_pages"] = []
         state["product_scan_page_signatures"] = []
         state["product_scan_good_signatures"] = []
+        state["product_scan_active_seen_goods"] = []
         state["product_scan_stop_reason"] = ""
+        state["product_scan_missing_trade_field_retry_count"] = 0
+        state["product_scan_retry_missing_trade_fields"] = {}
         state["selected_buy_goods"] = []
         scan_reasons = []
         if required_goods:
             scan_reasons.append(f"{len(required_goods)} 个待复核交易品")
         if city_trade_due:
-            scan_reasons.append("城市税率/商品单批量需要读取")
+            scan_reasons.append("城市税率/商品可购入量需要读取")
         _append_user_log(
             MANUAL_TWO_CITY_TASK_ENTRY,
             (
@@ -9888,6 +11688,7 @@ class ManualTwoCityBusinessProductScanNeededAction(CustomAction):
                 "required_counts": required_counts,
                 "city_trade_status": city_trade_status,
                 "targets": targets,
+                "expected_buy_lots": state.get("product_scan_expected_buy_lots") or {},
                 "leg": leg,
             },
         )
@@ -9912,11 +11713,39 @@ class ManualTwoCityBusinessProductScanPageAction(CustomAction):
         state = _manual_two_city_state()
         city = normalize_city_name(str(state.get("product_scan_city") or "").strip())
         targets = [str(item) for item in (state.get("product_scan_targets") or []) if str(item).strip()]
+        active_targets = [
+            str(item)
+            for item in (state.get("product_scan_active_targets") or targets)
+            if str(item).strip()
+        ] or targets
+        focus_targets = [
+            str(item)
+            for item in (state.get("product_scan_focus_targets") or active_targets)
+            if str(item).strip()
+        ] or active_targets
+        scan_trade_data = bool(state.get("product_scan_city_trade_due"))
+        expected_buy_lots = (
+            _product_buy_lot_by_city(
+                {city: state.get("product_scan_expected_buy_lots") or {}}
+            ).get(city, {})
+            if scan_trade_data
+            else {}
+        )
         entries = _ocr_entries(argv)
         texts = _ocr_texts(argv)
+        icon_lot_entries: list[dict[str, Any]] = []
+        icon_lot_texts: list[str] = []
+        if scan_trade_data:
+            _icon_lot_hit, icon_lot_entries, icon_lot_texts = _manual_two_city_ocr_entries(
+                context,
+                f"ManualTwoCityProductScanIconLots{page_index:03d}",
+                r"\d{1,5}",
+                roi=BUY_PAGE_ICON_LOT_ROI,
+            )
+        product_entries = entries
         tax_rate = state.get("product_scan_tax_rate")
         tax_texts: list[str] = []
-        if state.get("product_scan_city_trade_due") and tax_rate is None:
+        if scan_trade_data and tax_rate is None:
             tax_rate, tax_texts = _manual_two_city_read_buy_page_tax_rate(
                 context,
                 f"ManualTwoCityProductScanTaxRate{page_index:03d}",
@@ -9925,9 +11754,58 @@ class ManualTwoCityBusinessProductScanPageAction(CustomAction):
                 state["product_scan_tax_rate_texts"] = tax_texts[:20]
             if tax_rate is not None:
                 state["product_scan_tax_rate"] = tax_rate
-        visible = visible_product_unlock_status(entries, targets) or visible_product_unlock_status_from_texts(texts, targets)
+        visible = visible_product_unlock_status(
+            product_entries,
+            active_targets,
+            expected_buy_lots=expected_buy_lots if scan_trade_data else None,
+        ) or visible_product_unlock_status_from_texts(texts, active_targets)
+        if not scan_trade_data:
+            for item in visible.values():
+                if isinstance(item, dict):
+                    item["buy_lot"] = None
+        row_lot_debug: list[dict[str, Any]] = []
+        if scan_trade_data:
+            row_lot_image = _manual_two_city_screencap(context)
+            for row_index, (good, item) in enumerate(list(visible.items()), start=1):
+                if item.get("locked") or item.get("out_of_stock"):
+                    continue
+                try:
+                    existing_buy_lot = int(item.get("buy_lot") or 0)
+                except (TypeError, ValueError):
+                    existing_buy_lot = 0
+                expected_buy_lot = expected_buy_lots.get(good)
+                try:
+                    expected_buy_lot_int = int(expected_buy_lot or 0)
+                except (TypeError, ValueError):
+                    expected_buy_lot_int = 0
+                if _manual_two_city_product_scan_buy_lot_trusted(
+                    existing_buy_lot,
+                    expected_buy_lot_int,
+                ):
+                    continue
+                debug = _manual_two_city_read_product_icon_lot_by_row(
+                    context,
+                    page_index,
+                    row_index,
+                    good,
+                    item.get("center_y"),
+                    image=row_lot_image,
+                    expected_lot=expected_buy_lot_int,
+                )
+                row_lot_debug.append(debug)
+                try:
+                    row_buy_lot = int(debug.get("buy_lot") or 0)
+                except (TypeError, ValueError):
+                    row_buy_lot = 0
+                if row_buy_lot > 0:
+                    item["buy_lot"] = row_buy_lot
         statuses = state.setdefault("product_scan_statuses", {})
         buy_lots = state.setdefault("product_scan_buy_lots", {})
+        row_lot_debug_by_good = {
+            str(item.get("good") or ""): item
+            for item in row_lot_debug
+            if str(item.get("good") or "").strip()
+        }
         records: list[dict[str, Any]] = []
         for good, item in visible.items():
             status = PRODUCT_STATUS_LOCKED if item.get("locked") else PRODUCT_STATUS_NORMAL
@@ -9938,7 +11816,17 @@ class ManualTwoCityBusinessProductScanPageAction(CustomAction):
                 buy_lot = int(item.get("buy_lot") or 0)
             except (TypeError, ValueError):
                 buy_lot = 0
-            if buy_lot > 0:
+            expected_buy_lot = expected_buy_lots.get(good)
+            buy_lot_trusted = (
+                _manual_two_city_product_scan_buy_lot_trusted(
+                    buy_lot,
+                    expected_buy_lot,
+                )
+                if scan_trade_data
+                else False
+            )
+            buy_lot_source = "ocr" if scan_trade_data else None
+            if scan_trade_data and buy_lot > 0 and buy_lot_trusted:
                 buy_lots[good] = buy_lot
             records.append(
                 {
@@ -9948,10 +11836,37 @@ class ManualTwoCityBusinessProductScanPageAction(CustomAction):
                     "center_y": item.get("center_y"),
                     "locked": bool(item.get("locked")),
                     "out_of_stock": bool(item.get("out_of_stock")),
-                    "buy_lot": buy_lot or None,
+                    "expected_buy_lot": expected_buy_lot if scan_trade_data else None,
+                    "buy_lot": (buy_lot or None) if scan_trade_data else None,
+                    "buy_lot_trusted": buy_lot_trusted if scan_trade_data else False,
+                    "buy_lot_source": buy_lot_source,
+                    "row_lot_ocr": row_lot_debug_by_good.get(good),
                 }
             )
 
+        positional_lot_assignments: list[dict[str, Any]] = []
+        if state.get("product_scan_city_trade_due"):
+            positional_lot_assignments = _manual_two_city_assign_icon_lots_by_order(
+                city,
+                icon_lot_entries,
+                expected_buy_lots,
+                records,
+                focus_targets,
+                buy_lots,
+            )
+            for assignment in positional_lot_assignments:
+                good = str(assignment.get("good") or "").strip()
+                lot = _manual_two_city_positive_int(assignment.get("buy_lot"))
+                if good and lot > 0:
+                    buy_lots[good] = lot
+
+        active_seen_goods = {
+            str(item)
+            for item in (state.get("product_scan_active_seen_goods") or [])
+            if str(item).strip()
+        }
+        active_seen_goods.update(good for good in visible if good in active_targets)
+        state["product_scan_active_seen_goods"] = sorted(active_seen_goods)
         records.sort(key=lambda item: (float(item.get("center_y") or 0), str(item.get("good") or "")))
         page_updates = {
             str(item.get("good") or ""): _normalize_product_status(item.get("status"))
@@ -9985,7 +11900,35 @@ class ManualTwoCityBusinessProductScanPageAction(CustomAction):
             if len(signatures) > 24:
                 del signatures[:-24]
         seen = set(statuses)
-        all_seen = bool(targets and set(targets).issubset(seen))
+        focus_all_seen = bool(focus_targets and set(focus_targets).issubset(active_seen_goods))
+        focus_missing_buy_lot: list[str] = []
+        if state.get("product_scan_city_trade_due"):
+            for good in focus_targets:
+                expected_buy_lot = expected_buy_lots.get(good)
+                try:
+                    expected_buy_lot_int = int(expected_buy_lot or 0)
+                except (TypeError, ValueError):
+                    expected_buy_lot_int = 0
+                if expected_buy_lot_int <= 0:
+                    continue
+                item = visible.get(good)
+                if item and (item.get("locked") or item.get("out_of_stock")):
+                    continue
+                if not item and good not in active_seen_goods:
+                    continue
+                if statuses.get(good) in {PRODUCT_STATUS_LOCKED, PRODUCT_STATUS_MISSING}:
+                    continue
+                item_buy_lot = item.get("buy_lot") if item else None
+                try:
+                    observed_buy_lot = int(item_buy_lot or buy_lots.get(good) or 0)
+                except (TypeError, ValueError):
+                    observed_buy_lot = 0
+                if not _manual_two_city_product_scan_buy_lot_trusted(
+                    observed_buy_lot,
+                    expected_buy_lot_int,
+                ):
+                    focus_missing_buy_lot.append(good)
+        all_seen = focus_all_seen and not focus_missing_buy_lot
         stop_reason = ""
         if all_seen:
             stop_reason = "all_targets_observed"
@@ -10003,6 +11946,13 @@ class ManualTwoCityBusinessProductScanPageAction(CustomAction):
                 "entry_count": len(entries),
                 "tax_rate": tax_rate,
                 "tax_texts": tax_texts[:20],
+                "icon_lot_texts": icon_lot_texts[:20],
+                "row_lot_ocr": row_lot_debug,
+                "positional_lot_assignments": positional_lot_assignments,
+                "active_targets": active_targets,
+                "focus_targets": focus_targets,
+                "active_seen": sorted(active_seen_goods),
+                "focus_missing_buy_lot": focus_missing_buy_lot,
                 "signature_repeated": repeated,
                 "good_signature": good_signature,
                 "good_signature_repeated": good_signature_repeated,
@@ -10023,9 +11973,17 @@ class ManualTwoCityBusinessProductScanPageAction(CustomAction):
                 "records": records,
                 "seen": sorted(seen),
                 "targets": targets,
+                "active_targets": active_targets,
+                "focus_targets": focus_targets,
+                "active_seen": sorted(active_seen_goods),
+                "focus_missing_buy_lot": focus_missing_buy_lot,
+                "expected_buy_lots": expected_buy_lots,
                 "buy_lots": dict(buy_lots),
                 "tax_rate": state.get("product_scan_tax_rate"),
                 "tax_texts": tax_texts[:20],
+                "icon_lot_texts": icon_lot_texts[:20],
+                "row_lot_ocr": row_lot_debug,
+                "positional_lot_assignments": positional_lot_assignments,
                 "good_signature": good_signature,
                 "good_signature_repeated": good_signature_repeated,
                 "stop_reason": stop_reason,
@@ -10040,9 +11998,17 @@ class ManualTwoCityBusinessProductScanPageAction(CustomAction):
                 "page_index": page_index,
                 "records": records,
                 "stop_reason": stop_reason,
+                "active_targets": active_targets,
+                "focus_targets": focus_targets,
+                "active_seen": sorted(active_seen_goods),
+                "focus_missing_buy_lot": focus_missing_buy_lot,
+                "expected_buy_lots": expected_buy_lots,
                 "buy_lots": dict(buy_lots),
                 "tax_rate": state.get("product_scan_tax_rate"),
                 "tax_texts": tax_texts[:20],
+                "icon_lot_texts": icon_lot_texts[:20],
+                "row_lot_ocr": row_lot_debug,
+                "positional_lot_assignments": positional_lot_assignments,
                 "page_write_result": page_write_result,
             },
         )
@@ -10085,43 +12051,108 @@ class ManualTwoCityBusinessProductScanCompleteAction(CustomAction):
             reason="交易所买入页预扫描",
         )
         city_trade_due = bool(state.get("product_scan_city_trade_due"))
-        product_buy_lots = {
+        raw_product_buy_lots = {
             str(good): int(value)
             for good, value in (state.get("product_scan_buy_lots") or {}).items()
             if str(good).strip()
             and isinstance(value, int)
             and int(value) > 0
         }
-        city_tax_rate = state.get("product_scan_tax_rate")
-        trade_observation_result = _manual_two_city_update_city_trade_observation(
+        product_buy_lots, rejected_product_buy_lots = _manual_two_city_filter_product_scan_buy_lots(
             city,
+            raw_product_buy_lots,
+        )
+        rejected_count = len([good for good in rejected_product_buy_lots if not str(good).startswith("_")])
+        normal = [good for good, status in updates.items() if status == PRODUCT_STATUS_NORMAL]
+        city_tax_rate = state.get("product_scan_tax_rate")
+        trade_completion = _manual_two_city_city_trade_completion(
+            city,
+            status_by_good=updates,
             product_buy_lots=product_buy_lots,
             city_tax_rate=city_tax_rate,
-            mark_read=city_trade_due,
+            require_observed_buy_lots=city_trade_due,
+        )
+        missing_observed_buy_lot_goods = list(trade_completion.get("missing_observed_buy_lot_goods") or [])
+        city_trade_complete = bool(trade_completion.get("complete"))
+        missing_buy_lot_goods = list(trade_completion.get("missing_buy_lot_goods") or [])
+        saved_fallback_buy_lot_goods = list(trade_completion.get("saved_fallback_buy_lot_goods") or [])
+        missing_tax_rate = bool(trade_completion.get("missing_tax_rate"))
+        retry_count = int(state.get("product_scan_missing_trade_field_retry_count") or 0)
+        retry_needed = bool(
+            city_trade_due
+            and not city_trade_complete
+            and (missing_buy_lot_goods or missing_tax_rate)
+            and retry_count < PRODUCT_SCAN_MISSING_TRADE_FIELD_RETRY_LIMIT
+        )
+        state["product_scan_retry_missing_trade_fields"] = {
+            "needed": retry_needed,
+            "city": city,
+            "retry_count": retry_count,
+            "retry_limit": PRODUCT_SCAN_MISSING_TRADE_FIELD_RETRY_LIMIT,
+            "missing_buy_lot_goods": missing_buy_lot_goods,
+            "missing_observed_buy_lot_goods": missing_observed_buy_lot_goods,
+            "missing_tax_rate": missing_tax_rate,
+            "stop_reason": state.get("product_scan_stop_reason") or "",
+        }
+        product_buy_lots_to_save = product_buy_lots if (city_trade_due and city_trade_complete) else {}
+        city_tax_rate_to_save = city_tax_rate
+        if city_trade_due and city_trade_complete and city_tax_rate_to_save is None:
+            city_tax_rate_to_save = trade_completion.get("effective_city_tax_rate")
+        trade_observation_result = _manual_two_city_update_city_trade_observation(
+            city,
+            product_buy_lots=product_buy_lots_to_save,
+            city_tax_rate=city_tax_rate_to_save,
+            mark_read=city_trade_due and city_trade_complete,
             reason="交易所买入页预扫描",
         )
         completed = list(state.get("product_scan_completed_cities") or [])
-        if city and city not in completed:
+        if city and city not in completed and (not city_trade_due or city_trade_complete):
             completed.append(city)
         state["product_scan_completed_cities"] = completed
         missing = [good for good, status in updates.items() if status == PRODUCT_STATUS_MISSING]
         locked = [good for good, status in updates.items() if status == PRODUCT_STATUS_LOCKED]
-        normal = [good for good, status in updates.items() if status == PRODUCT_STATUS_NORMAL]
+        message = (
+            f"{city} 商品状态扫描完成：正常 {len(normal)}，"
+            f"未解锁 {len(locked)}，未出现 {len(missing)}，"
+        )
+        if city_trade_due:
+            message += (
+                f"读取可购入量 {len(product_buy_lots)}"
+                + f"/{len(trade_completion.get('required_buy_lot_goods') or [])} 个"
+            )
+        else:
+            message += "未触发交易数据读取，沿用已保存可购入量"
+        if rejected_count:
+            message += f"，丢弃异常可购入量 {rejected_count} 个"
+        if city_trade_due and saved_fallback_buy_lot_goods:
+            message += f"，旧配置可补 {len(saved_fallback_buy_lot_goods)} 个（{'、'.join(saved_fallback_buy_lot_goods)}）"
+        if isinstance(city_tax_rate, (int, float)):
+            message += f"，税率 {city_tax_rate * 100:.1f}%"
+        else:
+            saved_tax_rate = trade_completion.get("saved_city_tax_rate")
+            if isinstance(saved_tax_rate, (int, float)):
+                message += f"，税率沿用已保存 {saved_tax_rate * 100:.1f}%"
+            else:
+                message += "，税率未识别"
+        if city_trade_due and not city_trade_complete:
+            message += (
+                f"，交易数据未完整（缺单批量 {len(missing_buy_lot_goods)} 个"
+                + (f"：{'、'.join(missing_buy_lot_goods)}" if missing_buy_lot_goods else "")
+                + ("，缺税率" if missing_tax_rate else "")
+                + "）"
+            )
+            if retry_needed:
+                message += f"，将第 {retry_count + 1}/{PRODUCT_SCAN_MISSING_TRADE_FIELD_RETRY_LIMIT} 次重新扫描"
         _append_user_log(
             MANUAL_TWO_CITY_TASK_ENTRY,
-            (
-                f"{city} 商品状态扫描完成：正常 {len(normal)}，"
-                f"未解锁 {len(locked)}，未出现 {len(missing)}，"
-                f"读取单批量 {len(product_buy_lots)} 个，"
-                f"税率 {city_tax_rate * 100:.1f}%" if isinstance(city_tax_rate, (int, float)) else (
-                    f"{city} 商品状态扫描完成：正常 {len(normal)}，"
-                    f"未解锁 {len(locked)}，未出现 {len(missing)}，"
-                    f"读取单批量 {len(product_buy_lots)} 个，税率未识别"
-                )
-            )
-            + "，准备重算。",
+            message
+            + (
+                "，重新扫描。"
+                if retry_needed
+                else ("，停止本轮避免误买。" if city_trade_due and not city_trade_complete else "，准备重算。")
+            ),
             run_id=str(state.get("run_id") or ""),
-            level="warning" if locked or missing or (city_trade_due and not isinstance(city_tax_rate, (int, float))) else "info",
+            level="warning" if locked or missing or rejected_count or (city_trade_due and not city_trade_complete) else "info",
             event="manual_two_city_product_scan_complete",
             data={
                 "city": city,
@@ -10129,9 +12160,18 @@ class ManualTwoCityBusinessProductScanCompleteAction(CustomAction):
                 "locked": locked,
                 "missing": missing,
                 "updates": updates,
+                "raw_product_buy_lots": raw_product_buy_lots,
                 "product_buy_lots": product_buy_lots,
+                "saved_product_buy_lots": product_buy_lots_to_save,
+                "saved_fallback_buy_lot_goods": saved_fallback_buy_lot_goods,
+                "missing_observed_buy_lot_goods": missing_observed_buy_lot_goods,
+                "rejected_product_buy_lots": rejected_product_buy_lots,
+                "retry_missing_trade_fields": state.get("product_scan_retry_missing_trade_fields") or {},
                 "city_tax_rate": city_tax_rate,
+                "saved_city_tax_rate": city_tax_rate_to_save,
                 "city_trade_due": city_trade_due,
+                "city_trade_complete": city_trade_complete,
+                "city_trade_completion": trade_completion,
                 "write_result": result,
                 "trade_observation_result": trade_observation_result,
                 "pages": state.get("product_scan_pages") or [],
@@ -10139,6 +12179,31 @@ class ManualTwoCityBusinessProductScanCompleteAction(CustomAction):
                 "tax_texts": state.get("product_scan_tax_rate_texts") or [],
             },
         )
+        if city_trade_due and not city_trade_complete:
+            _json_payload(
+                "manual_two_city_business_product_scan_complete",
+                {
+                    "ok": False,
+                    "reason": "city_trade_incomplete",
+                    "city": city,
+                    "normal": normal,
+                    "locked": locked,
+                    "missing": missing,
+                    "raw_product_buy_lots": raw_product_buy_lots,
+                    "product_buy_lots": product_buy_lots,
+                    "saved_product_buy_lots": product_buy_lots_to_save,
+                    "saved_fallback_buy_lot_goods": saved_fallback_buy_lot_goods,
+                    "missing_observed_buy_lot_goods": missing_observed_buy_lot_goods,
+                    "rejected_product_buy_lots": rejected_product_buy_lots,
+                    "retry_missing_trade_fields": state.get("product_scan_retry_missing_trade_fields") or {},
+                    "city_tax_rate": city_tax_rate,
+                    "saved_city_tax_rate": city_tax_rate_to_save,
+                    "city_trade_due": city_trade_due,
+                    "city_trade_complete": city_trade_complete,
+                    "city_trade_completion": trade_completion,
+                },
+            )
+            return False
         ok = _manual_two_city_recalculate_after_product_scan(city)
         _json_payload(
             "manual_two_city_business_product_scan_complete",
@@ -10148,11 +12213,103 @@ class ManualTwoCityBusinessProductScanCompleteAction(CustomAction):
                 "normal": normal,
                 "locked": locked,
                 "missing": missing,
+                "raw_product_buy_lots": raw_product_buy_lots,
                 "product_buy_lots": product_buy_lots,
+                "saved_product_buy_lots": product_buy_lots_to_save,
+                "saved_fallback_buy_lot_goods": saved_fallback_buy_lot_goods,
+                "missing_observed_buy_lot_goods": missing_observed_buy_lot_goods,
+                "rejected_product_buy_lots": rejected_product_buy_lots,
+                "retry_missing_trade_fields": state.get("product_scan_retry_missing_trade_fields") or {},
                 "city_tax_rate": city_tax_rate,
+                "saved_city_tax_rate": city_tax_rate_to_save,
+                "city_trade_due": city_trade_due,
+                "city_trade_complete": city_trade_complete,
+                "city_trade_completion": trade_completion,
             },
         )
         return ok
+
+
+@AgentServer.custom_action("manual_two_city_business_product_scan_retry_missing_trade_fields")
+class ManualTwoCityBusinessProductScanRetryMissingTradeFieldsAction(CustomAction):
+    def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
+        state = _manual_two_city_state()
+        retry = state.get("product_scan_retry_missing_trade_fields")
+        if not isinstance(retry, dict) or not retry.get("needed"):
+            _json_payload(
+                "manual_two_city_business_product_scan_retry_missing_trade_fields",
+                {"ok": False, "reason": "retry_not_needed", "retry": retry or {}},
+            )
+            return False
+
+        try:
+            retry_count = int(state.get("product_scan_missing_trade_field_retry_count") or 0)
+        except (TypeError, ValueError):
+            retry_count = 0
+        retry_count += 1
+        state["product_scan_missing_trade_field_retry_count"] = retry_count
+        state["product_scan_stop_reason"] = ""
+        state["product_scan_page_signatures"] = []
+        state["product_scan_good_signatures"] = []
+        state["product_scan_active_seen_goods"] = []
+        missing_goods = [str(item) for item in (retry.get("missing_buy_lot_goods") or []) if str(item).strip()]
+        retry_city = normalize_city_name(str(retry.get("city") or state.get("product_scan_city") or "").strip())
+        if missing_goods or retry.get("missing_tax_rate"):
+            state["product_scan_city_trade_due"] = True
+        focus_targets = missing_goods or [
+            str(item)
+            for item in (state.get("product_scan_targets") or [])
+            if str(item).strip()
+        ]
+        state["product_scan_focus_targets"] = focus_targets
+        state["product_scan_active_targets"] = _manual_two_city_product_scan_context_targets(
+            retry_city,
+            focus_targets,
+            radius=1,
+        )
+        history = state.setdefault("product_scan_missing_trade_field_retry_history", [])
+        if isinstance(history, list):
+            history.append(copy.deepcopy(retry))
+            if len(history) > 12:
+                del history[:-12]
+
+        missing_tax_rate = bool(retry.get("missing_tax_rate"))
+        reason_parts = []
+        if missing_goods:
+            reason_parts.append("缺单批量：" + "、".join(missing_goods))
+        if missing_tax_rate:
+            reason_parts.append("缺税率")
+        _append_user_log(
+            MANUAL_TWO_CITY_TASK_ENTRY,
+            (
+                f"{retry.get('city') or '当前城市'} 交易数据未读全，"
+                f"第 {retry_count}/{PRODUCT_SCAN_MISSING_TRADE_FIELD_RETRY_LIMIT} 次按商品顺序定位重扫"
+                + (f"（{'；'.join(reason_parts)}）。" if reason_parts else "。")
+            ),
+            run_id=str(state.get("run_id") or ""),
+            level="warning",
+            event="manual_two_city_product_scan_retry_missing_trade_fields",
+            data={
+                "retry_count": retry_count,
+                "retry_limit": PRODUCT_SCAN_MISSING_TRADE_FIELD_RETRY_LIMIT,
+                "retry": retry,
+                "focus_targets": focus_targets,
+                "active_targets": state.get("product_scan_active_targets") or [],
+                "target_indices": _manual_two_city_product_scan_order_indices(retry_city, focus_targets),
+            },
+        )
+        _json_payload(
+            "manual_two_city_business_product_scan_retry_missing_trade_fields",
+            {
+                "ok": True,
+                "retry_count": retry_count,
+                "retry_limit": PRODUCT_SCAN_MISSING_TRADE_FIELD_RETRY_LIMIT,
+                "retry": retry,
+                "focus_targets": focus_targets,
+                "active_targets": state.get("product_scan_active_targets") or [],
+            },
+        )
+        return True
 
 
 @AgentServer.custom_action("manual_two_city_business_should_open_sell")
@@ -10758,6 +12915,12 @@ class ManualTwoCityBusinessRecoverStrengthOnceAction(CustomAction):
                 {"ok": True, "phase": phase, "required": required, "result": bento_result},
             )
             return True
+        if bento_result.get("used") and bento_result.get("strength_page_ready") is False:
+            _json_payload(
+                "manual_two_city_business_recover_strength_once",
+                {"ok": False, "phase": phase, "required": required, "result": bento_result},
+            )
+            return False
         if isinstance(bento_result.get("status"), dict):
             status = bento_result.get("status")
             status_texts = []
@@ -10906,6 +13069,136 @@ class ManualTwoCityBusinessStrengthRecoveryResumeAction(CustomAction):
         return True
 
 
+@AgentServer.custom_action("manual_two_city_business_quick_buy_selection")
+class ManualTwoCityBusinessQuickBuySelectionAction(CustomAction):
+    def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
+        state = _manual_two_city_state()
+        entries = _ocr_entries(argv)
+        leg = _manual_two_city_set_active_leg_by_visible_goods(entries)
+        cargo_load, cargo_texts = _manual_two_city_probe_buy_page_cargo_load(
+            context,
+            "ManualTwoCityQuickBuySelectionCargoBefore",
+        )
+        plan = _manual_two_city_quick_buy_selection_plan(leg, cargo_load)
+        if not plan.get("ok"):
+            _append_user_log(
+                MANUAL_TWO_CITY_TASK_ENTRY,
+                f"买入页快速全买未启用：{plan.get('reason') or '条件不满足'}，改为逐项选择。",
+                event="manual_two_city_quick_buy_selection_skipped",
+                data={"plan": plan, "cargo_load": cargo_load, "cargo_texts": cargo_texts[:20]},
+            )
+            _json_payload(
+                "manual_two_city_business_quick_buy_selection",
+                {"ok": False, "reason": plan.get("reason"), "plan": plan, "cargo_texts": cargo_texts[:20]},
+            )
+            return False
+
+        target = _manual_two_city_click_top_all_buy_target(context, entries)
+        time.sleep(0.55)
+        after_cargo, after_texts = _manual_two_city_probe_buy_page_cargo_load(
+            context,
+            "ManualTwoCityQuickBuySelectionCargoAfter",
+        )
+        planned_total = int(plan.get("planned_total") or 0)
+        selected_used = 0
+        selected_capacity = 0
+        if isinstance(after_cargo, dict):
+            try:
+                selected_used = int(after_cargo.get("used") or 0)
+                selected_capacity = int(after_cargo.get("capacity") or 0)
+            except (TypeError, ValueError):
+                selected_used = 0
+                selected_capacity = 0
+        planned_load_ok = planned_total > 0 and selected_used >= int(math.floor(planned_total * POST_BUY_CARGO_VERIFY_PLANNED_LOAD_PASS_RATIO))
+        capacity_ok = selected_capacity > 0 and selected_used / selected_capacity >= POST_BUY_CARGO_VERIFY_PASS_RATIO
+        if not (planned_load_ok or capacity_ok):
+            _manual_two_city_click_top_all_buy_target(context, entries)
+            time.sleep(0.35)
+            state["selected_buy_goods"] = []
+            state["selected_buy_goods_actual_load"] = {}
+            state["buy_selection_quick_all_buy"] = {"ok": False, "reason": "cargo_verify_failed", "plan": plan}
+            _append_user_log(
+                MANUAL_TWO_CITY_TASK_ENTRY,
+                (
+                    f"买入页快速全买已取消：计划载量 {planned_total}，"
+                    f"点击后载量 {selected_used}/{selected_capacity or '-'}，回退逐项选择。"
+                ),
+                level="warning",
+                event="manual_two_city_quick_buy_selection_cargo_verify_failed",
+                data={
+                    "plan": plan,
+                    "before_cargo": cargo_load,
+                    "after_cargo": after_cargo,
+                    "target": target,
+                    "before_texts": cargo_texts[:20],
+                    "after_texts": after_texts[:20],
+                },
+            )
+            _json_payload(
+                "manual_two_city_business_quick_buy_selection",
+                {
+                    "ok": False,
+                    "reason": "cargo_verify_failed",
+                    "plan": plan,
+                    "before_cargo": cargo_load,
+                    "after_cargo": after_cargo,
+                    "target": target,
+                },
+            )
+            return False
+
+        planned_goods = [str(item) for item in (plan.get("planned_goods") or []) if str(item).strip()]
+        planned_loads = {
+            str(good): int(load)
+            for good, load in (plan.get("planned_loads") or {}).items()
+            if str(good).strip()
+        }
+        state["selected_buy_goods"] = list(planned_goods)
+        state["selected_buy_goods_actual_load"] = planned_loads
+        state["buy_selection_locked_goods"] = []
+        state["buy_selection_no_delta_goods"] = []
+        state["buy_selection_capacity_limited_goods"] = []
+        state["buy_selection_capacity_limited"] = False
+        state["buy_selection_full_cargo"] = _manual_two_city_cargo_load_full(after_cargo)
+        if after_cargo is not None:
+            state["buy_selection_last_cargo_load"] = after_cargo
+        state["buy_selection_quick_all_buy"] = {
+            "ok": True,
+            "plan": plan,
+            "before_cargo": cargo_load,
+            "after_cargo": after_cargo,
+            "target": target,
+        }
+        _append_user_log(
+            MANUAL_TWO_CITY_TASK_ENTRY,
+            (
+                f"买入页快速全买：{plan.get('buy_city')} 计划商品在交易所顺序连续，"
+                f"已点右上角全部买入，载量 {selected_used}/{selected_capacity or '-'}，"
+                f"填仓商品 {plan.get('fill_good')}。"
+            ),
+            event="manual_two_city_quick_buy_selection_ok",
+            data={
+                "plan": plan,
+                "before_cargo": cargo_load,
+                "after_cargo": after_cargo,
+                "target": target,
+                "before_texts": cargo_texts[:20],
+                "after_texts": after_texts[:20],
+            },
+        )
+        _json_payload(
+            "manual_two_city_business_quick_buy_selection",
+            {
+                "ok": True,
+                "plan": plan,
+                "before_cargo": cargo_load,
+                "after_cargo": after_cargo,
+                "target": target,
+            },
+        )
+        return True
+
+
 @AgentServer.custom_action("manual_two_city_business_select_buy_goods")
 class ManualTwoCityBusinessSelectBuyGoodsAction(CustomAction):
     def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
@@ -10917,7 +13210,8 @@ class ManualTwoCityBusinessSelectBuyGoodsAction(CustomAction):
         buy_city = str(leg.get("buy_city") or "").strip()
         planned_goods = [str(item) for item in (leg.get("goods") or []) if str(item).strip()]
         locked_config_goods = _manual_two_city_configured_locked_goods(buy_city)
-        scan_targets = list(dict.fromkeys(planned_goods))
+        locked_config_set = set(locked_config_goods)
+        scan_targets = list(dict.fromkeys(planned_goods + locked_config_goods))
         selected = {
             str(item)
             for item in (state.get("selected_buy_goods") or [])
@@ -10925,6 +13219,9 @@ class ManualTwoCityBusinessSelectBuyGoodsAction(CustomAction):
         }
         if page_index <= 1:
             state["buy_selection_locked_goods"] = []
+            state["buy_selection_no_delta_goods"] = []
+            state["buy_selection_capacity_limited_goods"] = []
+            state["buy_selection_capacity_limited"] = False
             state["selected_buy_goods_actual_load"] = {}
             state["buy_selection_full_cargo"] = False
             state.pop("buy_selection_last_cargo_load", None)
@@ -10933,8 +13230,20 @@ class ManualTwoCityBusinessSelectBuyGoodsAction(CustomAction):
             for item in (state.get("buy_selection_locked_goods") or [])
             if str(item).strip()
         }
+        cumulative_no_delta = {
+            str(item)
+            for item in (state.get("buy_selection_no_delta_goods") or [])
+            if str(item).strip()
+        }
+        cumulative_capacity_limited = {
+            str(item)
+            for item in (state.get("buy_selection_capacity_limited_goods") or [])
+            if str(item).strip()
+        }
         actual_loads = _manual_two_city_selected_buy_actual_loads(state)
+        planned_loads = _manual_two_city_planned_goods_loads(leg)
         planned_index = {good: index for index, good in enumerate(planned_goods)}
+        restore_index = {good: len(planned_goods) + index for index, good in enumerate(locked_config_goods)}
         cargo_load, cargo_texts = _manual_two_city_probe_buy_page_cargo_load(
             context,
             f"ManualTwoCityBuySelectionCargoBeforePage{page_index:03d}",
@@ -10955,9 +13264,10 @@ class ManualTwoCityBusinessSelectBuyGoodsAction(CustomAction):
             if not good:
                 continue
             is_planned = good in planned_goods
+            is_restore_target = good in locked_config_set
             if is_planned and good in selected:
                 continue
-            if not is_planned:
+            if not is_planned and not is_restore_target:
                 continue
             x = int(float(entry.get("center_x") or 0))
             y = int(float(entry.get("center_y") or 0))
@@ -10967,11 +13277,13 @@ class ManualTwoCityBusinessSelectBuyGoodsAction(CustomAction):
             if good in seen_page_goods:
                 continue
             seen_page_goods.add(good)
-            visible_entries.append((planned_index.get(good, 9999), float(y), float(x), entry, good, row_texts))
+            visible_entries.append((planned_index.get(good, restore_index.get(good, 9999)), float(y), float(x), entry, good, row_texts))
 
         for _planned_order, _y, _x, entry, good, row_texts in sorted(visible_entries):
             if cargo_full:
                 break
+            is_planned = good in planned_goods
+            is_restore_target = good in locked_config_set
             x = int(float(entry.get("center_x") or 0))
             y = int(float(entry.get("center_y") or 0))
             row_locked = any(
@@ -10980,24 +13292,51 @@ class ManualTwoCityBusinessSelectBuyGoodsAction(CustomAction):
             )
             try:
                 if row_locked:
-                    locked.append(good)
-                    cumulative_locked.add(good)
-                    transient_status = state.setdefault("transient_product_status_by_city", {})
-                    if isinstance(transient_status, dict):
-                        city_status = transient_status.setdefault(buy_city, {})
-                        if isinstance(city_status, dict):
-                            city_status[good] = PRODUCT_STATUS_LOCKED
+                    if is_planned:
+                        locked.append(good)
+                        cumulative_locked.add(good)
+                        transient_status = state.setdefault("transient_product_status_by_city", {})
+                        if isinstance(transient_status, dict):
+                            city_status = transient_status.setdefault(buy_city, {})
+                            if isinstance(city_status, dict):
+                                city_status[good] = PRODUCT_STATUS_LOCKED
+                        _append_user_log(
+                            MANUAL_TWO_CITY_TASK_ENTRY,
+                            (
+                                f"买入页计划商品本行显示未解锁：{buy_city}/{good}，"
+                                "本轮先跳过，不写入账号配置，等待交易所扫描复核。"
+                            ),
+                            level="warning",
+                            event="manual_two_city_buy_good_row_locked_transient",
+                            data={"city": buy_city, "good": good, "texts": row_texts[:20]},
+                        )
+                    continue
+
+                if not is_planned and is_restore_target:
+                    restore_result = _manual_two_city_update_product_status(
+                        buy_city,
+                        good,
+                        PRODUCT_STATUS_NORMAL,
+                        reason="买入页看到配置阻塞商品已可买",
+                    )
+                    restored.append(good)
                     _append_user_log(
                         MANUAL_TWO_CITY_TASK_ENTRY,
-                        (
-                            f"买入页计划商品本行显示未解锁：{buy_city}/{good}，"
-                            "本轮先跳过，不写入账号配置，等待交易所扫描复核。"
-                        ),
+                        f"买入页发现配置标记不可买但实际已出现：{buy_city}/{good}，已恢复配置并准备重算。",
                         level="warning",
-                        event="manual_two_city_buy_good_row_locked_transient",
-                        data={"city": buy_city, "good": good, "texts": row_texts[:20]},
+                        event="manual_two_city_buy_good_restored_from_config_block",
+                        data={"city": buy_city, "good": good, "result": restore_result, "texts": row_texts[:20]},
                     )
                     continue
+                remaining_capacity = _manual_two_city_cargo_remaining_capacity(cargo_load)
+                expected_load = planned_loads.get(good)
+                pre_click_capacity_limited = (
+                    is_planned
+                    and remaining_capacity is not None
+                    and expected_load is not None
+                    and expected_load > 0
+                    and remaining_capacity < expected_load
+                )
                 before_used = None
                 if cargo_load is not None:
                     try:
@@ -11046,7 +13385,18 @@ class ManualTwoCityBusinessSelectBuyGoodsAction(CustomAction):
                         cargo_delta = None
                 if cargo_delta is not None and cargo_delta <= 0:
                     no_delta.append(good)
+                    cumulative_no_delta.add(good)
                     cargo_load = after_cargo or cargo_load
+                    remaining_capacity = _manual_two_city_cargo_remaining_capacity(cargo_load)
+                    expected_load = planned_loads.get(good)
+                    capacity_limited = (
+                        remaining_capacity is not None
+                        and expected_load is not None
+                        and expected_load > 0
+                        and remaining_capacity < expected_load
+                    )
+                    if capacity_limited:
+                        cumulative_capacity_limited.add(good)
                     cargo_full = _manual_two_city_cargo_load_full(cargo_load)
                     if cargo_full:
                         state["buy_selection_full_cargo"] = True
@@ -11054,15 +13404,26 @@ class ManualTwoCityBusinessSelectBuyGoodsAction(CustomAction):
                         MANUAL_TWO_CITY_TASK_ENTRY,
                         (
                             f"买入页点击计划商品后载量未增加：{buy_city}/{good}，"
-                            "按未选中处理，避免把载货量不足的点击计入计划。"
+                            + (
+                                f"剩余载量 {remaining_capacity} 小于计划载量 {expected_load}，按容量不足处理。"
+                                if capacity_limited
+                                else "按未选中处理，避免把载货量不足的点击计入计划。"
+                            )
                         ),
                         level="warning",
-                        event="manual_two_city_buy_good_click_no_cargo_delta",
+                        event=(
+                            "manual_two_city_buy_good_click_capacity_limited"
+                            if capacity_limited
+                            else "manual_two_city_buy_good_click_no_cargo_delta"
+                        ),
                         data={
                             "city": buy_city,
                             "good": good,
                             "before_cargo": cargo_load if after_cargo is None else {"used": before_used, "capacity": after_cargo.get("capacity")},
                             "after_cargo": after_cargo,
+                            "remaining_capacity": remaining_capacity,
+                            "expected_load": expected_load,
+                            "capacity_limited": capacity_limited,
                             "texts": after_cargo_texts[:20],
                         },
                     )
@@ -11079,6 +13440,28 @@ class ManualTwoCityBusinessSelectBuyGoodsAction(CustomAction):
                     clicked.append(good)
                     if cargo_delta is not None and cargo_delta > 0:
                         actual_loads[good] = actual_loads.get(good, 0) + cargo_delta
+                    if pre_click_capacity_limited:
+                        cumulative_capacity_limited.add(good)
+                        state["buy_selection_capacity_limited"] = True
+                        _append_user_log(
+                            MANUAL_TWO_CITY_TASK_ENTRY,
+                            (
+                                f"买入页容量不足但已尝试选择：{buy_city}/{good}，"
+                                f"剩余载量 {remaining_capacity} 小于计划载量 {expected_load}，"
+                                f"实际增加 {cargo_delta if cargo_delta is not None else '-'}。"
+                            ),
+                            level="warning",
+                            event="manual_two_city_buy_good_partial_capacity_limited",
+                            data={
+                                "city": buy_city,
+                                "good": good,
+                                "before_cargo": {"used": before_used, "capacity": after_cargo.get("capacity")} if after_cargo is not None else cargo_load,
+                                "after_cargo": after_cargo,
+                                "remaining_capacity": remaining_capacity,
+                                "expected_load": expected_load,
+                                "cargo_delta": cargo_delta,
+                            },
+                        )
                 cargo_load = after_cargo or cargo_load
                 cargo_full = _manual_two_city_cargo_load_full(cargo_load)
                 if cargo_full:
@@ -11095,34 +13478,44 @@ class ManualTwoCityBusinessSelectBuyGoodsAction(CustomAction):
 
         state["selected_buy_goods"] = list(selected)
         state["buy_selection_locked_goods"] = sorted(cumulative_locked)
+        state["buy_selection_no_delta_goods"] = sorted(cumulative_no_delta)
+        state["buy_selection_capacity_limited_goods"] = sorted(cumulative_capacity_limited)
         state["selected_buy_goods_actual_load"] = actual_loads
         if cargo_load is not None:
             state["buy_selection_last_cargo_load"] = cargo_load
-        cargo_full = bool(state.get("buy_selection_full_cargo")) or _manual_two_city_cargo_load_full(cargo_load)
         missing = [good for good in planned_goods if good not in selected and good not in cumulative_locked]
-        needs_replan = bool((missing or cumulative_locked) and page_index >= 4 and not cargo_full)
+        remaining_blocks_missing = _manual_two_city_cargo_blocks_missing_goods(
+            leg,
+            cargo_load,
+            [good for good in missing if good not in cumulative_locked],
+        )
+        capacity_limited_selection = bool(cumulative_capacity_limited) and remaining_blocks_missing
+        if capacity_limited_selection:
+            state["buy_selection_capacity_limited"] = True
+        cargo_full = (
+            bool(state.get("buy_selection_full_cargo"))
+            or _manual_two_city_cargo_load_full(cargo_load)
+            or capacity_limited_selection
+        )
+        config_missing = [good for good in missing if good not in cumulative_no_delta]
+        restore_replan = bool(restored) and not cargo_full
+        planned_locked = [good for good in cumulative_locked if good in planned_goods]
+        needs_replan = restore_replan or bool(planned_locked and page_index >= 4 and not cargo_full)
         if needs_replan:
-            for good in missing:
-                _manual_two_city_update_product_status(
-                    buy_city,
-                    good,
-                    PRODUCT_STATUS_MISSING,
-                    reason="交易所买入页 4 屏扫描未找到计划商品",
-                )
             _manual_two_city_mark_buy_selection_replan_needed(
                 state,
                 city=buy_city,
-                missing=missing,
-                locked=sorted(cumulative_locked),
+                missing=restored if restore_replan else [],
+                locked=sorted(planned_locked),
             )
         _append_user_log(
             MANUAL_TWO_CITY_TASK_ENTRY,
             (
-                f"买入页第 {page_index} 屏：命中 {len(clicked)} 个，"
+            f"买入页第 {page_index} 屏：命中 {len(clicked)} 个，"
                 f"已选 {len(selected)}/{len(planned_goods)}，"
                 f"本页未解锁 {len(locked)} 个，累计未解锁 {len(cumulative_locked)} 个，"
                 f"恢复 {len(restored)} 个"
-                f"{'，载量已满，剩余计划商品跳过' if cargo_full and missing else ''}"
+                f"{'，剩余载量不足，剩余计划商品跳过' if capacity_limited_selection and missing else ('，载量已满，剩余计划商品跳过' if cargo_full and missing else '')}"
             ),
             event="manual_two_city_buy_goods_page",
             data={
@@ -11134,18 +13527,36 @@ class ManualTwoCityBusinessSelectBuyGoodsAction(CustomAction):
                 "clicked": clicked,
                 "locked": locked,
                 "cumulative_locked": sorted(cumulative_locked),
+                "planned_locked": sorted(planned_locked),
                 "restored": restored,
                 "no_delta": no_delta,
+                "cumulative_no_delta": sorted(cumulative_no_delta),
+                "capacity_limited_goods": sorted(cumulative_capacity_limited),
+                "capacity_limited_selection": capacity_limited_selection,
+                "remaining_blocks_missing": remaining_blocks_missing,
                 "selected": list(selected),
                 "actual_loads": actual_loads,
                 "cargo_load": cargo_load,
                 "cargo_probe_texts": cargo_texts[:20],
                 "cargo_full": cargo_full,
                 "missing": missing,
+                "config_missing": config_missing,
+                "restore_replan": restore_replan,
                 "needs_replan": needs_replan,
             },
         )
-        selection_ok = set(planned_goods).issubset(selected) or (cargo_full and bool(selected))
+        existing_cargo_load = state.get("buy_selection_existing_cargo_load")
+        existing_cargo_used = 0
+        if isinstance(existing_cargo_load, dict):
+            try:
+                existing_cargo_used = int(existing_cargo_load.get("used") or 0)
+            except (TypeError, ValueError):
+                existing_cargo_used = 0
+        selection_ok = (
+            set(planned_goods).issubset(selected)
+            or (cargo_full and bool(selected))
+            or (capacity_limited_selection and (bool(selected) or existing_cargo_used > 0))
+        )
         _json_payload(
             "manual_two_city_business_select_buy_goods",
             {
@@ -11153,13 +13564,20 @@ class ManualTwoCityBusinessSelectBuyGoodsAction(CustomAction):
                 "clicked": clicked,
                 "locked": locked,
                 "cumulative_locked": sorted(cumulative_locked),
+                "planned_locked": sorted(planned_locked),
                 "restored": restored,
                 "no_delta": no_delta,
+                "cumulative_no_delta": sorted(cumulative_no_delta),
+                "capacity_limited_goods": sorted(cumulative_capacity_limited),
+                "capacity_limited_selection": capacity_limited_selection,
+                "remaining_blocks_missing": remaining_blocks_missing,
                 "selected": list(selected),
                 "actual_loads": actual_loads,
                 "cargo_load": cargo_load,
                 "cargo_full": cargo_full,
                 "missing": missing,
+                "config_missing": config_missing,
+                "restore_replan": restore_replan,
                 "needs_replan": needs_replan,
             },
         )
@@ -11175,6 +13593,32 @@ class ManualTwoCityBusinessConfirmBuySelectionAction(CustomAction):
         selected = [str(item) for item in (state.get("selected_buy_goods") or []) if str(item).strip()]
         actual_loads = _manual_two_city_selected_buy_actual_loads(state)
         planned_total = _manual_two_city_planned_goods_total(leg)
+        if state.get("buy_selection_replan_pending"):
+            _append_user_log(
+                MANUAL_TWO_CITY_TASK_ENTRY,
+                "买入前选货复核：商品选择阶段已标记需要重算，先停止本次买入并清空已选商品。",
+                level="warning",
+                event="manual_two_city_confirm_buy_selection_replan_pending",
+                data={
+                    "leg": leg,
+                    "selected": selected,
+                    "missing": state.get("buy_selection_replan_missing") or [],
+                    "locked": state.get("buy_selection_replan_locked") or [],
+                    "retry_count": state.get("buy_selection_replan_retry_count"),
+                },
+            )
+            _json_payload(
+                "manual_two_city_business_confirm_buy_selection",
+                {
+                    "ok": False,
+                    "reason": "replan_pending",
+                    "leg": leg,
+                    "selected": selected,
+                    "missing": state.get("buy_selection_replan_missing") or [],
+                    "locked": state.get("buy_selection_replan_locked") or [],
+                },
+            )
+            return False
         cargo_load, texts = _manual_two_city_probe_buy_page_cargo_load(
             context,
             "ManualTwoCityConfirmBuySelectionCargo",
@@ -11182,6 +13626,32 @@ class ManualTwoCityBusinessConfirmBuySelectionAction(CustomAction):
         if cargo_load is None and isinstance(state.get("buy_selection_last_cargo_load"), dict):
             cargo_load = dict(state.get("buy_selection_last_cargo_load") or {})
         if not selected:
+            capacity_limited_with_existing_cargo = False
+            if state.get("buy_selection_capacity_limited") and isinstance(cargo_load, dict):
+                try:
+                    capacity_limited_with_existing_cargo = int(cargo_load.get("used") or 0) > 0
+                except (TypeError, ValueError):
+                    capacity_limited_with_existing_cargo = False
+            if capacity_limited_with_existing_cargo:
+                _append_user_log(
+                    MANUAL_TWO_CITY_TASK_ENTRY,
+                    "买入前选货复核：未新增选择，但既有货物已占用货仓且剩余容量装不下计划商品，跳过本段补货。",
+                    level="warning",
+                    event="manual_two_city_confirm_buy_selection_existing_cargo_limited",
+                    data={"leg": leg, "selected": selected, "cargo_load": cargo_load, "actual_loads": actual_loads},
+                )
+                _json_payload(
+                    "manual_two_city_business_confirm_buy_selection",
+                    {
+                        "ok": True,
+                        "reason": "existing_cargo_limited",
+                        "leg": leg,
+                        "selected": selected,
+                        "cargo_load": cargo_load,
+                        "actual_loads": actual_loads,
+                    },
+                )
+                return True
             _append_user_log(
                 MANUAL_TWO_CITY_TASK_ENTRY,
                 "买入前选货复核：没有记录到任何已选商品，停止买入以避免空买或误买。",
@@ -11214,14 +13684,22 @@ class ManualTwoCityBusinessConfirmBuySelectionAction(CustomAction):
         planned_ratio = planned_total / capacity if capacity > 0 else 0
         actual_ratio = used / capacity if capacity > 0 else 0
         strict = capacity > 0 and planned_ratio >= POST_BUY_CARGO_VERIFY_PLANNED_RATIO
-        passed = (not strict) or actual_ratio >= POST_BUY_CARGO_VERIFY_PASS_RATIO
+        planned_load_ratio = used / planned_total if planned_total > 0 else 1
+        capacity_ok = (not strict) or actual_ratio >= POST_BUY_CARGO_VERIFY_PASS_RATIO
+        planned_load_ok = planned_total <= 0 or planned_load_ratio >= POST_BUY_CARGO_VERIFY_PLANNED_LOAD_PASS_RATIO
+        capacity_limited_ok = (
+            bool(state.get("buy_selection_capacity_limited"))
+            and used > 0
+            and (bool(selected) or _manual_two_city_existing_cargo_limited_buy(state))
+        )
+        passed = capacity_limited_ok or (capacity_ok and planned_load_ok)
         missing = [good for good in planned_goods if good not in selected]
         if not passed:
             _append_user_log(
                 MANUAL_TWO_CITY_TASK_ENTRY,
                 (
                     f"买入前选货复核：实际已选载量 {used}/{capacity}，计划 {planned_total}/{capacity}，"
-                    "计划应接近满载但实际未满，停止买入。"
+                    "实际载量低于计划或未达到满仓要求，停止买入。"
                 ),
                 level="error",
                 event="manual_two_city_confirm_buy_selection_insufficient",
@@ -11234,6 +13712,10 @@ class ManualTwoCityBusinessConfirmBuySelectionAction(CustomAction):
                     "planned_total": planned_total,
                     "planned_ratio": planned_ratio,
                     "actual_ratio": actual_ratio,
+                    "planned_load_ratio": planned_load_ratio,
+                    "capacity_ok": capacity_ok,
+                    "planned_load_ok": planned_load_ok,
+                    "capacity_limited_ok": capacity_limited_ok,
                     "texts": texts[:20],
                 },
             )
@@ -11268,6 +13750,10 @@ class ManualTwoCityBusinessConfirmBuySelectionAction(CustomAction):
                 "planned_total": planned_total,
                 "planned_ratio": planned_ratio,
                 "actual_ratio": actual_ratio,
+                "planned_load_ratio": planned_load_ratio,
+                "capacity_ok": capacity_ok,
+                "planned_load_ok": planned_load_ok,
+                "capacity_limited_ok": capacity_limited_ok,
                 "strict": strict,
                 "texts": texts[:20],
             },
@@ -11504,7 +13990,11 @@ class ManualTwoCityBusinessVerifyCargoAfterBuyAction(CustomAction):
         planned_ratio = planned_total / capacity if capacity > 0 else 0
         actual_ratio = used / capacity if capacity > 0 else 0
         strict = capacity > 0 and planned_ratio >= POST_BUY_CARGO_VERIFY_PLANNED_RATIO
-        passed = (not strict) or actual_ratio >= POST_BUY_CARGO_VERIFY_PASS_RATIO
+        planned_load_ratio = used / planned_total if planned_total > 0 else 1
+        capacity_ok = (not strict) or actual_ratio >= POST_BUY_CARGO_VERIFY_PASS_RATIO
+        planned_load_ok = planned_total <= 0 or planned_load_ratio >= POST_BUY_CARGO_VERIFY_PLANNED_LOAD_PASS_RATIO
+        capacity_limited_ok = bool(state.get("buy_selection_capacity_limited")) and used > 0
+        passed = capacity_limited_ok or (capacity_ok and planned_load_ok)
         level = "info" if passed else "error"
         message = (
             f"买入后货仓复核：实际 {used}/{capacity}，计划 {planned_total}/{capacity}。"
@@ -11512,7 +14002,7 @@ class ManualTwoCityBusinessVerifyCargoAfterBuyAction(CustomAction):
             else f"买入后货仓复核：实际 {used}/-，计划 {planned_total}/-。"
         )
         if not passed:
-            message += "计划应接近满载但实际未满，停止发车以避免半仓跑商。"
+            message += "实际载量低于计划或未达到满仓要求，停止发车以避免半仓跑商。"
         else:
             message += "复核通过，继续发车。"
         _append_user_log(
@@ -11526,6 +14016,10 @@ class ManualTwoCityBusinessVerifyCargoAfterBuyAction(CustomAction):
                 "planned_total": planned_total,
                 "planned_ratio": planned_ratio,
                 "actual_ratio": actual_ratio,
+                "planned_load_ratio": planned_load_ratio,
+                "capacity_ok": capacity_ok,
+                "planned_load_ok": planned_load_ok,
+                "capacity_limited_ok": capacity_limited_ok,
                 "strict": strict,
                 "texts": texts[:20],
             },
@@ -11539,6 +14033,10 @@ class ManualTwoCityBusinessVerifyCargoAfterBuyAction(CustomAction):
                 "planned_total": planned_total,
                 "planned_ratio": planned_ratio,
                 "actual_ratio": actual_ratio,
+                "planned_load_ratio": planned_load_ratio,
+                "capacity_ok": capacity_ok,
+                "planned_load_ok": planned_load_ok,
+                "capacity_limited_ok": capacity_limited_ok,
                 "strict": strict,
             },
         )
@@ -11759,6 +14257,7 @@ class ManualTwoCityBusinessSellGoodsMissingAction(CustomAction):
             state.pop("pre_buy_cleanup", None)
             state.pop("pre_buy_cleanup_raise_percent", None)
             state.pop("pre_buy_cleanup_strength_required", None)
+            _manual_two_city_clear_existing_cargo_limit(state)
             if cleanup_signature:
                 state["pre_buy_cleanup_skip_signature"] = cleanup_signature
             state["selected_buy_goods"] = []
@@ -11847,6 +14346,7 @@ class ManualTwoCityBusinessAfterSellAction(CustomAction):
             state.pop("pre_buy_cleanup", None)
             state.pop("pre_buy_cleanup_raise_percent", None)
             state.pop("pre_buy_cleanup_strength_required", None)
+            _manual_two_city_clear_existing_cargo_limit(state)
             state["selected_buy_goods"] = []
             state["trade_phase"] = "buy"
             try:

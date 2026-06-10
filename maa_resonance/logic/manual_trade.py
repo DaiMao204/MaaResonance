@@ -7,6 +7,7 @@ from typing import Any
 
 from .planner import RoutePlanOptions
 from .planner import load_columba_baseline_market_data
+from .planner import load_columba_trade_data
 from .planner import normalize_mixed_currency_priority
 from .planner import plan_two_city_routes
 from .planner import summarize_routes
@@ -19,8 +20,17 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_FALLBACK_CARGO_CAPACITY = 1016
 PRODUCT_STATUS_LOCKED = "locked"
 PRODUCT_STATUS_MISSING = "missing"
+PRODUCT_STATUS_NEVER_SCANNED = "never_scanned"
+PRODUCT_STATUS_NORMAL = "normal"
 PRODUCT_PLANNER_BLOCKED_STATUSES = {PRODUCT_STATUS_LOCKED, PRODUCT_STATUS_MISSING}
 PRODUCT_STATUS_ALIASES = {
+    "true": PRODUCT_STATUS_NORMAL,
+    "1": PRODUCT_STATUS_NORMAL,
+    "yes": PRODUCT_STATUS_NORMAL,
+    "normal": PRODUCT_STATUS_NORMAL,
+    "ok": PRODUCT_STATUS_NORMAL,
+    "正常": PRODUCT_STATUS_NORMAL,
+    "已解锁": PRODUCT_STATUS_NORMAL,
     "false": PRODUCT_STATUS_LOCKED,
     "0": PRODUCT_STATUS_LOCKED,
     "no": PRODUCT_STATUS_LOCKED,
@@ -119,6 +129,123 @@ def _product_buy_lot_by_city(*sources: Any) -> dict[str, dict[str, int]]:
                 if lot > 0:
                     city_lots[good_name] = lot
     return {city: goods for city, goods in lots.items() if goods}
+
+
+def _city_trade_read_meta_by_city(*sources: Any) -> dict[str, dict[str, Any]]:
+    meta_by_city: dict[str, dict[str, Any]] = {}
+    for source in sources:
+        if not isinstance(source, dict):
+            continue
+        for city, raw_meta in source.items():
+            city_name = normalize_city_name(str(city or "").strip())
+            if not city_name or not isinstance(raw_meta, dict):
+                continue
+            meta_by_city.setdefault(city_name, {}).update(raw_meta)
+    return {city: meta for city, meta in meta_by_city.items() if meta}
+
+
+def _known_buy_goods_by_city() -> dict[str, list[str]]:
+    trade_data = load_columba_trade_data()
+    products = trade_data.get("products") if isinstance(trade_data, dict) else []
+    by_city: dict[str, list[str]] = {}
+    for product in products if isinstance(products, list) else []:
+        if not isinstance(product, dict):
+            continue
+        name = str(product.get("name") or "").strip()
+        buy_lots = product.get("buyLot") if isinstance(product.get("buyLot"), dict) else {}
+        if not name:
+            continue
+        for city in buy_lots:
+            city_name = normalize_city_name(str(city or "").strip())
+            if city_name:
+                by_city.setdefault(city_name, []).append(name)
+    return {city: sorted(set(goods)) for city, goods in by_city.items() if goods}
+
+
+def _product_status_by_city(*sources: Any) -> dict[str, dict[str, str]]:
+    status_by_city: dict[str, dict[str, str]] = {}
+    for source in sources:
+        if not isinstance(source, dict):
+            continue
+        for city, goods in source.items():
+            city_name = normalize_city_name(str(city or "").strip())
+            if not city_name or not isinstance(goods, dict):
+                continue
+            city_status = status_by_city.setdefault(city_name, {})
+            for good, raw_status in goods.items():
+                good_name = str(good or "").strip()
+                if not good_name:
+                    continue
+                if isinstance(raw_status, bool):
+                    normalized = PRODUCT_STATUS_NORMAL if raw_status else PRODUCT_STATUS_LOCKED
+                else:
+                    text = str(raw_status or "").strip()
+                    normalized = PRODUCT_STATUS_ALIASES.get(text.lower()) or PRODUCT_STATUS_ALIASES.get(text)
+                    if normalized is None:
+                        normalized = text if text in {
+                            PRODUCT_STATUS_NORMAL,
+                            PRODUCT_STATUS_LOCKED,
+                            PRODUCT_STATUS_MISSING,
+                            PRODUCT_STATUS_NEVER_SCANNED,
+                        } else PRODUCT_STATUS_NEVER_SCANNED
+                previous = city_status.get(good_name)
+                if (
+                    isinstance(raw_status, bool)
+                    and raw_status is False
+                    and previous
+                    and previous != PRODUCT_STATUS_NEVER_SCANNED
+                ):
+                    continue
+                city_status[good_name] = normalized
+    return {city: goods for city, goods in status_by_city.items() if goods}
+
+
+def _required_buy_lot_goods_for_city(city: str, status_by_city: dict[str, dict[str, str]]) -> list[str]:
+    known = _known_buy_goods_by_city().get(city, [])
+    status = status_by_city.get(city) or {}
+    return [
+        good
+        for good in known
+        if status.get(good, PRODUCT_STATUS_NEVER_SCANNED) == PRODUCT_STATUS_NORMAL
+    ]
+
+
+def _complete_product_buy_lot_by_city(account: dict[str, Any]) -> dict[str, dict[str, int]]:
+    planner = account.get("planner") if isinstance(account.get("planner"), dict) else {}
+    trade = account.get("trade") if isinstance(account.get("trade"), dict) else {}
+    lots_by_city = _product_buy_lot_by_city(
+        trade.get("product_buy_lot_by_city"),
+        planner.get("product_buy_lot_by_city"),
+    )
+    tax_rates = _city_tax_rate_by_city(
+        trade.get("city_tax_rate_by_city"),
+        planner.get("city_tax_rate_by_city"),
+    )
+    status_by_city = _product_status_by_city(
+        trade.get("product_status_by_city"),
+        planner.get("product_status_by_city"),
+        trade.get("product_unlock_status_by_city"),
+        planner.get("product_unlock_status_by_city"),
+    )
+    read_meta = _city_trade_read_meta_by_city(
+        trade.get("city_trade_read"),
+        planner.get("city_trade_read"),
+        account.get("city_trade_read"),
+    )
+    complete: dict[str, dict[str, int]] = {}
+    for city, lots in lots_by_city.items():
+        required_goods = _required_buy_lot_goods_for_city(city, status_by_city)
+        if not required_goods:
+            continue
+        if city not in tax_rates:
+            continue
+        if any(good not in lots for good in required_goods):
+            continue
+        meta = read_meta.get(city) or {}
+        if meta and not bool(meta.get("tax_rate_read", True)):
+            continue
+        complete[city] = {good: lots[good] for good in required_goods if good in lots}
+    return complete
 
 
 def _city_set(values: Any) -> set[str]:
@@ -258,10 +385,7 @@ def _planner_options_from_account(
         trade.get("city_tax_rate_by_city"),
         planner.get("city_tax_rate_by_city"),
     )
-    product_buy_lot_by_city = _product_buy_lot_by_city(
-        trade.get("product_buy_lot_by_city"),
-        planner.get("product_buy_lot_by_city"),
-    )
+    product_buy_lot_by_city = _complete_product_buy_lot_by_city(account)
     transient_blocked_by_city = _blocked_product_unlock_status_by_city(transient_product_status_by_city)
     for city, goods in transient_blocked_by_city.items():
         product_unlock_status_by_city.setdefault(city, {}).update(goods)
@@ -355,10 +479,7 @@ def _auto_planner_options_from_account(
         trade.get("city_tax_rate_by_city"),
         planner.get("city_tax_rate_by_city"),
     )
-    product_buy_lot_by_city = _product_buy_lot_by_city(
-        trade.get("product_buy_lot_by_city"),
-        planner.get("product_buy_lot_by_city"),
-    )
+    product_buy_lot_by_city = _complete_product_buy_lot_by_city(account)
     transient_blocked_by_city = _blocked_product_unlock_status_by_city(transient_product_status_by_city)
     for city, goods in transient_blocked_by_city.items():
         product_unlock_status_by_city.setdefault(city, {}).update(goods)

@@ -80,30 +80,69 @@ def _numeric_text_variants(text: Any) -> list[str]:
     return [item for item in variants if item]
 
 
+def _expected_buy_lot(value: Any) -> int | None:
+    try:
+        lot = int(value)
+    except (TypeError, ValueError):
+        return None
+    return lot if lot > 0 else None
+
+
+def _plausible_buy_lot_candidate(
+    value: int,
+    expected_lot: int | None,
+    *,
+    allow_below_expected: bool = False,
+) -> bool:
+    return 0 < value <= 99999
+
+
+def _trade_good_buy_lot_candidate_values(
+    digits: str,
+    *,
+    expected_lot: int | None,
+    repair_by_expected: bool,
+    allow_below_expected: bool,
+) -> list[tuple[int, int]]:
+    values: list[tuple[int, int]] = []
+    try:
+        raw_value = int(digits)
+    except ValueError:
+        return values
+    if _plausible_buy_lot_candidate(
+        raw_value,
+        expected_lot,
+        allow_below_expected=allow_below_expected,
+    ):
+        values.append((raw_value, 0))
+    return values
+
+
 def parse_trade_good_buy_lot(
     entries: list[dict[str, Any]],
     center_y: float,
     *,
     good_entry: dict[str, Any] | None = None,
+    expected_lot: Any = None,
 ) -> int | None:
     """Read the small buy-lot number at the lower-right of a product card."""
     row_entries = trade_good_row_entries(entries, center_y)
+    expected_buy_lot = _expected_buy_lot(expected_lot)
     try:
         good_x = float((good_entry or {}).get("center_x") or 0)
     except (TypeError, ValueError):
         good_x = 0
-    candidates: list[tuple[float, float, int, str]] = []
+    candidates: list[tuple[int, float, float, int, str]] = []
     for item in row_entries:
         try:
             center_x = float(item.get("center_x") or 0)
             item_center_y = float(item.get("center_y") or 0)
         except (TypeError, ValueError):
             continue
-        # The buy-lot label is on the product image card. The price and percent
-        # are farther right in the row, so keep only the left-card number.
-        if center_x > 705:
-            continue
-        if good_x and center_x >= good_x - 80:
+        # The available quantity is printed at the lower-right of the product
+        # image. The paper-number column to the right of the good name is price.
+        icon_lot_region = center_x <= 705 and (not good_x or center_x < good_x - 80)
+        if not icon_lot_region:
             continue
         raw_text = str(item.get("text") or "")
         for text in _numeric_text_variants(raw_text):
@@ -112,14 +151,21 @@ def parse_trade_good_buy_lot(
             match = re.fullmatch(r"\D*(\d{1,4})\D*", text)
             if not match:
                 continue
-            value = int(match.group(1))
-            if value <= 0:
-                continue
-            candidates.append((center_x, item_center_y, value, raw_text))
+            for value, repair_priority in _trade_good_buy_lot_candidate_values(
+                match.group(1),
+                expected_lot=expected_buy_lot,
+                repair_by_expected=False,
+                allow_below_expected=True,
+            ):
+                if expected_buy_lot is None:
+                    score = 10
+                else:
+                    score = 100 + repair_priority * 20
+                candidates.append((score, center_x, item_center_y, value, raw_text))
     if not candidates:
         return None
     # The quantity sits at the bottom-right corner of the product image.
-    return max(candidates, key=lambda item: (item[0], item[1]))[2]
+    return max(candidates, key=lambda item: (item[0], item[1], item[2]))[3]
 
 
 def parse_trade_tax_rate(texts: list[str]) -> float | None:
@@ -149,6 +195,8 @@ def parse_trade_tax_rate(texts: list[str]) -> float | None:
 def visible_product_unlock_status(
     entries: list[dict[str, Any]],
     targets: list[str],
+    *,
+    expected_buy_lots: dict[str, Any] | None = None,
 ) -> dict[str, dict[str, Any]]:
     matched: dict[str, dict[str, Any]] = {}
     for entry in entries:
@@ -157,7 +205,12 @@ def visible_product_unlock_status(
             continue
         center_y = float(entry.get("center_y") or 0)
         row_texts = trade_good_row_texts(entries, center_y)
-        buy_lot = parse_trade_good_buy_lot(entries, center_y, good_entry=entry)
+        buy_lot = parse_trade_good_buy_lot(
+            entries,
+            center_y,
+            good_entry=entry,
+            expected_lot=(expected_buy_lots or {}).get(good),
+        )
         locked = any(
             any(keyword in clean_text(text) for keyword in PRODUCT_LOCKED_TEXTS)
             for text in row_texts
