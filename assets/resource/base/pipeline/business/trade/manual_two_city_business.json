@@ -387,6 +387,191 @@
         "next": "AccountProfileReadStart",
         "on_error": "ManualTwoCityBusinessOpenCurrentCityStart"
     },
+    "ManualTwoCityBusinessRecoveryResumeToCurrentCity": {
+        "recognition": "Custom",
+        "custom_recognition": "manual_two_city_business_recovery_target",
+        "custom_recognition_param": {
+            "target": "current_city"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_recovery_resume",
+                "custom_action_param": {
+                    "target": "current_city"
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessOpenCurrentCityStart",
+        "on_error": "ManualTwoCityBusinessRecoveryFailedAfterResume"
+    },
+    "ManualTwoCityBusinessRecoveryResumeToTradePage": {
+        "recognition": "Custom",
+        "custom_recognition": "manual_two_city_business_recovery_target",
+        "custom_recognition_param": {
+            "target": "trade_page"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_recovery_resume",
+                "custom_action_param": {
+                    "target": "trade_page"
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessOpenCurrentCityStart",
+        "on_error": "ManualTwoCityBusinessRecoveryFailedAfterResume"
+    },
+    "ManualTwoCityBusinessRecoveryResumeToBuyPage": {
+        "recognition": "Custom",
+        "custom_recognition": "manual_two_city_business_recovery_target",
+        "custom_recognition_param": {
+            "target": "buy_page"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_recovery_resume",
+                "custom_action_param": {
+                    "target": "buy_page"
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessOpenCurrentCityStart",
+        "on_error": "ManualTwoCityBusinessRecoveryFailedAfterResume"
+    },
+    "ManualTwoCityBusinessRecoveryResumeToSellPage": {
+        "recognition": "Custom",
+        "custom_recognition": "manual_two_city_business_recovery_target",
+        "custom_recognition_param": {
+            "target": "sell_page"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_recovery_resume",
+                "custom_action_param": {
+                    "target": "sell_page"
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessOpenCurrentCityStart",
+        "on_error": "ManualTwoCityBusinessRecoveryFailedAfterResume"
+    },
+    "ManualTwoCityBusinessRecoverToCurrentCity": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_request_recovery",
+                "custom_action_param": {
+                    "target": "current_city",
+                    "reason": "当前城市入口识别失败，准备状态恢复后重试。",
+                    "max_attempts": 2
+                }
+            }
+        },
+        "next": "StateRecoveryStart",
+        "on_error": "ManualTwoCityBusinessRecoveryFailedAfterResume"
+    },
+    "ManualTwoCityBusinessRecoverToTradePage": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_request_recovery",
+                "custom_action_param": {
+                    "target": "trade_page",
+                    "reason": "交易所入口识别失败，准备状态恢复后重试。",
+                    "max_attempts": 2
+                }
+            }
+        },
+        "next": "StateRecoveryStart",
+        "on_error": "ManualTwoCityBusinessRecoveryFailedAfterResume"
+    },
+    "ManualTwoCityBusinessRecoverToBuyPage": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_request_recovery",
+                "custom_action_param": {
+                    "target": "buy_page",
+                    "reason": "买入页识别失败，准备状态恢复后重试。",
+                    "max_attempts": 2
+                }
+            }
+        },
+        "next": "StateRecoveryStart",
+        "on_error": "ManualTwoCityBusinessRecoveryFailedAfterResume"
+    },
+    "ManualTwoCityBusinessRecoverToSellPage": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_request_recovery",
+                "custom_action_param": {
+                    "target": "sell_page",
+                    "reason": "卖出页识别失败，准备状态恢复后重试。",
+                    "max_attempts": 2
+                }
+            }
+        },
+        "next": "StateRecoveryStart",
+        "on_error": "ManualTwoCityBusinessRecoveryFailedAfterResume"
+    },
+    "ManualTwoCityBusinessRecoverAfterSellReportMissing": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_request_recovery",
+                "custom_action_param": {
+                    "target": "sell_page",
+                    "reason": "卖出后未识别到结算报告，准备状态恢复后回到卖出页复核。",
+                    "max_attempts": 1
+                }
+            }
+        },
+        "next": "StateRecoveryStart",
+        "on_error": "ManualTwoCityBusinessRecoveryFailedAfterResume"
+    },
+    "ManualTwoCityBusinessRecoveryFailed": {
+        "recognition": "Custom",
+        "custom_recognition": "manual_two_city_business_recovery_target",
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_recovery_failed"
+            }
+        },
+        "next": "RunManualTwoCityBusinessDone"
+    },
+    "ManualTwoCityBusinessRecoveryFailedAfterResume": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_recovery_failed"
+            }
+        },
+        "next": "RunManualTwoCityBusinessDone"
+    },
     "ManualTwoCityBusinessTradeOutletOpenDoneDispatch": {
         "recognition": {
             "type": "DirectHit"
@@ -411,7 +596,7 @@
             }
         },
         "next": "AccountProfileCargoReturnHome",
-        "on_error": "ManualTwoCityBusinessTradeEntryFailed"
+        "on_error": "ManualTwoCityBusinessRecoverToTradePage"
     },
     "ManualTwoCityBusinessAccountProfileWarmupStartFromMainMap": {
         "recognition": {
@@ -566,7 +751,7 @@
         },
         "post_delay": 1600,
         "next": "ManualTwoCityBusinessCurrentCityReady",
-        "on_error": "ManualTwoCityBusinessTradeEntryFailed"
+        "on_error": "ManualTwoCityBusinessRecoverToCurrentCity"
     },
     "ManualTwoCityBusinessCurrentCityReady": {
         "recognition": {
@@ -707,7 +892,7 @@
         },
         "post_delay": 1200,
         "next": "ManualTwoCityBusinessBuyPageReady",
-        "on_error": "ManualTwoCityBusinessTradeEntryFailed"
+        "on_error": "ManualTwoCityBusinessRecoverToBuyPage"
     },
     "ManualTwoCityBusinessTradeOutletDispatch": {
         "recognition": {
@@ -724,7 +909,7 @@
             "ManualTwoCityBusinessSellPageReady",
             "ManualTwoCityBusinessBuyPageReady"
         ],
-        "on_error": "ManualTwoCityBusinessTradeEntryFailed"
+        "on_error": "ManualTwoCityBusinessRecoverToTradePage"
     },
     "ManualTwoCityBusinessOpenSellPage": {
         "recognition": {
@@ -744,7 +929,7 @@
         },
         "post_delay": 1200,
         "next": "ManualTwoCityBusinessSellPageReady",
-        "on_error": "ManualTwoCityBusinessTradeEntryFailed"
+        "on_error": "ManualTwoCityBusinessRecoverToSellPage"
     },
     "ManualTwoCityBusinessBuyPageReady": {
         "recognition": {
@@ -777,7 +962,7 @@
         ],
         "on_error": [
             "ManualTwoCityBusinessCloseDailyCheckInForBuyPageReady",
-            "ManualTwoCityBusinessTradeEntryFailed"
+            "ManualTwoCityBusinessRecoverToBuyPage"
         ]
     },
     "ManualTwoCityBusinessCloseDailyCheckInForBuyPageReady": {
@@ -792,7 +977,7 @@
         },
         "post_delay": 900,
         "next": "ManualTwoCityBusinessBuyPageReady",
-        "on_error": "ManualTwoCityBusinessTradeEntryFailed"
+        "on_error": "ManualTwoCityBusinessRecoverToBuyPage"
     },
     "ManualTwoCityBusinessSkipBuyDueFullCargo": {
         "recognition": {
@@ -1674,7 +1859,7 @@
         "next": "ManualTwoCityBusinessSellDrinkCheck",
         "on_error": [
             "ManualTwoCityBusinessCloseDailyCheckInForSellPageReady",
-            "ManualTwoCityBusinessTradeEntryFailed"
+            "ManualTwoCityBusinessRecoverToSellPage"
         ]
     },
     "ManualTwoCityBusinessCloseDailyCheckInForSellPageReady": {
@@ -1689,7 +1874,7 @@
         },
         "post_delay": 900,
         "next": "ManualTwoCityBusinessSellPageReady",
-        "on_error": "ManualTwoCityBusinessTradeEntryFailed"
+        "on_error": "ManualTwoCityBusinessRecoverToSellPage"
     },
     "ManualTwoCityBusinessBuyDrinkCheck": {
         "recognition": {
@@ -2166,7 +2351,7 @@
             "ManualTwoCityBusinessSellSelectionReady",
             "ManualTwoCityBusinessTapSellAllRetry001"
         ],
-        "on_error": "ManualTwoCityBusinessTradeEntryFailed"
+        "on_error": "ManualTwoCityBusinessRecoverToSellPage"
     },
     "ManualTwoCityBusinessTapSellAllRetry001": {
         "recognition": {
@@ -2223,9 +2408,9 @@
                 "custom_action": "manual_two_city_business_apply_sell_haggle"
             }
         },
-        "post_delay": 300,
+        "post_delay": 600,
         "next": "ManualTwoCityBusinessTapSellConfirmButton",
-        "on_error": "ManualTwoCityBusinessTradeEntryFailed"
+        "on_error": "ManualTwoCityBusinessRecoverToSellPage"
     },
     "ManualTwoCityBusinessTapSellConfirmButton": {
         "recognition": {
@@ -2248,45 +2433,9 @@
         "action": {
             "type": "Click"
         },
-        "post_delay": 1000,
-        "next": [
-            "ManualTwoCityBusinessSellReportReady",
-            "ManualTwoCityBusinessSellMarketChangeNotice",
-            "ManualTwoCityBusinessSellConfirmPopup",
-            "ManualTwoCityBusinessTapSellConfirmFallback"
-        ],
-        "on_error": "ManualTwoCityBusinessTapSellConfirmFallback"
-    },
-    "ManualTwoCityBusinessTapSellConfirmFallback": {
-        "recognition": {
-            "type": "OCR",
-            "param": {
-                "expected": "全部取消",
-                "roi": [
-                    860,
-                    80,
-                    400,
-                    90
-                ]
-            }
-        },
-        "action": {
-            "type": "Click",
-            "param": {
-                "target": [
-                    1056,
-                    647
-                ]
-            }
-        },
-        "post_delay": 1000,
-        "next": [
-            "ManualTwoCityBusinessSellReportReady",
-            "ManualTwoCityBusinessSellMarketChangeNotice",
-            "ManualTwoCityBusinessSellConfirmPopup",
-            "ManualTwoCityBusinessTapSellConfirmRetry001"
-        ],
-        "on_error": "ManualTwoCityBusinessTapSellConfirmRetry001"
+        "post_delay": 1200,
+        "next": "ManualTwoCityBusinessWaitSellReportAfterConfirm",
+        "on_error": "ManualTwoCityBusinessRecoverToSellPage"
     },
     "ManualTwoCityBusinessSellConfirmPopup": {
         "recognition": {
@@ -2307,13 +2456,9 @@
         "action": {
             "type": "Click"
         },
-        "post_delay": 1000,
-        "next": [
-            "ManualTwoCityBusinessSellReportReady",
-            "ManualTwoCityBusinessSellMarketChangeNotice",
-            "ManualTwoCityBusinessTapSellConfirmRetry001"
-        ],
-        "on_error": "ManualTwoCityBusinessTradeEntryFailed"
+        "post_delay": 1200,
+        "next": "ManualTwoCityBusinessWaitSellReportAfterConfirm",
+        "on_error": "ManualTwoCityBusinessRecoverToSellPage"
     },
     "ManualTwoCityBusinessTapSellConfirmRetry001": {
         "recognition": {
@@ -2336,14 +2481,9 @@
         "action": {
             "type": "Click"
         },
-        "post_delay": 1000,
-        "next": [
-            "ManualTwoCityBusinessSellReportReady",
-            "ManualTwoCityBusinessSellMarketChangeNotice",
-            "ManualTwoCityBusinessSellConfirmPopup",
-            "ManualTwoCityBusinessTradeEntryFailed"
-        ],
-        "on_error": "ManualTwoCityBusinessTradeEntryFailed"
+        "post_delay": 1200,
+        "next": "ManualTwoCityBusinessWaitSellReportAfterRetry",
+        "on_error": "ManualTwoCityBusinessSellReportMissingAfterConfirm"
     },
     "ManualTwoCityBusinessSellMarketChangeNotice": {
         "recognition": {
@@ -2372,7 +2512,7 @@
         "next": "ManualTwoCityBusinessSellMarketChangeConfirmButton",
         "on_error": [
             "ManualTwoCityBusinessSellConfirmPopup",
-            "ManualTwoCityBusinessTradeEntryFailed"
+            "ManualTwoCityBusinessRecoverToSellPage"
         ]
     },
     "ManualTwoCityBusinessSellMarketChangeConfirmButton": {
@@ -2394,12 +2534,50 @@
         "action": {
             "type": "Click"
         },
-        "post_delay": 1000,
+        "post_delay": 1200,
+        "next": "ManualTwoCityBusinessWaitSellReportAfterConfirm",
+        "on_error": "ManualTwoCityBusinessTapSellConfirmRetry001"
+    },
+    "ManualTwoCityBusinessWaitSellReportAfterConfirm": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "rate_limit": 800,
+        "timeout": 7000,
         "next": [
             "ManualTwoCityBusinessSellReportReady",
-            "ManualTwoCityBusinessTapSellConfirmRetry001"
+            "ManualTwoCityBusinessSellMarketChangeNotice",
+            "ManualTwoCityBusinessSellConfirmPopup"
         ],
         "on_error": "ManualTwoCityBusinessTapSellConfirmRetry001"
+    },
+    "ManualTwoCityBusinessWaitSellReportAfterRetry": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "rate_limit": 800,
+        "timeout": 10000,
+        "next": [
+            "ManualTwoCityBusinessSellReportReady",
+            "ManualTwoCityBusinessSellMarketChangeNotice",
+            "ManualTwoCityBusinessSellConfirmPopup"
+        ],
+        "on_error": "ManualTwoCityBusinessSellReportMissingAfterConfirm"
+    },
+    "ManualTwoCityBusinessSellReportMissingAfterConfirm": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "next": "ManualTwoCityBusinessRecoverAfterSellReportMissing"
     },
     "ManualTwoCityBusinessSellReportReady": {
         "recognition": {

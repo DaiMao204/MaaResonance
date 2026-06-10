@@ -13,6 +13,8 @@
             "StateRecoveryTravelRouteEvent",
             "StateRecoveryTravelInProgress",
             "StateRecoveryFightActive",
+            "StateRecoveryTapHome001",
+            "StateRecoveryTapBack001",
             "StateRecoveryCloseActivityPanel",
             "StateRecoveryTapStartScreen",
             "StateRecoveryConfirmResourceDownload",
@@ -23,10 +25,10 @@
             "StateRecoveryCloseBuySellReport",
             "StateRecoveryCloseRouteLossReport",
             "StateRecoveryEnterArrivedCity",
-            "StateRecoveryCloseGoodDetail",
             "StateRecoveryCloseStrengthPrompt",
             "StateRecoveryCloseBentoCabinet",
             "StateRecoveryCloseStrengthPage",
+            "StateRecoveryCloseGoodDetail",
             "StateRecoveryCloseTradePage",
             "StateRecoveryCloseTradeMenu",
             "StateRecoveryClosePersonalInfo",
@@ -37,8 +39,7 @@
             "StateRecoveryCloseRouteMap",
             "StateRecoveryCloseMissionPanel",
             "StateRecoveryCloseBrochurePanel",
-            "StateRecoveryTapHome001",
-            "StateRecoveryTapBack001"
+            "StateRecoveryTapHomeFixed001"
         ],
         "on_error": "StateRecoveryRestartGameOnce"
     },
@@ -56,6 +57,8 @@
             "StateRecoveryTravelRouteEvent",
             "StateRecoveryTravelInProgress",
             "StateRecoveryFightActive",
+            "StateRecoveryTapHomeAfterRestart001",
+            "StateRecoveryTapBackAfterRestart001",
             "StateRecoveryCloseActivityPanel",
             "StateRecoveryTapStartScreen",
             "StateRecoveryConfirmResourceDownload",
@@ -66,10 +69,10 @@
             "StateRecoveryCloseBuySellReport",
             "StateRecoveryCloseRouteLossReport",
             "StateRecoveryEnterArrivedCity",
-            "StateRecoveryCloseGoodDetail",
             "StateRecoveryCloseStrengthPrompt",
             "StateRecoveryCloseBentoCabinet",
             "StateRecoveryCloseStrengthPage",
+            "StateRecoveryCloseGoodDetail",
             "StateRecoveryCloseTradePage",
             "StateRecoveryCloseTradeMenu",
             "StateRecoveryClosePersonalInfo",
@@ -80,8 +83,7 @@
             "StateRecoveryCloseRouteMap",
             "StateRecoveryCloseMissionPanel",
             "StateRecoveryCloseBrochurePanel",
-            "StateRecoveryTapHomeAfterRestart001",
-            "StateRecoveryTapBackAfterRestart001"
+            "StateRecoveryTapHomeFixedAfterRestart001"
         ],
         "on_error": "StateRecoveryFailed"
     },
@@ -445,10 +447,7 @@
         "recognition": {
             "type": "OCR",
             "param": {
-                "expected": [
-                    "获取途径",
-                    "拥有数量"
-                ],
+                "expected": "拥有数量",
                 "roi": [
                     480,
                     170,
@@ -533,7 +532,7 @@
             "type": "Click",
             "param": {
                 "target": [
-                    83,
+                    198,
                     36
                 ]
             }
@@ -837,6 +836,8 @@
             "StateRecoveryTravelRouteEvent",
             "StateRecoveryTravelInProgress",
             "StateRecoveryFightActive",
+            "StateRecoveryTapHome002",
+            "StateRecoveryTapBack002",
             "StateRecoveryCloseActivityPanel",
             "StateRecoveryTapStartScreen",
             "StateRecoveryConfirmResourceDownload",
@@ -847,10 +848,10 @@
             "StateRecoveryCloseBuySellReport",
             "StateRecoveryCloseRouteLossReport",
             "StateRecoveryEnterArrivedCity",
-            "StateRecoveryCloseGoodDetail",
             "StateRecoveryCloseStrengthPrompt",
             "StateRecoveryCloseBentoCabinet",
             "StateRecoveryCloseStrengthPage",
+            "StateRecoveryCloseGoodDetail",
             "StateRecoveryCloseTradePage",
             "StateRecoveryCloseTradeMenu",
             "StateRecoveryClosePersonalInfo",
@@ -861,8 +862,7 @@
             "StateRecoveryCloseRouteMap",
             "StateRecoveryCloseMissionPanel",
             "StateRecoveryCloseBrochurePanel",
-            "StateRecoveryTapHome002",
-            "StateRecoveryTapBack002"
+            "StateRecoveryTapBackFixed002"
         ],
         "on_error": "StateRecoveryRestartGameOnce"
     },
@@ -880,6 +880,8 @@
             "StateRecoveryTravelRouteEvent",
             "StateRecoveryTravelInProgress",
             "StateRecoveryFightActive",
+            "StateRecoveryTapHome003",
+            "StateRecoveryTapBack003",
             "StateRecoveryCloseActivityPanel",
             "StateRecoveryTapStartScreen",
             "StateRecoveryConfirmResourceDownload",
@@ -890,10 +892,10 @@
             "StateRecoveryCloseBuySellReport",
             "StateRecoveryCloseRouteLossReport",
             "StateRecoveryEnterArrivedCity",
-            "StateRecoveryCloseGoodDetail",
             "StateRecoveryCloseStrengthPrompt",
             "StateRecoveryCloseBentoCabinet",
             "StateRecoveryCloseStrengthPage",
+            "StateRecoveryCloseGoodDetail",
             "StateRecoveryCloseTradePage",
             "StateRecoveryCloseTradeMenu",
             "StateRecoveryClosePersonalInfo",
@@ -904,8 +906,7 @@
             "StateRecoveryCloseRouteMap",
             "StateRecoveryCloseMissionPanel",
             "StateRecoveryCloseBrochurePanel",
-            "StateRecoveryTapHome003",
-            "StateRecoveryTapBack003"
+            "StateRecoveryTapHomeFixed003"
         ],
         "on_error": "StateRecoveryRestartGameOnce"
     },
@@ -923,6 +924,8 @@
             "StateRecoveryTravelRouteEvent",
             "StateRecoveryTravelInProgress",
             "StateRecoveryFightActive",
+            "StateRecoveryTapHome004",
+            "StateRecoveryTapBack004",
             "StateRecoveryCloseActivityPanel",
             "StateRecoveryTapStartScreen",
             "StateRecoveryConfirmResourceDownload",
@@ -933,10 +936,10 @@
             "StateRecoveryCloseBuySellReport",
             "StateRecoveryCloseRouteLossReport",
             "StateRecoveryEnterArrivedCity",
-            "StateRecoveryCloseGoodDetail",
             "StateRecoveryCloseStrengthPrompt",
             "StateRecoveryCloseBentoCabinet",
             "StateRecoveryCloseStrengthPage",
+            "StateRecoveryCloseGoodDetail",
             "StateRecoveryCloseTradePage",
             "StateRecoveryCloseTradeMenu",
             "StateRecoveryClosePersonalInfo",
@@ -947,8 +950,7 @@
             "StateRecoveryCloseRouteMap",
             "StateRecoveryCloseMissionPanel",
             "StateRecoveryCloseBrochurePanel",
-            "StateRecoveryTapHome004",
-            "StateRecoveryTapBack004"
+            "StateRecoveryTapBackFixed004"
         ],
         "on_error": "StateRecoveryRestartGameOnce"
     },
@@ -976,10 +978,10 @@
             "StateRecoveryCloseBuySellReport",
             "StateRecoveryCloseRouteLossReport",
             "StateRecoveryEnterArrivedCity",
-            "StateRecoveryCloseGoodDetail",
             "StateRecoveryCloseStrengthPrompt",
             "StateRecoveryCloseBentoCabinet",
             "StateRecoveryCloseStrengthPage",
+            "StateRecoveryCloseGoodDetail",
             "StateRecoveryCloseTradePage",
             "StateRecoveryCloseTradeMenu",
             "StateRecoveryClosePersonalInfo",
@@ -1007,6 +1009,8 @@
             "StateRecoveryTravelRouteEvent",
             "StateRecoveryTravelInProgress",
             "StateRecoveryFightActive",
+            "StateRecoveryTapHomeAfterRestart002",
+            "StateRecoveryTapBackAfterRestart002",
             "StateRecoveryCloseActivityPanel",
             "StateRecoveryTapStartScreen",
             "StateRecoveryConfirmResourceDownload",
@@ -1017,10 +1021,10 @@
             "StateRecoveryCloseBuySellReport",
             "StateRecoveryCloseRouteLossReport",
             "StateRecoveryEnterArrivedCity",
-            "StateRecoveryCloseGoodDetail",
             "StateRecoveryCloseStrengthPrompt",
             "StateRecoveryCloseBentoCabinet",
             "StateRecoveryCloseStrengthPage",
+            "StateRecoveryCloseGoodDetail",
             "StateRecoveryCloseTradePage",
             "StateRecoveryCloseTradeMenu",
             "StateRecoveryClosePersonalInfo",
@@ -1031,8 +1035,7 @@
             "StateRecoveryCloseRouteMap",
             "StateRecoveryCloseMissionPanel",
             "StateRecoveryCloseBrochurePanel",
-            "StateRecoveryTapHomeAfterRestart002",
-            "StateRecoveryTapBackAfterRestart002"
+            "StateRecoveryTapBackFixedAfterRestart002"
         ],
         "on_error": "StateRecoveryFailed"
     },
@@ -1050,6 +1053,8 @@
             "StateRecoveryTravelRouteEvent",
             "StateRecoveryTravelInProgress",
             "StateRecoveryFightActive",
+            "StateRecoveryTapHomeAfterRestart003",
+            "StateRecoveryTapBackAfterRestart003",
             "StateRecoveryCloseActivityPanel",
             "StateRecoveryTapStartScreen",
             "StateRecoveryConfirmResourceDownload",
@@ -1060,10 +1065,10 @@
             "StateRecoveryCloseBuySellReport",
             "StateRecoveryCloseRouteLossReport",
             "StateRecoveryEnterArrivedCity",
-            "StateRecoveryCloseGoodDetail",
             "StateRecoveryCloseStrengthPrompt",
             "StateRecoveryCloseBentoCabinet",
             "StateRecoveryCloseStrengthPage",
+            "StateRecoveryCloseGoodDetail",
             "StateRecoveryCloseTradePage",
             "StateRecoveryCloseTradeMenu",
             "StateRecoveryClosePersonalInfo",
@@ -1074,8 +1079,7 @@
             "StateRecoveryCloseRouteMap",
             "StateRecoveryCloseMissionPanel",
             "StateRecoveryCloseBrochurePanel",
-            "StateRecoveryTapHomeAfterRestart003",
-            "StateRecoveryTapBackAfterRestart003"
+            "StateRecoveryTapHomeFixedAfterRestart003"
         ],
         "on_error": "StateRecoveryFailed"
     },
@@ -1084,6 +1088,12 @@
             "type": "TemplateMatch",
             "param": {
                 "template": "go_home.png",
+                "roi": [
+                    154,
+                    9,
+                    89,
+                    58
+                ],
                 "threshold": 0.9
             }
         },
@@ -1098,6 +1108,12 @@
             "type": "TemplateMatch",
             "param": {
                 "template": "go_home.png",
+                "roi": [
+                    154,
+                    9,
+                    89,
+                    58
+                ],
                 "threshold": 0.9
             }
         },
@@ -1112,6 +1128,12 @@
             "type": "TemplateMatch",
             "param": {
                 "template": "go_home.png",
+                "roi": [
+                    154,
+                    9,
+                    89,
+                    58
+                ],
                 "threshold": 0.9
             }
         },
@@ -1126,6 +1148,12 @@
             "type": "TemplateMatch",
             "param": {
                 "template": "go_home.png",
+                "roi": [
+                    154,
+                    9,
+                    89,
+                    58
+                ],
                 "threshold": 0.9
             }
         },
@@ -1140,6 +1168,12 @@
             "type": "TemplateMatch",
             "param": {
                 "template": "page_back.png",
+                "roi": [
+                    0,
+                    0,
+                    170,
+                    80
+                ],
                 "threshold": 0.9
             }
         },
@@ -1154,6 +1188,12 @@
             "type": "TemplateMatch",
             "param": {
                 "template": "page_back.png",
+                "roi": [
+                    0,
+                    0,
+                    170,
+                    80
+                ],
                 "threshold": 0.9
             }
         },
@@ -1168,6 +1208,12 @@
             "type": "TemplateMatch",
             "param": {
                 "template": "page_back.png",
+                "roi": [
+                    0,
+                    0,
+                    170,
+                    80
+                ],
                 "threshold": 0.9
             }
         },
@@ -1182,6 +1228,12 @@
             "type": "TemplateMatch",
             "param": {
                 "template": "page_back.png",
+                "roi": [
+                    0,
+                    0,
+                    170,
+                    80
+                ],
                 "threshold": 0.9
             }
         },
@@ -1196,6 +1248,12 @@
             "type": "TemplateMatch",
             "param": {
                 "template": "go_home.png",
+                "roi": [
+                    154,
+                    9,
+                    89,
+                    58
+                ],
                 "threshold": 0.9
             }
         },
@@ -1210,6 +1268,12 @@
             "type": "TemplateMatch",
             "param": {
                 "template": "go_home.png",
+                "roi": [
+                    154,
+                    9,
+                    89,
+                    58
+                ],
                 "threshold": 0.9
             }
         },
@@ -1224,6 +1288,12 @@
             "type": "TemplateMatch",
             "param": {
                 "template": "go_home.png",
+                "roi": [
+                    154,
+                    9,
+                    89,
+                    58
+                ],
                 "threshold": 0.9
             }
         },
@@ -1238,6 +1308,12 @@
             "type": "TemplateMatch",
             "param": {
                 "template": "page_back.png",
+                "roi": [
+                    0,
+                    0,
+                    170,
+                    80
+                ],
                 "threshold": 0.9
             }
         },
@@ -1252,6 +1328,12 @@
             "type": "TemplateMatch",
             "param": {
                 "template": "page_back.png",
+                "roi": [
+                    0,
+                    0,
+                    170,
+                    80
+                ],
                 "threshold": 0.9
             }
         },
@@ -1266,11 +1348,129 @@
             "type": "TemplateMatch",
             "param": {
                 "template": "page_back.png",
+                "roi": [
+                    0,
+                    0,
+                    170,
+                    80
+                ],
                 "threshold": 0.9
             }
         },
         "action": {
             "type": "Click"
+        },
+        "post_delay": 900,
+        "next": "StateRecoveryFailed"
+    },
+    "StateRecoveryTapHomeFixed001": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    198,
+                    36
+                ]
+            }
+        },
+        "post_delay": 900,
+        "next": "StateRecoveryObserveAfterStep001"
+    },
+    "StateRecoveryTapBackFixed002": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    83,
+                    36
+                ]
+            }
+        },
+        "post_delay": 900,
+        "next": "StateRecoveryObserveAfterStep002"
+    },
+    "StateRecoveryTapHomeFixed003": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    198,
+                    36
+                ]
+            }
+        },
+        "post_delay": 900,
+        "next": "StateRecoveryObserveAfterStep003"
+    },
+    "StateRecoveryTapBackFixed004": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    83,
+                    36
+                ]
+            }
+        },
+        "post_delay": 900,
+        "next": "StateRecoveryObserveFinal"
+    },
+    "StateRecoveryTapHomeFixedAfterRestart001": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    198,
+                    36
+                ]
+            }
+        },
+        "post_delay": 900,
+        "next": "StateRecoveryPostRestartObserveAfterStep001"
+    },
+    "StateRecoveryTapBackFixedAfterRestart002": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    83,
+                    36
+                ]
+            }
+        },
+        "post_delay": 900,
+        "next": "StateRecoveryPostRestartObserveAfterStep002"
+    },
+    "StateRecoveryTapHomeFixedAfterRestart003": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    198,
+                    36
+                ]
+            }
         },
         "post_delay": 900,
         "next": "StateRecoveryFailed"
@@ -1307,6 +1507,21 @@
         },
         "action": {
             "type": "DoNothing"
+        },
+        "next": [
+            "ManualTwoCityBusinessRecoveryResumeToBuyPage",
+            "ManualTwoCityBusinessRecoveryResumeToSellPage",
+            "ManualTwoCityBusinessRecoveryResumeToTradePage",
+            "ManualTwoCityBusinessRecoveryResumeToCurrentCity",
+            "StateRecoveryCompleteDone"
+        ]
+    },
+    "StateRecoveryCompleteDone": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "DoNothing"
         }
     },
     "StateRecoveryFailed": {
@@ -1315,7 +1530,11 @@
         },
         "action": {
             "type": "DoNothing"
-        }
+        },
+        "next": [
+            "ManualTwoCityBusinessRecoveryFailed",
+            "StateRecoveryCompleteDone"
+        ]
     },
     "StateRecoveryFightActive": {
         "recognition": "Custom",

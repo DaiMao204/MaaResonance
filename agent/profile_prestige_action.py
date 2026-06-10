@@ -108,6 +108,13 @@ MANUAL_TWO_CITY_SMART_SCAN_INTERVAL_LABELS = {
 MANUAL_TWO_CITY_TERMINAL_ONE_ROUND_COMPLETE = "one_round_complete"
 MANUAL_TWO_CITY_TERMINAL_FATIGUE_EXHAUSTED = "fatigue_exhausted"
 MANUAL_TWO_CITY_TERMINAL_FAILED = "failed"
+MANUAL_TWO_CITY_RECOVERY_DEFAULT_MAX_ATTEMPTS = 2
+MANUAL_TWO_CITY_RECOVERY_TARGET_LABELS = {
+    "current_city": "当前城市",
+    "trade_page": "交易所",
+    "buy_page": "买入页",
+    "sell_page": "卖出页",
+}
 MANUAL_TWO_CITY_FATIGUE_SAFETY_BUFFER = 50
 BUY_BOOK_MAX_PER_BATCH = 10
 BUY_BOOK_TOOL_TARGET = (1082, 104)
@@ -4011,6 +4018,10 @@ def _manual_two_city_defaults() -> dict[str, Any]:
         "trade_phase": "buy",
         "terminal_status": "",
         "terminal_reason": "",
+        "recovery_target": "",
+        "recovery_reason": "",
+        "recovery_source": "",
+        "recovery_attempt_counts": {},
         "auto_drink": False,
         "drink_fatigue_threshold": 300,
         "drink_unavailable": False,
@@ -4344,6 +4355,128 @@ class ManualTwoCityBusinessStateRecoveryCompleteDispatchAction(CustomAction):
         return pending
 
 
+@AgentServer.custom_action("manual_two_city_business_request_recovery")
+class ManualTwoCityBusinessRequestRecoveryAction(CustomAction):
+    def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
+        params = _argv_param(argv)
+        state = _manual_two_city_state()
+        task_entry = _manual_two_city_current_task_entry(state)
+        target = str(params.get("target") or "trade_page").strip()
+        if target not in MANUAL_TWO_CITY_RECOVERY_TARGET_LABELS:
+            target = "trade_page"
+        max_attempts = _int_param(
+            params,
+            "max_attempts",
+            MANUAL_TWO_CITY_RECOVERY_DEFAULT_MAX_ATTEMPTS,
+            minimum=1,
+        )
+        counts = state.setdefault("recovery_attempt_counts", {})
+        if not isinstance(counts, dict):
+            counts = {}
+            state["recovery_attempt_counts"] = counts
+        attempt = int(counts.get(target) or 0) + 1
+        label = MANUAL_TWO_CITY_RECOVERY_TARGET_LABELS.get(target, target)
+        reason = str(params.get("reason") or "识别失败，准备状态恢复后重试。").strip()
+        source = str(params.get("source") or getattr(argv, "node_name", "") or "").strip()
+        if target == "buy_page":
+            state["trade_phase"] = "buy"
+        elif target == "sell_page":
+            state["trade_phase"] = "sell"
+
+        if attempt > max_attempts:
+            state["recovery_target"] = ""
+            state["recovery_resumed_target"] = target
+            state["recovery_reason"] = reason
+            state["recovery_source"] = source
+            state["terminal_status"] = MANUAL_TWO_CITY_TERMINAL_FAILED
+            state["terminal_reason"] = f"状态恢复到{label}超过 {max_attempts} 次仍失败"
+            _append_user_log(
+                task_entry,
+                f"状态恢复：尝试回到{label}已超过 {max_attempts} 次，停止以避免循环。",
+                run_id=str(state.get("run_id") or ""),
+                level="error",
+                event="manual_two_city_recovery_attempt_exhausted",
+                data={"target": target, "label": label, "attempt": attempt, "max_attempts": max_attempts, "reason": reason, "source": source},
+            )
+            _json_payload(
+                "manual_two_city_business_request_recovery",
+                {"ok": False, "target": target, "attempt": attempt, "max_attempts": max_attempts, "reason": reason},
+            )
+            return False
+
+        counts[target] = attempt
+        state["recovery_target"] = target
+        state["recovery_reason"] = reason
+        state["recovery_source"] = source
+        state["recovery_requested_at"] = time.time()
+        _append_user_log(
+            task_entry,
+            f"状态恢复：{reason} 将先回到主界面，再尝试恢复到{label}（第 {attempt}/{max_attempts} 次）。",
+            run_id=str(state.get("run_id") or ""),
+            level="warning",
+            event="manual_two_city_recovery_requested",
+            data={"target": target, "label": label, "attempt": attempt, "max_attempts": max_attempts, "source": source},
+        )
+        _json_payload(
+            "manual_two_city_business_request_recovery",
+            {"ok": True, "target": target, "attempt": attempt, "max_attempts": max_attempts, "reason": reason, "source": source},
+        )
+        return True
+
+
+@AgentServer.custom_action("manual_two_city_business_recovery_resume")
+class ManualTwoCityBusinessRecoveryResumeAction(CustomAction):
+    def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
+        params = _argv_param(argv)
+        state = _manual_two_city_state()
+        task_entry = _manual_two_city_current_task_entry(state)
+        target = str(params.get("target") or state.get("recovery_target") or "").strip()
+        if not target:
+            _json_payload("manual_two_city_business_recovery_resume", {"ok": False, "reason": "no_target"})
+            return False
+        label = MANUAL_TWO_CITY_RECOVERY_TARGET_LABELS.get(target, target)
+        reason = str(state.get("recovery_reason") or "").strip()
+        state["recovery_target"] = ""
+        state["recovery_resumed_target"] = target
+        state["recovery_resumed_at"] = time.time()
+        if target == "buy_page":
+            state["trade_phase"] = "buy"
+        elif target == "sell_page":
+            state["trade_phase"] = "sell"
+        _append_user_log(
+            task_entry,
+            f"状态恢复：已回到主界面，准备重新进入{label}。",
+            run_id=str(state.get("run_id") or ""),
+            event="manual_two_city_recovery_resume",
+            data={"target": target, "label": label, "reason": reason, "source": state.get("recovery_source")},
+        )
+        _json_payload("manual_two_city_business_recovery_resume", {"ok": True, "target": target, "label": label})
+        return True
+
+
+@AgentServer.custom_action("manual_two_city_business_recovery_failed")
+class ManualTwoCityBusinessRecoveryFailedAction(CustomAction):
+    def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
+        state = _manual_two_city_state()
+        task_entry = _manual_two_city_current_task_entry(state)
+        target = str(state.get("recovery_target") or state.get("recovery_resumed_target") or "").strip()
+        label = MANUAL_TWO_CITY_RECOVERY_TARGET_LABELS.get(target, target or "目标页面")
+        reason = str(state.get("recovery_reason") or "状态恢复失败").strip()
+        state["recovery_target"] = ""
+        state["terminal_status"] = MANUAL_TWO_CITY_TERMINAL_FAILED
+        state["terminal_reason"] = f"状态恢复到{label}失败：{reason}"
+        _append_user_log(
+            task_entry,
+            f"状态恢复：未能回到主界面或恢复到{label}，已停止本轮跑商。",
+            run_id=str(state.get("run_id") or ""),
+            level="error",
+            event="manual_two_city_recovery_failed",
+            data={"target": target, "label": label, "reason": reason, "source": state.get("recovery_source")},
+        )
+        _json_payload("manual_two_city_business_recovery_failed", {"ok": True, "target": target, "label": label, "reason": reason})
+        return True
+
+
 @AgentServer.custom_action("manual_two_city_business_trade_outlet_open_done_dispatch")
 class ManualTwoCityBusinessTradeOutletOpenDoneDispatchAction(CustomAction):
     def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
@@ -4496,6 +4629,46 @@ MANUAL_TWO_CITY_DAILY_CHECKIN_TEXTS = [
     "本月累计签到",
     "今日奖励",
 ]
+
+
+@AgentServer.custom_recognition("manual_two_city_business_recovery_target")
+class ManualTwoCityBusinessRecoveryTargetRecognition(CustomRecognition):
+    def analyze(
+        self,
+        context: Context,
+        argv: CustomRecognition.AnalyzeArg,
+    ) -> CustomRecognition.AnalyzeResult:
+        params = _custom_recognition_param(argv)
+        raw_targets = params.get("targets", params.get("target"))
+        if isinstance(raw_targets, str):
+            targets = {raw_targets.strip()}
+        elif isinstance(raw_targets, (list, tuple, set)):
+            targets = {str(item).strip() for item in raw_targets}
+        else:
+            targets = set()
+        targets.discard("")
+
+        state = _manual_two_city_state()
+        target = str(state.get("recovery_target") or "").strip()
+        if not target:
+            return CustomRecognition.AnalyzeResult(
+                box=None,
+                detail={"ok": False, "reason": "no_recovery_target"},
+            )
+        if targets and target not in targets:
+            return CustomRecognition.AnalyzeResult(
+                box=None,
+                detail={"ok": False, "reason": "target_mismatch", "target": target, "expected": sorted(targets)},
+            )
+        return CustomRecognition.AnalyzeResult(
+            box=(0, 0, 1280, 720),
+            detail={
+                "ok": True,
+                "target": target,
+                "reason": state.get("recovery_reason"),
+                "source": state.get("recovery_source"),
+            },
+        )
 
 
 @AgentServer.custom_recognition("manual_two_city_business_daily_checkin_popup")
@@ -11053,12 +11226,6 @@ class ManualTwoCityBusinessDoneAction(CustomAction):
             terminal_status == MANUAL_TWO_CITY_TERMINAL_FATIGUE_EXHAUSTED
             and run_mode == MANUAL_TWO_CITY_RUN_MODE_UNTIL_FATIGUE_EXHAUSTED
         )
-        if config_result.get("snapshots"):
-            config_note = "疲劳药/桦石次数已在每次使用时同步递减"
-        elif config_result.get("paths"):
-            config_note = "未找到跑商任务疲劳药/桦石配置项"
-        else:
-            config_note = "未找到 MXU 配置文件"
         pending_option_values = state.get("pending_medicine_option_values")
         final_config_write: dict[str, Any] | None = None
         final_delayed_config_write: dict[str, Any] | None = None
@@ -11076,8 +11243,6 @@ class ManualTwoCityBusinessDoneAction(CustomAction):
                     values=pending_option_values,
                     delays=[2.0, 5.0, 10.0],
                 )
-            if final_delayed_config_write.get("scheduled"):
-                config_note += "，并已安排收尾延迟回写以避免 MXU 覆盖"
         if is_success:
             result_note = terminal_reason or "已按跑商执行方式正常完成"
             level = "info"
@@ -11085,10 +11250,9 @@ class ManualTwoCityBusinessDoneAction(CustomAction):
             result_note = terminal_reason or f"未按跑商执行方式完成，当前阶段 {state.get('trade_phase') or '-'}"
             level = "error"
         result_note = str(result_note).strip().rstrip("。.!！?？")
-        config_note = str(config_note).strip().rstrip("。.!！?？")
         _append_user_log(
             task_entry,
-            f"{task_label}收尾：{result_note}。{config_note}。",
+            f"{task_label}收尾：{result_note}。",
             level=level,
             event="manual_two_city_business_done",
             data={
