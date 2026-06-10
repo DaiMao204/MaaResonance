@@ -146,13 +146,11 @@ jobs:
         run: |
           {
             echo "release_body<<EOF"
-            echo "## v1.2.0-beta.1 更新日志"
-            echo ""
-            echo "本次更新优化自动更新流程，避免软件端更新后重置用户已有任务与设置。"
+            echo "## v1.2.0-beta.2 更新日志"
             echo ""
             echo "#### 优化"
             echo ""
-            echo "- 优化自动更新逻辑，自动更新后不再覆盖原用户配置。"
+            echo "- 增强任务运行稳定性，减少任务中断的情况"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 

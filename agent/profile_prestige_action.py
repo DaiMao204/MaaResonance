@@ -114,6 +114,8 @@ MANUAL_TWO_CITY_RECOVERY_TARGET_LABELS = {
     "trade_page": "交易所",
     "buy_page": "买入页",
     "sell_page": "卖出页",
+    "depart": "买入后出发流程",
+    "travel_monitor": "行车监听",
 }
 MANUAL_TWO_CITY_FATIGUE_SAFETY_BUFFER = 50
 BUY_BOOK_MAX_PER_BATCH = 10

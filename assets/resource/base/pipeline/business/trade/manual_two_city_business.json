@@ -459,6 +459,42 @@
         "next": "ManualTwoCityBusinessOpenCurrentCityStart",
         "on_error": "ManualTwoCityBusinessRecoveryFailedAfterResume"
     },
+    "ManualTwoCityBusinessRecoveryResumeToDepart": {
+        "recognition": "Custom",
+        "custom_recognition": "manual_two_city_business_recovery_target",
+        "custom_recognition_param": {
+            "target": "depart"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_recovery_resume",
+                "custom_action_param": {
+                    "target": "depart"
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessReturnHomeAfterBuy",
+        "on_error": "ManualTwoCityBusinessRecoveryFailedAfterResume"
+    },
+    "ManualTwoCityBusinessRecoveryResumeToTravelMonitor": {
+        "recognition": "Custom",
+        "custom_recognition": "manual_two_city_business_recovery_target",
+        "custom_recognition_param": {
+            "target": "travel_monitor"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_recovery_resume",
+                "custom_action_param": {
+                    "target": "travel_monitor"
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessTravelMonitor",
+        "on_error": "ManualTwoCityBusinessRecoveryFailedAfterResume"
+    },
     "ManualTwoCityBusinessRecoverToCurrentCity": {
         "recognition": {
             "type": "DirectHit"
@@ -4372,7 +4408,7 @@
         },
         "post_delay": 300,
         "next": "ManualTwoCityBusinessBuySelectionResetTop001",
-        "on_error": "RunManualTwoCityBusinessDone"
+        "on_error": "ManualTwoCityBusinessRecoverToBuyPage"
     },
     "ManualTwoCityBusinessSellGoodsMissing": {
         "recognition": {
@@ -4386,9 +4422,27 @@
         },
         "post_delay": 300,
         "next": "ManualTwoCityBusinessBuyPageReady",
-        "on_error": "RunManualTwoCityBusinessDone"
+        "on_error": "ManualTwoCityBusinessRecoverToSellPage"
     },
     "ManualTwoCityBusinessDepartFailed": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_request_recovery",
+                "custom_action_param": {
+                    "target": "depart",
+                    "reason": "买入后出发失败：已完成买入，但未能关闭报告、打开路线图、定位目标城市或确认出发。",
+                    "max_attempts": 2
+                }
+            }
+        },
+        "next": "StateRecoveryStart",
+        "on_error": "ManualTwoCityBusinessDepartTerminalFailed"
+    },
+    "ManualTwoCityBusinessDepartTerminalFailed": {
         "recognition": {
             "type": "DirectHit"
         },
@@ -4398,7 +4452,7 @@
                 "custom_action": "manual_two_city_business_stage",
                 "custom_action_param": {
                     "stage": "买入后出发失败",
-                    "detail": "已完成买入，但未能关闭报告、打开路线图、定位目标城市或确认出发。",
+                    "detail": "已完成买入，但状态恢复后仍未能关闭报告、打开路线图、定位目标城市或确认出发。",
                     "terminal_status": "failed",
                     "level": "error"
                 }
@@ -4413,10 +4467,28 @@
         "action": {
             "type": "Custom",
             "param": {
+                "custom_action": "manual_two_city_business_request_recovery",
+                "custom_action_param": {
+                    "target": "travel_monitor",
+                    "reason": "行车监听失败：买入后已出发，但行车途中长时间无法识别 HUD、到站按钮或可处理事件。",
+                    "max_attempts": 2
+                }
+            }
+        },
+        "next": "StateRecoveryStart",
+        "on_error": "ManualTwoCityBusinessTravelTerminalFailed"
+    },
+    "ManualTwoCityBusinessTravelTerminalFailed": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
                 "custom_action": "manual_two_city_business_stage",
                 "custom_action_param": {
                     "stage": "行车监听失败",
-                    "detail": "买入后已出发，但行车途中长时间无法识别 HUD、到站按钮或可处理事件。",
+                    "detail": "买入后已出发，但状态恢复后仍长时间无法识别 HUD、到站按钮或可处理事件。",
                     "terminal_status": "failed",
                     "level": "error"
                 }
@@ -4431,10 +4503,28 @@
         "action": {
             "type": "Custom",
             "param": {
+                "custom_action": "manual_two_city_business_request_recovery",
+                "custom_action_param": {
+                    "target": "trade_page",
+                    "reason": "跑商入口失败：未能进入当前城市交易所或买入页。",
+                    "max_attempts": 2
+                }
+            }
+        },
+        "next": "StateRecoveryStart",
+        "on_error": "ManualTwoCityBusinessTradeEntryTerminalFailed"
+    },
+    "ManualTwoCityBusinessTradeEntryTerminalFailed": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
                 "custom_action": "manual_two_city_business_stage",
                 "custom_action_param": {
                     "stage": "跑商入口失败",
-                    "detail": "未能进入当前城市交易所或买入页。",
+                    "detail": "状态恢复后仍未能进入当前城市交易所或买入页。",
                     "terminal_status": "failed",
                     "level": "error"
                 }

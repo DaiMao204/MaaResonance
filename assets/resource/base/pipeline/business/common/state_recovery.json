@@ -20,6 +20,7 @@
             "StateRecoveryConfirmResourceDownload",
             "StateRecoveryCloseAnnouncement",
             "StateRecoveryCloseGenericPopup",
+            "StateRecoveryConfirmNetworkPoorPopup",
             "StateRecoveryConfirmPlainPopup",
             "StateRecoveryCloseRouteMapDetail",
             "StateRecoveryCloseBuySellReport",
@@ -64,6 +65,7 @@
             "StateRecoveryConfirmResourceDownload",
             "StateRecoveryCloseAnnouncement",
             "StateRecoveryCloseGenericPopup",
+            "StateRecoveryConfirmNetworkPoorPopup",
             "StateRecoveryConfirmPlainPopup",
             "StateRecoveryCloseRouteMapDetail",
             "StateRecoveryCloseBuySellReport",
@@ -315,6 +317,50 @@
             }
         },
         "post_delay": 800,
+        "next": "StateRecoveryObserveAfterStep001"
+    },
+    "StateRecoveryConfirmNetworkPoorPopup": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "当前网络不佳",
+                    "网络不佳",
+                    "重新连接"
+                ],
+                "roi": [
+                    250,
+                    250,
+                    780,
+                    220
+                ]
+            }
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "next": "StateRecoveryTapNetworkPoorConfirm"
+    },
+    "StateRecoveryTapNetworkPoorConfirm": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "确认",
+                    "确定"
+                ],
+                "roi": [
+                    640,
+                    430,
+                    610,
+                    130
+                ]
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 5000,
         "next": "StateRecoveryObserveAfterStep001"
     },
     "StateRecoveryConfirmPlainPopup": {
@@ -843,6 +889,7 @@
             "StateRecoveryConfirmResourceDownload",
             "StateRecoveryCloseAnnouncement",
             "StateRecoveryCloseGenericPopup",
+            "StateRecoveryConfirmNetworkPoorPopup",
             "StateRecoveryConfirmPlainPopup",
             "StateRecoveryCloseRouteMapDetail",
             "StateRecoveryCloseBuySellReport",
@@ -887,6 +934,7 @@
             "StateRecoveryConfirmResourceDownload",
             "StateRecoveryCloseAnnouncement",
             "StateRecoveryCloseGenericPopup",
+            "StateRecoveryConfirmNetworkPoorPopup",
             "StateRecoveryConfirmPlainPopup",
             "StateRecoveryCloseRouteMapDetail",
             "StateRecoveryCloseBuySellReport",
@@ -931,6 +979,7 @@
             "StateRecoveryConfirmResourceDownload",
             "StateRecoveryCloseAnnouncement",
             "StateRecoveryCloseGenericPopup",
+            "StateRecoveryConfirmNetworkPoorPopup",
             "StateRecoveryConfirmPlainPopup",
             "StateRecoveryCloseRouteMapDetail",
             "StateRecoveryCloseBuySellReport",
@@ -973,6 +1022,7 @@
             "StateRecoveryConfirmResourceDownload",
             "StateRecoveryCloseAnnouncement",
             "StateRecoveryCloseGenericPopup",
+            "StateRecoveryConfirmNetworkPoorPopup",
             "StateRecoveryConfirmPlainPopup",
             "StateRecoveryCloseRouteMapDetail",
             "StateRecoveryCloseBuySellReport",
@@ -1016,6 +1066,7 @@
             "StateRecoveryConfirmResourceDownload",
             "StateRecoveryCloseAnnouncement",
             "StateRecoveryCloseGenericPopup",
+            "StateRecoveryConfirmNetworkPoorPopup",
             "StateRecoveryConfirmPlainPopup",
             "StateRecoveryCloseRouteMapDetail",
             "StateRecoveryCloseBuySellReport",
@@ -1060,6 +1111,7 @@
             "StateRecoveryConfirmResourceDownload",
             "StateRecoveryCloseAnnouncement",
             "StateRecoveryCloseGenericPopup",
+            "StateRecoveryConfirmNetworkPoorPopup",
             "StateRecoveryConfirmPlainPopup",
             "StateRecoveryCloseRouteMapDetail",
             "StateRecoveryCloseBuySellReport",
@@ -1509,6 +1561,8 @@
             "type": "DoNothing"
         },
         "next": [
+            "ManualTwoCityBusinessRecoveryResumeToDepart",
+            "ManualTwoCityBusinessRecoveryResumeToTravelMonitor",
             "ManualTwoCityBusinessRecoveryResumeToBuyPage",
             "ManualTwoCityBusinessRecoveryResumeToSellPage",
             "ManualTwoCityBusinessRecoveryResumeToTradePage",

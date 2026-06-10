@@ -15,10 +15,30 @@
             ],
             "pipeline_override": {
                 "StateRecoveryComplete": {
-                    "next": "ManualTwoCityBusinessAccountProfileWarmupStartFromMainMap"
+                    "next": [
+                        "ManualTwoCityBusinessRecoveryResumeToDepart",
+                        "ManualTwoCityBusinessRecoveryResumeToTravelMonitor",
+                        "ManualTwoCityBusinessRecoveryResumeToBuyPage",
+                        "ManualTwoCityBusinessRecoveryResumeToSellPage",
+                        "ManualTwoCityBusinessRecoveryResumeToTradePage",
+                        "ManualTwoCityBusinessRecoveryResumeToCurrentCity",
+                        "ManualTwoCityBusinessAccountProfileWarmupStartFromMainMap"
+                    ]
                 },
                 "StateRecoveryFailed": {
-                    "next": "ManualTwoCityBusinessTradeEntryFailed"
+                    "next": [
+                        "ManualTwoCityBusinessRecoveryFailed",
+                        "ManualTwoCityBusinessTradeEntryFailed"
+                    ]
+                },
+                "StateRecoveryTravelRouteEvent": {
+                    "next": "ManualTwoCityBusinessTravelMonitor"
+                },
+                "StateRecoveryTravelInProgress": {
+                    "next": "ManualTwoCityBusinessTravelMonitor"
+                },
+                "StateRecoveryFightActive": {
+                    "next": "ManualTwoCityBusinessFightMonitor"
                 },
                 "CityTradeOutletOpenDone": {
                     "next": "ManualTwoCityBusinessTradeOutletOpenDoneDispatch"
