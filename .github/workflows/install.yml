@@ -119,6 +119,15 @@ jobs:
           python -m pip install -r tools/requirements.txt
           python tools/install.py ${{ needs.meta.outputs.tag }} ${{ matrix.os }} ${{ matrix.arch }} --with-mxu
 
+      - name: Verify runtime config is not packaged
+        shell: bash
+        run: |
+          if [[ -d install/config ]]; then
+            echo "::error::install/config is user runtime state and must not be included in update packages."
+            find install/config -maxdepth 2 -type f -print
+            exit 1
+          fi
+
       - uses: actions/upload-artifact@v4
         with:
           name: MaaResonance-${{ matrix.os }}-${{ matrix.arch }}
@@ -137,29 +146,13 @@ jobs:
         run: |
           {
             echo "release_body<<EOF"
-            echo "## v1.1.0 更新日志"
+            echo "## v1.2.0-beta.1 更新日志"
             echo ""
-            echo "本次更新主要提升跑商中异常恢复流程的稳定性，减少识别失败、误点、页面未打开等情况导致任务中断或卡死的问题。"
-            echo ""
-            echo "#### 新增"
-            echo ""
-            echo "- 新增关键页面恢复能力，任务遇到异常时会尝试返回到正常页面。"
+            echo "本次更新优化自动更新流程，避免软件端更新后重置用户已有任务与设置。"
             echo ""
             echo "#### 优化"
             echo ""
-            echo "- 优化启动游戏后的界面恢复逻辑。"
-            echo "- 优化疲劳恢复逻辑。"
-            echo "- 优化卖出流程判定。"
-            echo "- 优化商品详情识别范围。"
-            echo "- 优化跑商日志。"
-            echo ""
-            echo "#### 修复"
-            echo ""
-            echo "- 修复启动游戏流程中停留在疲劳界面时，可能反复点击并卡死的问题。"
-            echo "- 修复疲劳界面偶现被误识别为商品详情的问题。"
-            echo "- 修复部分场景中因识别和动作都成功，但实际卡死导致无法触发重启的问题。"
-            echo "- 修复卖出后未识别到结算报告时可能误判或直接任务中断的问题。"
-            echo "- 修复部分买入页、卖出页、交易所入口识别失败后直接终止任务的问题。"
+            echo "- 优化自动更新逻辑，自动更新后不再覆盖原用户配置。"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 

@@ -8,7 +8,7 @@
     "license": "AGPL-3.0-only",
     "welcome": "当前处于公开测试阶段，主要测试功能稳定性。遇到异常请附带 MXU 日志、任务配置和出错界面截图反馈。",
     "github": "https://github.com/DaiMao204/MaaResonance",
-    "version": "v1.1.0",
+    "version": "v1.2.0-beta.1",
     "mirrorchyan_rid": "MaaResonance",
     "mirrorchyan_multiplatform": true,
     "controller": [
@@ -55,6 +55,75 @@
     ],
     "task": [],
     "option": {},
+    "preset": [
+        {
+            "name": "auto-business",
+            "label": "自动跑商",
+            "description": "启动游戏后自动规划并执行双城跑商。",
+            "task": [
+                {
+                    "name": "LaunchGame",
+                    "enabled": true
+                },
+                {
+                    "name": "AutoTwoCityBusiness",
+                    "enabled": true,
+                    "option": {
+                        "AutoTwoCityPriorityCity1": "none",
+                        "AutoTwoCityPriorityCity2": "none",
+                        "AutoTwoCityExcludeCities": [],
+                        "AutoTwoCityPlannerParams": {
+                            "max_restock": "6"
+                        },
+                        "AutoTwoCityWulinyuanPriority": "total",
+                        "ManualTwoCityRunMode": "until_fatigue_exhausted",
+                        "ManualTwoCityAccountProfileReadMode": "smart",
+                        "ManualTwoCityAutoImpactDrill": "Yes",
+                        "ManualTwoCityAutoSpeedProjectile": "Yes",
+                        "ManualTwoCityAutoDrink": "Yes",
+                        "ManualTwoCityAutoBento": "Yes",
+                        "ManualTwoCityUseMedicine": "No"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "manual-business",
+            "label": "手动跑商",
+            "description": "按指定起点和目标城市执行双城跑商。",
+            "task": [
+                {
+                    "name": "LaunchGame",
+                    "enabled": true
+                },
+                {
+                    "name": "ManualTwoCityBusiness",
+                    "enabled": true,
+                    "option": {
+                        "ManualTwoCityStartCity": "修格里城",
+                        "ManualTwoCityStartParams": {
+                            "start_book": "2",
+                            "start_bargain_percent": "20",
+                            "start_raise_percent": "20"
+                        },
+                        "ManualTwoCityTargetCity": "7号自由港",
+                        "ManualTwoCityTargetParams": {
+                            "target_book": "2",
+                            "target_bargain_percent": "20",
+                            "target_raise_percent": "20"
+                        },
+                        "ManualTwoCityRunMode": "until_fatigue_exhausted",
+                        "ManualTwoCityAccountProfileReadMode": "smart",
+                        "ManualTwoCityAutoImpactDrill": "Yes",
+                        "ManualTwoCityAutoSpeedProjectile": "Yes",
+                        "ManualTwoCityAutoDrink": "Yes",
+                        "ManualTwoCityAutoBento": "Yes",
+                        "ManualTwoCityUseMedicine": "No"
+                    }
+                }
+            ]
+        }
+    ],
     "import": [
         "resource/tasks/ManualTwoCityBusiness.json",
         "resource/tasks/AutoTwoCityBusiness.json",

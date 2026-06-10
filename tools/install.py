@@ -39,7 +39,9 @@ if sys.argv.__len__() < 4:
     print("Usage: python install.py <version> <os> <arch>")
     print("Example: python install.py v1.0.0 win x86_64")
     print("Optional: add --with-mxu to deploy the MXU frontend into install.")
+    print("Optional: add --with-default-config to copy assets/config into install.")
     print("可选：添加 --with-mxu 将 MXU 前端部署到 install。")
+    print("可选：添加 --with-default-config 将 assets/config 复制到 install。")
     sys.exit(1)
 
 os_name = sys.argv[2]
@@ -376,6 +378,15 @@ def install_default_config():
         )
 
 
+def install_config_policy():
+    # MXU stores user tasks, accounts, and settings in the runtime config folder.
+    # Shipping that folder in update packages makes full updates replace user data.
+    if "--with-default-config" in options:
+        install_default_config()
+    else:
+        _reset_generated_path(install_path / "config")
+
+
 def install_clean_runtime_state():
     _reset_generated_path(install_path / "cache")
     _reset_generated_path(install_path / "debug")
@@ -416,7 +427,7 @@ if __name__ == "__main__":
     install_chores()
     install_agent()
     install_runtime_logic()
-    install_default_config()
+    install_config_policy()
     if "--with-mxu" in options:
         install_mxu()
 
