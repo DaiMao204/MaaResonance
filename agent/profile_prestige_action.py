@@ -180,6 +180,7 @@ PRE_BUY_CLEANUP_WARN_RATIO = 0.10
 PRE_BUY_CLEANUP_RAISE_RATIO = 0.50
 PRE_BUY_CLEANUP_RAISE_PERCENT = 20
 PRE_BUY_SKIP_BUY_FULL_RATIO = 0.90
+PRE_BUY_SKIP_RESTOCK_LOSS_RATIO = 0.50
 SELL_CART_SELECTED_ROI = [860, 80, 400, 90]
 SELL_CONFIRM_BUTTON_ROI = [880, 585, 360, 115]
 SELL_CONFIRM_BUTTON_TARGET = (1056, 647)
@@ -6381,11 +6382,23 @@ def _manual_two_city_probe_medicine_actual_budget(
             )
     actual_details.append(detail)
 
+    budget_parts: list[str] = []
+    for detail in actual_details:
+        try:
+            detail_count = int(detail.get("actual_count") or 0)
+            detail_restore = int(detail.get("restore") or 0)
+        except (TypeError, ValueError):
+            continue
+        if detail_count <= 0 or detail_restore <= 0:
+            continue
+        budget_parts.append(f"{detail.get('resource')} {detail_count} 次×{detail_restore}={detail_count * detail_restore}")
+
     actual_budget = {
         "kind": "actual",
         "remaining": remaining,
         "gap": gap,
         "restore_budget": actual_restore,
+        "summary": budget_parts,
         "details": actual_details,
         "theoretical": theoretical,
     }
@@ -6436,7 +6449,11 @@ def _manual_two_city_probe_medicine_actual_budget(
 
     _append_user_log(
         _manual_two_city_current_task_entry(state),
-        f"跑商补疲劳：实际库存/次数预算可补 {actual_restore}，足够补齐安全需求缺口 {gap}，开始使用恢复资源。",
+        (
+            f"跑商补疲劳：恢复资源可用总预算 {actual_restore}"
+            f"{'（' + '；'.join(budget_parts) + '）' if budget_parts else ''}"
+            f"，安全需求缺口 {gap}，将按顺序使用恢复资源。"
+        ),
         event="manual_two_city_strength_recovery_budget_enough",
         data={"phase": phase, "status": status, "required": required, "budget": actual_budget},
     )
@@ -6805,9 +6822,25 @@ def _manual_two_city_available_lots_for_leg(leg: dict[str, Any] | None) -> tuple
     state = _manual_two_city_state()
     result = state.get("result") if isinstance(state.get("result"), dict) else {}
     options = _manual_two_city_product_scan_plan_options(result)
+    observed_source = "result"
     observed_lots = _product_buy_lot_by_city(result.get("product_buy_lot_by_city")).get(buy_city, {})
+    account_path = ""
+    if not observed_lots:
+        account_path_obj, account = _manual_two_city_load_account_config_for_result(result)
+        _account_rates, account_lots, _account_read_meta = _manual_two_city_city_trade_data_for_account(account)
+        account_observed_lots = account_lots.get(buy_city, {})
+        if account_observed_lots:
+            observed_lots = account_observed_lots
+            observed_source = "account_config"
+            account_path = str(account_path_obj)
     available: dict[str, int] = {}
-    detail: dict[str, Any] = {"restock": restock, "per_good": {}}
+    detail: dict[str, Any] = {
+        "restock": restock,
+        "per_good": {},
+        "observed_source": observed_source,
+    }
+    if account_path:
+        detail["account_config"] = account_path
     for good in planned_goods:
         product = products.get(good)
         calculated = None
@@ -6950,12 +6983,22 @@ def _manual_two_city_quick_buy_selection_plan(
         if planned_loads.get(good, 0) > available_lots.get(good, 0)
     ]
     if overflow_goods:
+        overflow_detail = [
+            {
+                "good": good,
+                "planned": planned_loads.get(good, 0),
+                "available": available_lots.get(good, 0),
+            }
+            for good in overflow_goods
+        ]
         return {
             "ok": False,
             "reason": "planned_load_exceeds_available",
             "overflow_goods": overflow_goods,
+            "overflow_detail": overflow_detail,
             "planned_loads": planned_loads,
             "available_lots": available_lots,
+            "available_detail": available_detail,
         }
     return {
         "ok": True,
@@ -7019,6 +7062,63 @@ def _manual_two_city_cargo_blocks_missing_goods(
     return bool(candidate_loads) and remaining < min(candidate_loads)
 
 
+def _manual_two_city_existing_cargo_restock_loss(
+    leg: dict[str, Any] | None,
+    cargo_load: dict[str, Any] | None,
+) -> dict[str, Any]:
+    planned_total = _manual_two_city_planned_goods_total(leg)
+    remaining = _manual_two_city_cargo_remaining_capacity(cargo_load)
+    planned_profit = 0.0
+    effective_profit = 0.0
+    remaining_for_profit = max(0, int(remaining or 0))
+    if isinstance(leg, dict):
+        for item in leg.get("goods_detail") or []:
+            if not isinstance(item, dict):
+                continue
+            try:
+                num = max(0, int(item.get("num") or item.get("buyLot") or 0))
+                profit = max(0.0, float(item.get("profit") or 0))
+            except (TypeError, ValueError):
+                continue
+            if num <= 0 or profit <= 0:
+                continue
+            planned_profit += profit
+            if remaining_for_profit <= 0:
+                continue
+            take = min(num, remaining_for_profit)
+            effective_profit += profit * (take / num)
+            remaining_for_profit -= take
+    if planned_total <= 0 or remaining is None:
+        return {
+            "skip_restock": False,
+            "planned_total": planned_total,
+            "remaining_capacity": remaining,
+            "loss_ratio": 0.0,
+            "capacity_loss_ratio": 0.0,
+            "planned_profit": int(round(planned_profit)),
+            "effective_profit": int(round(effective_profit)),
+            "threshold": PRE_BUY_SKIP_RESTOCK_LOSS_RATIO,
+        }
+    effective_buy_capacity = min(planned_total, max(0, remaining))
+    capacity_loss_ratio = 1.0 - (effective_buy_capacity / planned_total)
+    profit_loss_ratio = (
+        1.0 - (effective_profit / planned_profit)
+        if planned_profit > 0
+        else capacity_loss_ratio
+    )
+    return {
+        "skip_restock": profit_loss_ratio >= PRE_BUY_SKIP_RESTOCK_LOSS_RATIO,
+        "planned_total": planned_total,
+        "remaining_capacity": remaining,
+        "effective_buy_capacity": effective_buy_capacity,
+        "loss_ratio": profit_loss_ratio,
+        "capacity_loss_ratio": capacity_loss_ratio,
+        "planned_profit": int(round(planned_profit)),
+        "effective_profit": int(round(effective_profit)),
+        "threshold": PRE_BUY_SKIP_RESTOCK_LOSS_RATIO,
+    }
+
+
 def _manual_two_city_existing_cargo_limited_buy(state: dict[str, Any]) -> bool:
     return bool(state.get("buy_selection_limited_by_existing_cargo"))
 
@@ -7026,6 +7126,8 @@ def _manual_two_city_existing_cargo_limited_buy(state: dict[str, Any]) -> bool:
 def _manual_two_city_clear_existing_cargo_limit(state: dict[str, Any]) -> None:
     state.pop("buy_selection_limited_by_existing_cargo", None)
     state.pop("buy_selection_existing_cargo_load", None)
+    state.pop("buy_selection_existing_cargo_loss", None)
+    state.pop("buy_selection_skip_restock_quick_buy", None)
 
 
 def _manual_two_city_selected_buy_actual_loads(state: dict[str, Any]) -> dict[str, int]:
@@ -10215,6 +10317,7 @@ class ManualTwoCityBusinessCurrentCityReadyAction(CustomAction):
         legs = _manual_two_city_legs()
         current_city = _manual_two_city_detect_current_city(texts, legs)
         state = _manual_two_city_state()
+        state.pop("buy_selection_verified_cargo_load", None)
         if current_city:
             state["current_city"] = current_city
         leg = _manual_two_city_set_active_leg_by_city(current_city) if current_city else _manual_two_city_active_leg()
@@ -10274,21 +10377,31 @@ class ManualTwoCityBusinessUseBuyBooksAction(CustomAction):
         leg = _manual_two_city_active_leg()
         if _manual_two_city_existing_cargo_limited_buy(state):
             cargo_load = state.get("buy_selection_existing_cargo_load")
+            restock_loss = state.get("buy_selection_existing_cargo_loss")
+            state["buy_selection_skip_restock_quick_buy"] = True
             _append_user_log(
                 MANUAL_TWO_CITY_TASK_ENTRY,
                 (
-                    "进货书：货仓已有本地货且只能补剩余仓位，本段跳过进货书，"
-                    "避免库存扩充后因容量不足反复重选。"
+                    "进货书：货仓已有大量本地货，使用进货书后的可买载量预计低于计划 50%，"
+                    "本段跳过进货书并改用右上角全部买入补货。"
                 ),
                 level="warning",
                 event="manual_two_city_buy_books_skipped_existing_cargo_limit",
-                data={"leg": leg, "cargo_load": cargo_load},
+                data={"leg": leg, "cargo_load": cargo_load, "restock_loss": restock_loss},
             )
             _json_payload(
                 "manual_two_city_business_use_buy_books",
-                {"ok": True, "restock": 0, "reason": "existing_cargo_limited", "leg": leg, "cargo_load": cargo_load},
+                {
+                    "ok": True,
+                    "restock": 0,
+                    "reason": "existing_cargo_limited",
+                    "leg": leg,
+                    "cargo_load": cargo_load,
+                    "restock_loss": restock_loss,
+                },
             )
             return True
+        state.pop("buy_selection_skip_restock_quick_buy", None)
         restock_count = leg.get("restock")
         batches = _manual_two_city_book_batches(restock_count)
         if not batches:
@@ -10562,7 +10675,7 @@ class ManualTwoCityBusinessBuyPageReadyAction(CustomAction):
                     cargo_load,
                     planned_goods,
                 )
-                if cargo_load["ratio"] >= PRE_BUY_SKIP_BUY_FULL_RATIO or remaining_blocks_all_planned:
+                if cargo_load["ratio"] >= PRE_BUY_SKIP_BUY_FULL_RATIO:
                     state.pop("pre_buy_cleanup", None)
                     state.pop("pre_buy_cleanup_raise_percent", None)
                     state.pop("pre_buy_cleanup_cargo", None)
@@ -10580,11 +10693,7 @@ class ManualTwoCityBusinessBuyPageReadyAction(CustomAction):
                         (
                             f"买入前清仓：货仓 {cargo_load['used']}/{cargo_load['capacity']} "
                             f"({cargo_load['ratio']:.1%})，卖出页已确认无法继续卖出。"
-                            + (
-                                "剩余载量已装不下计划商品，跳过买入并直接前往卖出城市。"
-                                if remaining_blocks_all_planned
-                                else "本段视为已带货，跳过买入并直接前往卖出城市。"
-                            )
+                            "本段视为已带货，跳过买入并直接前往卖出城市。"
                         ),
                         level="warning",
                         event="manual_two_city_pre_buy_cleanup_full_cargo_skip_buy",
@@ -10612,7 +10721,7 @@ class ManualTwoCityBusinessBuyPageReadyAction(CustomAction):
                     MANUAL_TWO_CITY_TASK_ENTRY,
                     (
                         f"买入前清仓：货仓 {cargo_load['used']}/{cargo_load['capacity']} "
-                        "已确认主要为本地货，本轮跳过清仓并继续买入。"
+                        "已确认主要为本地货，本轮跳过清仓并继续评估是否使用进货书。"
                     ),
                     level="warning",
                     event="manual_two_city_pre_buy_cleanup_skipped_after_local_goods",
@@ -10624,9 +10733,53 @@ class ManualTwoCityBusinessBuyPageReadyAction(CustomAction):
                         "cleanup_signature": cleanup_signature,
                     },
                 )
-                existing_cargo_limit = True
-                state["buy_selection_limited_by_existing_cargo"] = True
-                state["buy_selection_existing_cargo_load"] = cargo_load
+                restock_loss = _manual_two_city_existing_cargo_restock_loss(leg, cargo_load)
+                if restock_loss.get("skip_restock"):
+                    existing_cargo_limit = True
+                    state["buy_selection_limited_by_existing_cargo"] = True
+                    state["buy_selection_existing_cargo_load"] = cargo_load
+                    state["buy_selection_existing_cargo_loss"] = restock_loss
+                    state["buy_selection_skip_restock_quick_buy"] = True
+                    _append_user_log(
+                        MANUAL_TWO_CITY_TASK_ENTRY,
+                        (
+                            "买入前清仓：本地货占用过多，"
+                            f"剩余可买载量 {restock_loss.get('effective_buy_capacity')}/"
+                            f"{restock_loss.get('planned_total')}，"
+                            f"预计收益折损 {float(restock_loss.get('loss_ratio') or 0):.1%}，"
+                            "本段将跳过进货书并直接全部买入。"
+                        ),
+                        level="warning",
+                        event="manual_two_city_pre_buy_cleanup_skip_restock_due_existing_cargo",
+                        data={
+                            "current_city": current_city,
+                            "active_leg_index": state.get("active_leg_index"),
+                            "leg": leg,
+                            "cargo_load": cargo_load,
+                            "cleanup_signature": cleanup_signature,
+                            "restock_loss": restock_loss,
+                        },
+                    )
+                else:
+                    _manual_two_city_clear_existing_cargo_limit(state)
+                    _append_user_log(
+                        MANUAL_TWO_CITY_TASK_ENTRY,
+                        (
+                            "买入前清仓：本地货占用未达到跳过进货书阈值，"
+                            f"剩余可买载量 {restock_loss.get('effective_buy_capacity')}/"
+                            f"{restock_loss.get('planned_total')}，"
+                            f"预计收益折损 {float(restock_loss.get('loss_ratio') or 0):.1%}，继续按计划使用进货书。"
+                        ),
+                        event="manual_two_city_pre_buy_cleanup_keep_restock_with_existing_cargo",
+                        data={
+                            "current_city": current_city,
+                            "active_leg_index": state.get("active_leg_index"),
+                            "leg": leg,
+                            "cargo_load": cargo_load,
+                            "cleanup_signature": cleanup_signature,
+                            "restock_loss": restock_loss,
+                        },
+                    )
                 state.pop("pre_buy_cleanup", None)
                 state.pop("pre_buy_cleanup_raise_percent", None)
                 state.pop("pre_buy_cleanup_cargo", None)
@@ -13079,11 +13232,141 @@ class ManualTwoCityBusinessQuickBuySelectionAction(CustomAction):
             context,
             "ManualTwoCityQuickBuySelectionCargoBefore",
         )
-        plan = _manual_two_city_quick_buy_selection_plan(leg, cargo_load)
-        if not plan.get("ok"):
+        if state.get("buy_selection_skip_restock_quick_buy"):
+            before_used = 0
+            before_capacity = 0
+            if isinstance(cargo_load, dict):
+                try:
+                    before_used = int(cargo_load.get("used") or 0)
+                    before_capacity = int(cargo_load.get("capacity") or 0)
+                except (TypeError, ValueError):
+                    before_used = 0
+                    before_capacity = 0
+            target = _manual_two_city_click_top_all_buy_target(context, entries)
+            time.sleep(0.55)
+            after_cargo, after_texts = _manual_two_city_probe_buy_page_cargo_load(
+                context,
+                "ManualTwoCitySkipRestockQuickBuyCargoAfter",
+            )
+            selected_used = 0
+            selected_capacity = before_capacity
+            if isinstance(after_cargo, dict):
+                try:
+                    selected_used = int(after_cargo.get("used") or 0)
+                    selected_capacity = int(after_cargo.get("capacity") or before_capacity or 0)
+                except (TypeError, ValueError):
+                    selected_used = 0
+            selected_delta = max(0, selected_used - before_used)
+            cancel_hit, _, cancel_texts = _manual_two_city_ocr_entries(
+                context,
+                "ManualTwoCitySkipRestockQuickBuySelected",
+                ["全部取消"],
+                roi=BUY_CART_SELECTED_ROI,
+            )
+            selected = selected_delta > 0 or cancel_hit or _manual_two_city_cargo_load_full(after_cargo)
+            planned_goods = [str(item) for item in (leg.get("goods") or []) if str(item).strip()]
+            if not selected:
+                state["selected_buy_goods"] = []
+                state["selected_buy_goods_actual_load"] = {}
+                _append_user_log(
+                    MANUAL_TWO_CITY_TASK_ENTRY,
+                    (
+                        "买入页跳过进货书后全部买入失败：点击右上角全部买入后未检测到选中状态，停止买入以避免空买。"
+                    ),
+                    level="error",
+                    event="manual_two_city_skip_restock_quick_buy_failed",
+                    data={
+                        "leg": leg,
+                        "before_cargo": cargo_load,
+                        "after_cargo": after_cargo,
+                        "selected_delta": selected_delta,
+                        "target": target,
+                        "before_texts": cargo_texts[:20],
+                        "after_texts": after_texts[:20],
+                        "cancel_texts": cancel_texts[:20],
+                    },
+                )
+                _json_payload(
+                    "manual_two_city_business_quick_buy_selection",
+                    {
+                        "ok": False,
+                        "reason": "skip_restock_quick_buy_failed",
+                        "leg": leg,
+                        "before_cargo": cargo_load,
+                        "after_cargo": after_cargo,
+                        "selected_delta": selected_delta,
+                    },
+                )
+                return False
+
+            state["selected_buy_goods"] = list(planned_goods)
+            state["selected_buy_goods_actual_load"] = {"__skip_restock_quick_buy__": selected_delta} if selected_delta > 0 else {}
+            state["buy_selection_locked_goods"] = []
+            state["buy_selection_no_delta_goods"] = []
+            state["buy_selection_capacity_limited_goods"] = []
+            state["buy_selection_capacity_limited"] = True
+            state["buy_selection_full_cargo"] = _manual_two_city_cargo_load_full(after_cargo)
+            if after_cargo is not None:
+                state["buy_selection_last_cargo_load"] = after_cargo
+            state["buy_selection_quick_all_buy"] = {
+                "ok": True,
+                "reason": "skip_restock",
+                "before_cargo": cargo_load,
+                "after_cargo": after_cargo,
+                "selected_delta": selected_delta,
+                "target": target,
+            }
             _append_user_log(
                 MANUAL_TWO_CITY_TASK_ENTRY,
-                f"买入页快速全买未启用：{plan.get('reason') or '条件不满足'}，改为逐项选择。",
+                (
+                    "买入页跳过进货书：已按右上角全部买入补货，"
+                    f"新增载量 {selected_delta}，当前载量 {selected_used}/{selected_capacity or '-'}。"
+                ),
+                level="warning",
+                event="manual_two_city_skip_restock_quick_buy_ok",
+                data={
+                    "leg": leg,
+                    "before_cargo": cargo_load,
+                    "after_cargo": after_cargo,
+                    "selected_delta": selected_delta,
+                    "target": target,
+                    "before_texts": cargo_texts[:20],
+                    "after_texts": after_texts[:20],
+                    "cancel_texts": cancel_texts[:20],
+                },
+            )
+            _json_payload(
+                "manual_two_city_business_quick_buy_selection",
+                {
+                    "ok": True,
+                    "reason": "skip_restock",
+                    "leg": leg,
+                    "before_cargo": cargo_load,
+                    "after_cargo": after_cargo,
+                    "selected_delta": selected_delta,
+                    "target": target,
+                },
+            )
+            return True
+
+        plan = _manual_two_city_quick_buy_selection_plan(leg, cargo_load)
+        if not plan.get("ok"):
+            skip_reason = str(plan.get("reason") or "条件不满足")
+            detail_note = ""
+            if skip_reason == "planned_load_exceeds_available":
+                overflow_parts: list[str] = []
+                for item in plan.get("overflow_detail") or []:
+                    if not isinstance(item, dict):
+                        continue
+                    good = str(item.get("good") or "").strip()
+                    if not good:
+                        continue
+                    overflow_parts.append(f"{good} 计划{item.get('planned')} > 可买{item.get('available')}")
+                if overflow_parts:
+                    detail_note = f"（{'; '.join(overflow_parts)}）"
+            _append_user_log(
+                MANUAL_TWO_CITY_TASK_ENTRY,
+                f"买入页快速全买未启用：{skip_reason}{detail_note}，改为逐项选择。",
                 event="manual_two_city_quick_buy_selection_skipped",
                 data={"plan": plan, "cargo_load": cargo_load, "cargo_texts": cargo_texts[:20]},
             )
@@ -13635,7 +13918,7 @@ class ManualTwoCityBusinessConfirmBuySelectionAction(CustomAction):
             if capacity_limited_with_existing_cargo:
                 _append_user_log(
                     MANUAL_TWO_CITY_TASK_ENTRY,
-                    "买入前选货复核：未新增选择，但既有货物已占用货仓且剩余容量装不下计划商品，跳过本段补货。",
+                    "买入前选货复核：未新增选择，停止买入以避免空买；若本段跳过进货书，应由右上角全部买入先产生选中状态。",
                     level="warning",
                     event="manual_two_city_confirm_buy_selection_existing_cargo_limited",
                     data={"leg": leg, "selected": selected, "cargo_load": cargo_load, "actual_loads": actual_loads},
@@ -13643,15 +13926,15 @@ class ManualTwoCityBusinessConfirmBuySelectionAction(CustomAction):
                 _json_payload(
                     "manual_two_city_business_confirm_buy_selection",
                     {
-                        "ok": True,
-                        "reason": "existing_cargo_limited",
+                        "ok": False,
+                        "reason": "existing_cargo_limited_empty_selection",
                         "leg": leg,
                         "selected": selected,
                         "cargo_load": cargo_load,
                         "actual_loads": actual_loads,
                     },
                 )
-                return True
+                return False
             _append_user_log(
                 MANUAL_TWO_CITY_TASK_ENTRY,
                 "买入前选货复核：没有记录到任何已选商品，停止买入以避免空买或误买。",
@@ -13692,7 +13975,8 @@ class ManualTwoCityBusinessConfirmBuySelectionAction(CustomAction):
             and used > 0
             and (bool(selected) or _manual_two_city_existing_cargo_limited_buy(state))
         )
-        passed = capacity_limited_ok or (capacity_ok and planned_load_ok)
+        skip_restock_quick_buy = bool(state.get("buy_selection_skip_restock_quick_buy")) and bool(selected)
+        passed = skip_restock_quick_buy or capacity_limited_ok or (capacity_ok and planned_load_ok)
         missing = [good for good in planned_goods if good not in selected]
         if not passed:
             _append_user_log(
@@ -13716,6 +14000,7 @@ class ManualTwoCityBusinessConfirmBuySelectionAction(CustomAction):
                     "capacity_ok": capacity_ok,
                     "planned_load_ok": planned_load_ok,
                     "capacity_limited_ok": capacity_limited_ok,
+                    "skip_restock_quick_buy": skip_restock_quick_buy,
                     "texts": texts[:20],
                 },
             )
@@ -13754,10 +14039,12 @@ class ManualTwoCityBusinessConfirmBuySelectionAction(CustomAction):
                 "capacity_ok": capacity_ok,
                 "planned_load_ok": planned_load_ok,
                 "capacity_limited_ok": capacity_limited_ok,
+                "skip_restock_quick_buy": skip_restock_quick_buy,
                 "strict": strict,
                 "texts": texts[:20],
             },
         )
+        state["buy_selection_verified_cargo_load"] = dict(cargo_load)
         _json_payload(
             "manual_two_city_business_confirm_buy_selection",
             {
@@ -13970,6 +14257,10 @@ class ManualTwoCityBusinessVerifyCargoAfterBuyAction(CustomAction):
             context,
             "ManualTwoCityVerifyCargoAfterBuy",
         )
+        cargo_load_source = "live_ocr"
+        if cargo_load is None and isinstance(state.get("buy_selection_verified_cargo_load"), dict):
+            cargo_load = dict(state.get("buy_selection_verified_cargo_load") or {})
+            cargo_load_source = "pre_buy_verified"
         planned_total = _manual_two_city_planned_goods_total(leg)
         if cargo_load is None:
             _append_user_log(
@@ -13994,7 +14285,8 @@ class ManualTwoCityBusinessVerifyCargoAfterBuyAction(CustomAction):
         capacity_ok = (not strict) or actual_ratio >= POST_BUY_CARGO_VERIFY_PASS_RATIO
         planned_load_ok = planned_total <= 0 or planned_load_ratio >= POST_BUY_CARGO_VERIFY_PLANNED_LOAD_PASS_RATIO
         capacity_limited_ok = bool(state.get("buy_selection_capacity_limited")) and used > 0
-        passed = capacity_limited_ok or (capacity_ok and planned_load_ok)
+        skip_restock_quick_buy = bool(state.get("buy_selection_skip_restock_quick_buy"))
+        passed = skip_restock_quick_buy or capacity_limited_ok or (capacity_ok and planned_load_ok)
         level = "info" if passed else "error"
         message = (
             f"买入后货仓复核：实际 {used}/{capacity}，计划 {planned_total}/{capacity}。"
@@ -14005,6 +14297,12 @@ class ManualTwoCityBusinessVerifyCargoAfterBuyAction(CustomAction):
             message += "实际载量低于计划或未达到满仓要求，停止发车以避免半仓跑商。"
         else:
             message += "复核通过，继续发车。"
+        if cargo_load_source == "pre_buy_verified":
+            message = (
+                f"买入后货仓复核：现场未显示货仓数字，沿用买入前选货复核载量 "
+                f"{used}/{capacity if capacity > 0 else '-'}，计划 {planned_total}/{capacity if capacity > 0 else '-'}。"
+            )
+            message += "复核通过，继续发车。" if passed else "实际载量低于计划或未达到满仓要求，停止发车以避免半仓跑商。"
         _append_user_log(
             MANUAL_TWO_CITY_TASK_ENTRY,
             message,
@@ -14020,7 +14318,9 @@ class ManualTwoCityBusinessVerifyCargoAfterBuyAction(CustomAction):
                 "capacity_ok": capacity_ok,
                 "planned_load_ok": planned_load_ok,
                 "capacity_limited_ok": capacity_limited_ok,
+                "skip_restock_quick_buy": skip_restock_quick_buy,
                 "strict": strict,
+                "cargo_load_source": cargo_load_source,
                 "texts": texts[:20],
             },
         )
@@ -14037,7 +14337,9 @@ class ManualTwoCityBusinessVerifyCargoAfterBuyAction(CustomAction):
                 "capacity_ok": capacity_ok,
                 "planned_load_ok": planned_load_ok,
                 "capacity_limited_ok": capacity_limited_ok,
+                "skip_restock_quick_buy": skip_restock_quick_buy,
                 "strict": strict,
+                "cargo_load_source": cargo_load_source,
             },
         )
         return passed
