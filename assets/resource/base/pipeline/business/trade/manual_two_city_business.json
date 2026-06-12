@@ -474,7 +474,10 @@
                 }
             }
         },
-        "next": "ManualTwoCityBusinessReturnHomeAfterBuy",
+        "next": [
+            "ManualTwoCityBusinessReturnHomeAfterBuy",
+            "ManualTwoCityBusinessOpenRouteMap"
+        ],
         "on_error": "ManualTwoCityBusinessRecoveryFailedAfterResume"
     },
     "ManualTwoCityBusinessRecoveryResumeToTravelMonitor": {

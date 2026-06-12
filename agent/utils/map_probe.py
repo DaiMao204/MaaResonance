@@ -317,6 +317,39 @@ def _projected_fallback_probe_points(point: tuple[int, int]) -> list[tuple[int, 
     return [probe_point for probe_point in map_probe_offsets(point)[:2] if is_valid_map_point(probe_point)]
 
 
+def _same_kind_candidate_probe_points(
+    station: Any,
+    target_point: tuple[int, int],
+    candidates: list[tuple[int, int]],
+    candidate_types: dict[tuple[int, int], str],
+    *,
+    max_distance: int = 520,
+    limit: int = 5,
+) -> list[tuple[int, int]]:
+    station_kind = station_icon_kind(station)
+    if not station_kind:
+        return []
+    ranked: list[tuple[float, tuple[int, int]]] = []
+    for candidate in candidates:
+        if candidate_types.get(candidate) != station_kind:
+            continue
+        distance = hypot(candidate[0] - target_point[0], candidate[1] - target_point[1])
+        if distance <= max_distance:
+            ranked.append((distance, candidate))
+    ranked.sort(key=lambda item: item[0])
+
+    points: list[tuple[int, int]] = []
+    for _, candidate in ranked[:limit]:
+        points.extend(
+            [
+                candidate,
+                (candidate[0], candidate[1] - 18),
+                (candidate[0], candidate[1] + 18),
+            ]
+        )
+    return [point for point in _dedupe_points(points) if is_valid_map_point(point)]
+
+
 def _near_typed_candidates(
     station: Any,
     target_point: tuple[int, int],
@@ -579,15 +612,25 @@ def destination_map_vicinity_probe(context: Context, params: dict[str, Any]) -> 
             typed_probe_points = _typed_candidate_probe_points(station, target_point, station_candidates, candidate_types)
             can_probe_target = safe or bool(typed_probe_points)
             if can_probe_target:
+                same_kind_probe_points = _same_kind_candidate_probe_points(
+                    station,
+                    target_point,
+                    station_candidates,
+                    candidate_types,
+                    max_distance=420,
+                    limit=4,
+                )
                 clicked_points: list[list[int]] = []
                 probe_results: list[dict[str, Any]] = []
                 probe_points = _dedupe_points(
                     [
                         *typed_probe_points,
                         *(_projected_fallback_probe_points(target_point) if safe else []),
+                        *same_kind_probe_points,
                     ]
                 )
-                attempt["probe_source"] = "typed_candidate" if not safe else "projected_or_typed"
+                attempt["probe_source"] = "typed_candidate" if not safe else "projected_or_typed_or_same_kind"
+                attempt["same_kind_probe_points"] = [list(point) for point in same_kind_probe_points]
                 for probe_point in probe_points:
                     if len(clicked_points) >= click_count:
                         break
@@ -829,16 +872,31 @@ def destination_map_coordinate_probe(context: Context, params: dict[str, Any]) -
                     target_point,
                     station_candidates,
                     candidate_types,
-                    max_distance=110,
-                    limit=2,
+                    max_distance=180,
+                    limit=3,
                 )
                 target_kind = station_icon_kind(station)
                 same_kind_candidates = [
                     candidate for candidate in station_candidates if candidate_types.get(candidate) == target_kind
                 ] if target_kind else []
                 if typed_probe_points:
-                    probe_points = typed_probe_points
-                    attempt["probe_source"] = "typed_candidate"
+                    same_kind_probe_points = _same_kind_candidate_probe_points(
+                        station,
+                        target_point,
+                        station_candidates,
+                        candidate_types,
+                        max_distance=420,
+                        limit=4,
+                    )
+                    probe_points = _dedupe_points(
+                        [
+                            *typed_probe_points,
+                            *_projected_fallback_probe_points(target_point),
+                            *same_kind_probe_points,
+                        ]
+                    )
+                    attempt["probe_source"] = "typed_projected_and_same_kind_candidate"
+                    attempt["same_kind_probe_points"] = [list(point) for point in same_kind_probe_points]
                 elif target_kind and same_kind_candidates:
                     visible_probe = destination_visible_text_probe(context, image, destination_city)
                     attempt["visible_text_probe"] = visible_probe
@@ -858,10 +916,20 @@ def destination_map_coordinate_probe(context: Context, params: dict[str, Any]) -
                             }
                         )
                         return result
-                    attempt["reason"] = "target_kind_candidate_not_near_projected_point"
-                    attempts.append(attempt)
-                    result["reason"] = "target_kind_candidate_not_near_projected_point"
-                    return result
+                    same_kind_probe_points = _same_kind_candidate_probe_points(
+                        station,
+                        target_point,
+                        station_candidates,
+                        candidate_types,
+                    )
+                    probe_points = _dedupe_points(
+                        [
+                            *_projected_fallback_probe_points(target_point),
+                            *same_kind_probe_points,
+                        ]
+                    )
+                    attempt["probe_source"] = "projected_and_same_kind_candidate"
+                    attempt["same_kind_probe_points"] = [list(point) for point in same_kind_probe_points]
                 else:
                     probe_points = _projected_fallback_probe_points(target_point)
                     attempt["probe_source"] = "projected_fallback"

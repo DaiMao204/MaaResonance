@@ -8309,9 +8309,18 @@ def _manual_two_city_product_icon_lot_digit_rois(center_y: Any, expected_lot: An
     if roi is None:
         return []
     rois = [roi]
+    _x, top, _width, height = roi
+    rois.extend(
+        [
+            [BUY_PAGE_DIGIT_LOT_X - 6, top - 18, BUY_PAGE_DIGIT_LOT_WIDTH + 18, height + 10],
+            [BUY_PAGE_DIGIT_LOT_X - 8, top - 10, BUY_PAGE_DIGIT_LOT_WIDTH + 22, height + 8],
+            [BUY_PAGE_ROW_ICON_LOT_X, top - 22, BUY_PAGE_ROW_ICON_LOT_WIDTH, height + 24],
+            [BUY_PAGE_ROW_ICON_LOT_X, top - 30, BUY_PAGE_ROW_ICON_LOT_WIDTH, BUY_PAGE_ROW_ICON_LOT_HEIGHT],
+            [BUY_PAGE_DIGIT_LOT_X, top + 6, BUY_PAGE_DIGIT_LOT_WIDTH, height],
+        ]
+    )
     expected = _manual_two_city_positive_int(expected_lot)
     if 0 < expected < 10:
-        _x, top, _width, height = roi
         rois.extend(
             [
                 [588, top, 42, height],
@@ -8323,10 +8332,18 @@ def _manual_two_city_product_icon_lot_digit_rois(center_y: Any, expected_lot: An
     unique: list[list[int]] = []
     seen: set[tuple[int, int, int, int]] = set()
     for item in rois:
-        key = tuple(int(value) for value in item)
+        x, y, width, item_height = [int(value) for value in item]
+        x = max(0, x)
+        y = max(120, y)
+        width = max(1, width)
+        bottom = min(BUY_PAGE_ROW_ICON_LOT_MAX_BOTTOM, y + max(1, item_height))
+        item_height = bottom - y
+        if item_height < 16:
+            continue
+        key = (x, y, width, item_height)
         if key not in seen:
             seen.add(key)
-            unique.append([int(value) for value in item])
+            unique.append([x, y, width, item_height])
     return unique
 
 
