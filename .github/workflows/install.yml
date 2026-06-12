@@ -115,6 +115,7 @@ jobs:
         shell: bash
         env:
           MAA_RESONANCE_MXU_VERSION: ${{ env.MXU_VERSION }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           python -m pip install -r tools/requirements.txt
           python tools/install.py ${{ needs.meta.outputs.tag }} ${{ matrix.os }} ${{ matrix.arch }} --with-mxu

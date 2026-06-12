@@ -181,12 +181,17 @@ def get_mxu_platform_tag():
 
 
 def _github_json(url: str):
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "MaaResonanceInstaller",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+    token = os.environ.get("GITHUB_TOKEN", "").strip() or os.environ.get("GH_TOKEN", "").strip()
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
     request = urllib.request.Request(
         url,
-        headers={
-            "Accept": "application/vnd.github+json",
-            "User-Agent": "MaaResonanceInstaller",
-        },
+        headers=headers,
     )
     with urllib.request.urlopen(request, timeout=60) as response:
         return json.loads(response.read().decode("utf-8"))
