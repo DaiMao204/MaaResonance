@@ -147,12 +147,11 @@ jobs:
         run: |
           {
             echo "release_body<<EOF"
-            echo "## v1.2.1 更新日志"
+            echo "## v1.2.2 更新日志"
             echo ""
             echo "#### 修复"
             echo ""
-            echo "修复了在部分城市开始跑商时，地图选择城市失败的错误"
-            echo "修复了部分商品量读取失败导致无法正常跑商的错误"
+            echo "提高了商品数量检验的稳定性"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 

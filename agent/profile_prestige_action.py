@@ -243,6 +243,7 @@ PRODUCT_SCAN_REQUIRED_STATUSES = {
 PRODUCT_SCAN_MAX_PAGES = 8
 PRODUCT_SCAN_BUY_LOT_TRUST_RATIO = 3.0
 PRODUCT_SCAN_BUY_LOT_MIN_TRUST_RATIO = 0.5
+PRODUCT_SCAN_OBSERVED_BUY_LOT_MAX = 99999
 PRODUCT_SCAN_MISSING_TRADE_FIELD_RETRY_LIMIT = 2
 BUY_BOOK_MENU_TEXTS = ["使用进货书", "使用进货采购书", "进货采购书", "进货采买书", "进货书", "采购书", "采买书"]
 BUY_BOOK_POPUP_TEXTS = ["是否使用", "增加交易品库存", "进货采购书", "进货采买书", "进货书", "确认"]
@@ -8048,6 +8049,11 @@ def _manual_two_city_product_scan_buy_lot_trusted(observed: Any, expected_lot: A
     return True
 
 
+def _manual_two_city_product_scan_observed_buy_lot_acceptable(observed: Any) -> bool:
+    observed_lot = _manual_two_city_positive_int(observed)
+    return 0 < observed_lot <= PRODUCT_SCAN_OBSERVED_BUY_LOT_MAX
+
+
 def _manual_two_city_icon_lot_candidates(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
     candidates: list[dict[str, Any]] = []
     for entry in entries:
@@ -8151,10 +8157,7 @@ def _manual_two_city_assign_icon_lots_by_order(
         for good in ordered_goods
         if good in expected_buy_lots
         and (not focus_set or good in focus_set)
-        and not _manual_two_city_product_scan_buy_lot_trusted(
-            existing_buy_lots.get(good),
-            expected_buy_lots.get(good),
-        )
+        and not _manual_two_city_product_scan_observed_buy_lot_acceptable(existing_buy_lots.get(good))
     ]
     assignments: list[dict[str, Any]] = []
     used_candidate_indices: set[int] = set()
@@ -8182,8 +8185,9 @@ def _manual_two_city_assign_icon_lots_by_order(
             if candidate_index in used_candidate_indices:
                 continue
             candidate_value = _manual_two_city_positive_int(candidate.get("value"))
-            if not _manual_two_city_product_scan_buy_lot_trusted(candidate_value, expected):
+            if not _manual_two_city_product_scan_observed_buy_lot_acceptable(candidate_value):
                 continue
+            expected_trusted = _manual_two_city_product_scan_buy_lot_trusted(candidate_value, expected)
             best_anchor = min(
                 anchors,
                 key=lambda item: abs(float(candidate.get("center_y") or 0) - float(item["projected_digit_y"])),
@@ -8191,11 +8195,12 @@ def _manual_two_city_assign_icon_lots_by_order(
             distance = abs(float(candidate.get("center_y") or 0) - float(best_anchor["projected_digit_y"]))
             if distance > tolerance:
                 continue
-            score = distance + abs(int(best_anchor["order_delta"])) * 3.0
+            score = distance + abs(int(best_anchor["order_delta"])) * 3.0 + (0.0 if expected_trusted else 12.0)
             assignment = {
                 "good": good,
                 "buy_lot": candidate_value,
                 "expected_buy_lot": expected,
+                "expected_trusted": expected_trusted,
                 "candidate": candidate,
                 "anchor": best_anchor,
                 "distance": distance,
@@ -8223,54 +8228,15 @@ def _manual_two_city_filter_product_scan_buy_lots(
     if not city or not normalized:
         return {}, {}
 
-    try:
-        trade_data = load_columba_trade_data()
-    except Exception as exc:
-        return normalized, {
-            "_filter_error": {
-                "reason": "load_trade_data_failed",
-                "error": f"{type(exc).__name__}: {exc}",
-            }
-        }
-
-    products = {
-        str(product.get("name") or ""): product
-        for product in (trade_data.get("products") or [])
-        if isinstance(product, dict) and str(product.get("name") or "").strip()
-    }
-    state = _manual_two_city_state()
-    result = state.get("result") if isinstance(state.get("result"), dict) else {}
-    options = _manual_two_city_product_scan_plan_options(result)
     trusted: dict[str, int] = {}
     rejected: dict[str, dict[str, Any]] = {}
 
     for good, observed in sorted(normalized.items()):
-        product = products.get(good)
-        if not product:
-            trusted[good] = observed
-            continue
-        calculated = calculate_product_buy_lot(trade_data, product, city, options)
-        if calculated is None or calculated <= 0:
-            trusted[good] = observed
-            continue
-        min_trusted = int(math.floor(calculated * PRODUCT_SCAN_BUY_LOT_MIN_TRUST_RATIO))
-        max_trusted = int(math.ceil(calculated * PRODUCT_SCAN_BUY_LOT_TRUST_RATIO))
-        if min_trusted > 0 and observed <= min_trusted:
+        if not _manual_two_city_product_scan_observed_buy_lot_acceptable(observed):
             rejected[good] = {
-                "reason": "below_trusted_range",
+                "reason": "outside_observed_range",
                 "observed": observed,
-                "calculated_buy_lot": calculated,
-                "min_trusted": min_trusted,
-                "trust_ratio": PRODUCT_SCAN_BUY_LOT_MIN_TRUST_RATIO,
-            }
-            continue
-        if observed > max_trusted:
-            rejected[good] = {
-                "reason": "above_trusted_range",
-                "observed": observed,
-                "calculated_buy_lot": calculated,
-                "max_trusted": max_trusted,
-                "trust_ratio": PRODUCT_SCAN_BUY_LOT_TRUST_RATIO,
+                "max_observed": PRODUCT_SCAN_OBSERVED_BUY_LOT_MAX,
             }
             continue
         trusted[good] = observed
@@ -8319,16 +8285,6 @@ def _manual_two_city_product_icon_lot_digit_rois(center_y: Any, expected_lot: An
             [BUY_PAGE_DIGIT_LOT_X, top + 6, BUY_PAGE_DIGIT_LOT_WIDTH, height],
         ]
     )
-    expected = _manual_two_city_positive_int(expected_lot)
-    if 0 < expected < 10:
-        rois.extend(
-            [
-                [588, top, 42, height],
-                [592, top + 2, 34, max(18, height - 3)],
-                [596, top + 4, 26, max(16, height - 5)],
-                [600, top + 5, 20, max(15, height - 6)],
-            ]
-        )
     unique: list[list[int]] = []
     seen: set[tuple[int, int, int, int]] = set()
     for item in rois:
@@ -8535,27 +8491,6 @@ def _manual_two_city_scaled_digit_lot_ocr(
                 canvas[top : top + tight.shape[0], left : left + tight.shape[1]] = tight
                 tight_rgb = gray_to_rgb(dilate_mask(canvas, radius=1))
                 variants.append(("tight_black_on_white", scaled_rgb(255 - tight_rgb)))
-        if 0 < _manual_two_city_positive_int(expected_lot) < 10:
-            right_half = white_mask[
-                max(0, white_mask.shape[0] // 5) : white_mask.shape[0],
-                max(0, white_mask.shape[1] // 2 - 3) : white_mask.shape[1],
-            ]
-            ys, xs = np.where(right_half > 0)
-            if len(xs) and len(ys):
-                x0 = max(0, int(xs.min()) - 2)
-                x1 = min(right_half.shape[1], int(xs.max()) + 3)
-                y0 = max(0, int(ys.min()) - 2)
-                y1 = min(right_half.shape[0], int(ys.max()) + 3)
-                single = right_half[y0:y1, x0:x1]
-                if single.size and single.shape[0] >= 4 and single.shape[1] >= 3:
-                    padded_height = max(24, single.shape[0] + 12)
-                    padded_width = max(24, single.shape[1] + 12)
-                    canvas = np.zeros((padded_height, padded_width), dtype=np.uint8)
-                    top = max(0, (padded_height - single.shape[0]) // 2)
-                    left = max(0, (padded_width - single.shape[1]) // 2)
-                    canvas[top : top + single.shape[0], left : left + single.shape[1]] = single
-                    single_rgb = gray_to_rgb(dilate_mask(canvas, radius=1))
-                    variants.append(("single_digit_right_black_on_white", scaled_rgb(255 - single_rgb)))
     except Exception as exc:
         result["reason"] = "crop_failed"
         result["error"] = f"{type(exc).__name__}: {exc}"
@@ -8591,8 +8526,10 @@ def _manual_two_city_scaled_digit_lot_ocr(
             ],
             "buy_lot": value,
         }
-        trusted = _manual_two_city_product_scan_buy_lot_trusted(value, expected_value)
+        expected_trusted = _manual_two_city_product_scan_buy_lot_trusted(value, expected_value)
+        trusted = _manual_two_city_product_scan_observed_buy_lot_acceptable(value)
         variant_result["trusted"] = trusted
+        variant_result["expected_trusted"] = expected_trusted
         result["variants"].append(variant_result)
         if value is not None and value > 0:
             if first_positive_value is None:
@@ -8698,9 +8635,11 @@ def _manual_two_city_read_product_icon_lot_by_row(
                 direct_value = int(direct_digit_ocr.get("buy_lot") or 0)
             except (TypeError, ValueError):
                 direct_value = 0
-            direct_trusted = _manual_two_city_product_scan_buy_lot_trusted(direct_value, expected_lot)
+            direct_expected_trusted = _manual_two_city_product_scan_buy_lot_trusted(direct_value, expected_lot)
+            direct_trusted = _manual_two_city_product_scan_observed_buy_lot_acceptable(direct_value)
             direct_digit_ocr["attempt_index"] = attempt_index
             direct_digit_ocr["trusted"] = direct_trusted
+            direct_digit_ocr["expected_trusted"] = direct_expected_trusted
             digit_roi_attempts.append({"roi": digit_roi_item, "direct_digit_ocr": direct_digit_ocr})
             if direct_value > 0 and direct_trusted:
                 return {
@@ -8728,9 +8667,11 @@ def _manual_two_city_read_product_icon_lot_by_row(
                 scaled_value = int(scaled_digit_ocr.get("buy_lot") or 0)
             except (TypeError, ValueError):
                 scaled_value = 0
-            scaled_trusted = _manual_two_city_product_scan_buy_lot_trusted(scaled_value, expected_lot)
+            scaled_expected_trusted = _manual_two_city_product_scan_buy_lot_trusted(scaled_value, expected_lot)
+            scaled_trusted = _manual_two_city_product_scan_observed_buy_lot_acceptable(scaled_value)
             scaled_digit_ocr["attempt_index"] = attempt_index
             scaled_digit_ocr["trusted"] = scaled_trusted
+            scaled_digit_ocr["expected_trusted"] = scaled_expected_trusted
             digit_roi_attempts[-1]["scaled_digit_ocr"] = scaled_digit_ocr
             if scaled_value > 0 and scaled_trusted:
                 return {
@@ -11948,10 +11889,7 @@ class ManualTwoCityBusinessProductScanPageAction(CustomAction):
                     expected_buy_lot_int = int(expected_buy_lot or 0)
                 except (TypeError, ValueError):
                     expected_buy_lot_int = 0
-                if _manual_two_city_product_scan_buy_lot_trusted(
-                    existing_buy_lot,
-                    expected_buy_lot_int,
-                ):
+                if _manual_two_city_product_scan_observed_buy_lot_acceptable(existing_buy_lot):
                     continue
                 debug = _manual_two_city_read_product_icon_lot_by_row(
                     context,
@@ -11988,10 +11926,12 @@ class ManualTwoCityBusinessProductScanPageAction(CustomAction):
                 buy_lot = 0
             expected_buy_lot = expected_buy_lots.get(good)
             buy_lot_trusted = (
-                _manual_two_city_product_scan_buy_lot_trusted(
-                    buy_lot,
-                    expected_buy_lot,
-                )
+                _manual_two_city_product_scan_observed_buy_lot_acceptable(buy_lot)
+                if scan_trade_data
+                else False
+            )
+            buy_lot_expected_trusted = (
+                _manual_two_city_product_scan_buy_lot_trusted(buy_lot, expected_buy_lot)
                 if scan_trade_data
                 else False
             )
@@ -12009,6 +11949,7 @@ class ManualTwoCityBusinessProductScanPageAction(CustomAction):
                     "expected_buy_lot": expected_buy_lot if scan_trade_data else None,
                     "buy_lot": (buy_lot or None) if scan_trade_data else None,
                     "buy_lot_trusted": buy_lot_trusted if scan_trade_data else False,
+                    "buy_lot_expected_trusted": buy_lot_expected_trusted if scan_trade_data else False,
                     "buy_lot_source": buy_lot_source,
                     "row_lot_ocr": row_lot_debug_by_good.get(good),
                 }
@@ -12093,10 +12034,7 @@ class ManualTwoCityBusinessProductScanPageAction(CustomAction):
                     observed_buy_lot = int(item_buy_lot or buy_lots.get(good) or 0)
                 except (TypeError, ValueError):
                     observed_buy_lot = 0
-                if not _manual_two_city_product_scan_buy_lot_trusted(
-                    observed_buy_lot,
-                    expected_buy_lot_int,
-                ):
+                if not _manual_two_city_product_scan_observed_buy_lot_acceptable(observed_buy_lot):
                     focus_missing_buy_lot.append(good)
         all_seen = focus_all_seen and not focus_missing_buy_lot
         stop_reason = ""
