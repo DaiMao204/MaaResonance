@@ -1,4 +1,4 @@
-maafw
+maafw==5.12.1
 numpy
 pydantic
 requests

@@ -4,7 +4,7 @@ const config: FullConfig = {
   cwd: import.meta.dirname,
   maaCache: '.codex_deps/maa-tools',
   maaLogDir: '.codex_deps/maa-log',
-  maaVersion: '5.10.5',
+  maaVersion: '5.12.1',
   interfacePath: 'assets/interface.json',
   check: {
     override: {
