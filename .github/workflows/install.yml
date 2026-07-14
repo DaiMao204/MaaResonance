@@ -4,8 +4,8 @@ env:
   # 版本控制：
   # - 设置 VERSION 为空字符串时，下载 latest 版本
   # - 设置 VERSION 为具体版本号时（如 v1.2.3），下载指定版本
-  MAAFW_VERSION: ""
-  MXU_VERSION: ""
+  MAAFW_VERSION: "v5.10.5"
+  MXU_VERSION: "v2.1.6"
   PYTHONUTF8: "1"
   PYTHONIOENCODING: "utf-8"
 
@@ -147,11 +147,11 @@ jobs:
         run: |
           {
             echo "release_body<<EOF"
-            echo "## v1.2.2 更新日志"
+            echo "## v1.2.3 更新日志"
             echo ""
             echo "#### 修复"
             echo ""
-            echo "提高了商品数量检验的稳定性"
+            echo "修复了更新后任务启动失败的问题"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
