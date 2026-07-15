@@ -330,7 +330,8 @@
             "AccountProfileCityUnlockProbe002PanelOcr",
             "AccountProfileCityUnlockProbe002SelectByText",
             "AccountProfileCityUnlockProbe002Unknown"
-        ]
+        ],
+        "on_error": "AccountProfileCityUnlockProbe003MoveToCity"
     },
     "AccountProfileCityUnlockProbe002ExistingPanelTitle": {
         "recognition": {

@@ -147,12 +147,11 @@ jobs:
         run: |
           {
             echo "release_body<<EOF"
-            echo "## v1.3.0 更新日志"
+            echo "## ${{ needs.meta.outputs.tag }} 更新日志"
             echo ""
-            echo "#### 更新"
+            echo "#### 修复"
             echo ""
-            echo "升级 MaaFramework 至 v5.12.1"
-            echo "升级 MXU 至 v2.3.0"
+            echo "临时关闭武林源相关跑商与城市开放扫描功能，避免已关闭城市干扰任务运行"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 

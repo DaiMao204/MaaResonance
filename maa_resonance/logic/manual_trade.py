@@ -6,6 +6,8 @@ from pathlib import Path
 from typing import Any
 
 from .planner import RoutePlanOptions
+from .planner import WULINYUAN_CITY_NAME
+from .planner import WULINYUAN_TRADE_ENABLED
 from .planner import load_columba_baseline_market_data
 from .planner import load_columba_trade_data
 from .planner import normalize_mixed_currency_priority
@@ -43,6 +45,25 @@ PRODUCT_STATUS_ALIASES = {
 }
 AUTO_TWO_CITY_TASK_ENTRY = "AutoTwoCityBusiness"
 MANUAL_TWO_CITY_TASK_ENTRY = "ManualTwoCityBusiness"
+
+
+def _bool_value(value: Any, default: bool = False) -> bool:
+    if isinstance(value, bool):
+        return value
+    if value in (None, ""):
+        return default
+    text = str(value).strip().lower()
+    if text in {"1", "true", "yes", "y", "on", "enable", "enabled", "启用", "开启", "是"}:
+        return True
+    if text in {"0", "false", "no", "n", "off", "disable", "disabled", "禁用", "关闭", "否"}:
+        return False
+    return default
+
+
+def _wulinyuan_enabled(value: Any = None) -> bool:
+    if not WULINYUAN_TRADE_ENABLED:
+        return False
+    return _bool_value(value, True)
 
 
 def _read_json(path: Path, default: Any) -> Any:
@@ -529,11 +550,16 @@ def calculate_auto_two_city_trade(
     exclude_cities: Any = None,
     max_restock: int = 6,
     wulinyuan_priority: Any = "total",
+    wulinyuan_enabled: bool | None = None,
     transient_product_status_by_city: dict[str, dict[str, Any]] | None = None,
     allow_default_account: bool = False,
 ) -> dict[str, Any]:
     priority_city_set = _city_set(priority_cities)
     exclude_city_set = _city_set(exclude_cities)
+    wulinyuan_enabled = _wulinyuan_enabled(wulinyuan_enabled)
+    if not wulinyuan_enabled:
+        priority_city_set.discard(WULINYUAN_CITY_NAME)
+        exclude_city_set.add(WULINYUAN_CITY_NAME)
     conflict_cities = sorted(priority_city_set & exclude_city_set)
     if conflict_cities:
         raise ValueError("优先城市和排除城市不能重复：" + "、".join(conflict_cities))
@@ -597,6 +623,7 @@ def calculate_auto_two_city_trade(
         "exclude_cities": sorted(exclude_city_set),
         "max_restock": max(0, int(max_restock)),
         "wulinyuan_priority": normalize_mixed_currency_priority(wulinyuan_priority),
+        "wulinyuan_enabled": wulinyuan_enabled,
         "summary": summary,
     }
     return result
@@ -615,6 +642,7 @@ def calculate_manual_two_city_trade(
     start_raise_percent: int | None = None,
     target_bargain_percent: int | None = None,
     target_raise_percent: int | None = None,
+    wulinyuan_enabled: bool | None = None,
     transient_product_status_by_city: dict[str, dict[str, Any]] | None = None,
     allow_default_account: bool = False,
 ) -> dict[str, Any]:
@@ -624,6 +652,9 @@ def calculate_manual_two_city_trade(
         raise ValueError("起点城市和目标城市不能为空")
     if start_city == target_city:
         raise ValueError("起点城市和目标城市不能相同")
+    wulinyuan_enabled = _wulinyuan_enabled(wulinyuan_enabled)
+    if not wulinyuan_enabled and WULINYUAN_CITY_NAME in {start_city, target_city}:
+        raise ValueError("武林源当前临时关闭，请在代码开关恢复后再使用")
 
     config_path, account = find_account_config(uid)
     if not account:
@@ -699,6 +730,7 @@ def calculate_manual_two_city_trade(
         "target_raise_percent": max(0, int(target_raise_percent)),
         "start_haggle_percent": max(0, int(max(int(start_bargain_percent), int(start_raise_percent)))),
         "target_haggle_percent": max(0, int(max(int(target_bargain_percent), int(target_raise_percent)))),
+        "wulinyuan_enabled": wulinyuan_enabled,
         "cargo_capacity": options.max_goods_num,
         "summary": summary,
     }

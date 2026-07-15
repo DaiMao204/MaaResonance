@@ -62,6 +62,8 @@ from maa_resonance.logic.manual_trade import save_manual_two_city_result
 from maa_resonance.logic.planner import COLUMBA_LOCAL_MARKET_DATA_PATH
 from maa_resonance.logic.planner import COLUMBA_TRADE_DATA_PATH
 from maa_resonance.logic.planner import RoutePlanOptions
+from maa_resonance.logic.planner import WULINYUAN_CITY_NAME
+from maa_resonance.logic.planner import WULINYUAN_TRADE_ENABLED
 from maa_resonance.logic.planner import calculate_product_buy_lot
 from maa_resonance.logic.planner import load_columba_trade_data
 from maa_resonance.logic.planner import load_default_tired_data
@@ -88,6 +90,8 @@ LAUNCH_GAME_TASK_ENTRY = "LaunchGame"
 MANUAL_TWO_CITY_TASK_ENTRY = "ManualTwoCityBusiness"
 AUTO_TWO_CITY_TASK_ENTRY = "AutoTwoCityBusiness"
 AUTO_TWO_CITY_EXCLUDE_OPTION = "AutoTwoCityExcludeCities"
+TRADE_WULINYUAN_DEFAULT_ENABLED = WULINYUAN_TRADE_ENABLED
+TRADE_WULINYUAN_DISABLED_REASON = "武林源当前临时关闭"
 MANUAL_TWO_CITY_RUN_MODE_ONE_ROUND = "one_round"
 MANUAL_TWO_CITY_RUN_MODE_UNTIL_FATIGUE_EXHAUSTED = "until_fatigue_exhausted"
 MANUAL_TWO_CITY_ACCOUNT_READ_SMART = "smart"
@@ -834,6 +838,14 @@ def _int_param(params: dict[str, Any], key: str, default: int, *, minimum: int |
     if minimum is not None:
         return max(minimum, value)
     return value
+
+
+def _trade_wulinyuan_enabled(state: dict[str, Any] | None = None) -> bool:
+    return bool(TRADE_WULINYUAN_DEFAULT_ENABLED)
+
+
+def _trade_wulinyuan_disabled(state: dict[str, Any] | None = None) -> bool:
+    return not _trade_wulinyuan_enabled(state)
 
 
 def _initial_state() -> dict[str, Any]:
@@ -1632,6 +1644,18 @@ def _initial_city_unlock_state() -> dict[str, Any]:
     }
 
 
+def _mark_wulinyuan_disabled_for_city_unlock(state: dict[str, Any]) -> None:
+    if not _trade_wulinyuan_disabled():
+        return
+    state.setdefault("city_unlock_probe", {})[WULINYUAN_CITY_NAME] = {
+        "status": "unavailable",
+        "texts": [TRADE_WULINYUAN_DISABLED_REASON],
+    }
+    texts = state.setdefault("unavailable_city_texts", [])
+    if TRADE_WULINYUAN_DISABLED_REASON not in texts:
+        texts.append(TRADE_WULINYUAN_DISABLED_REASON)
+
+
 def _initial_city_unlock_state_from_saved() -> dict[str, Any]:
     state = _initial_city_unlock_state()
     saved = _load_profile_result(CITY_UNLOCK_TASK_ENTRY)
@@ -1645,6 +1669,7 @@ def _initial_city_unlock_state_from_saved() -> dict[str, Any]:
                 "status": status,
                 "texts": item.get("texts") if isinstance(item.get("texts"), list) else [],
             }
+    _mark_wulinyuan_disabled_for_city_unlock(state)
     _update_city_unlock_lists(state)
     return state
 
@@ -1653,6 +1678,8 @@ def _city_unlock_state(*, reset: bool = False) -> dict[str, Any]:
     global _CITY_UNLOCK_STATE
     if reset or not _CITY_UNLOCK_STATE:
         _CITY_UNLOCK_STATE = _initial_city_unlock_state()
+        _mark_wulinyuan_disabled_for_city_unlock(_CITY_UNLOCK_STATE)
+        _update_city_unlock_lists(_CITY_UNLOCK_STATE)
         _start_user_log(
             CITY_UNLOCK_TASK_ENTRY,
             str(_CITY_UNLOCK_STATE["profile_read_run_id"]),
@@ -1692,6 +1719,23 @@ def _city_unlock_should_probe(city: str, *, reset: bool = False, probe_mode: str
     city_name = str(city or "").strip()
     current = (state.get("city_unlock_probe") or {}).get(city_name) or {}
     status = str(current.get("status") or "").strip()
+    if normalize_city_name(city_name) == WULINYUAN_CITY_NAME and _trade_wulinyuan_disabled():
+        _mark_wulinyuan_disabled_for_city_unlock(state)
+        _update_city_unlock_lists(state)
+        _append_user_log(
+            CITY_UNLOCK_TASK_ENTRY,
+            f"城市开放增量扫描：跳过 {WULINYUAN_CITY_NAME}（{TRADE_WULINYUAN_DISABLED_REASON}）。",
+            run_id=run_id,
+            event="city_unlock_increment_probe_skipped_wulinyuan_disabled",
+            data={"city": WULINYUAN_CITY_NAME, "status": "unavailable", "reason": "wulinyuan_disabled"},
+        )
+        return {
+            "ok": False,
+            "city": WULINYUAN_CITY_NAME,
+            "status": "unavailable",
+            "reason": "wulinyuan_disabled",
+            "probe_count": len(state.get("city_unlock_probe") or {}),
+        }
     if probe_mode == "unavailable_missing":
         should_probe = status != "available"
     else:
@@ -1730,6 +1774,36 @@ def _record_city_unlock_probe(city: str, texts: list[str], *, reset: bool = Fals
     state = _city_unlock_state(reset=reset)
     run_id = str(state.get("profile_read_run_id") or "")
     city_name = str(city or "").strip()
+    if normalize_city_name(city_name) == WULINYUAN_CITY_NAME and _trade_wulinyuan_disabled():
+        _mark_wulinyuan_disabled_for_city_unlock(state)
+        _update_city_unlock_lists(state)
+        state["ok"] = bool(state.get("city_unlock_probe"))
+        config_path = _save_profile_result(copy.deepcopy(state), task_entry=CITY_UNLOCK_TASK_ENTRY)
+        _append_user_log(
+            CITY_UNLOCK_TASK_ENTRY,
+            f"城市开放识别：{WULINYUAN_CITY_NAME} -> 未开放（{TRADE_WULINYUAN_DISABLED_REASON}）",
+            run_id=run_id,
+            event="city_unlock_probe_wulinyuan_disabled",
+            data={"city": WULINYUAN_CITY_NAME, "status": "unavailable", "config_path": config_path},
+        )
+        return {
+            "ok": True,
+            "city": WULINYUAN_CITY_NAME,
+            "status": "unavailable",
+            "raw_status": "unavailable",
+            "probe_count": len(state.get("city_unlock_probe") or {}),
+            "target_count": len(CITY_UNLOCK_TARGETS),
+            "missing_cities": [
+                target
+                for target in CITY_UNLOCK_TARGETS
+                if target not in (state.get("city_unlock_probe") or {})
+            ],
+            "available_cities": list(state.get("available_cities") or []),
+            "unavailable_cities": list(state.get("unavailable_cities") or []),
+            "unknown_cities": list(state.get("unknown_cities") or []),
+            "config_path": config_path,
+            "texts": [TRADE_WULINYUAN_DISABLED_REASON],
+        }
     status = classify_city_unlock_probe(texts)
     probe_key = city_name or f"probe_{len(state.get('city_unlock_probe') or {}) + 1}"
     previous = (state.get("city_unlock_probe") or {}).get(probe_key) or {}
@@ -1799,6 +1873,7 @@ def _complete_city_unlock_read() -> dict[str, Any]:
     completed = state.setdefault("completed_parts", [])
     if "read_unavailable_cities" not in completed:
         completed.append("read_unavailable_cities")
+    _mark_wulinyuan_disabled_for_city_unlock(state)
     _update_city_unlock_lists(state)
     missing_cities = [
         city
@@ -2685,6 +2760,26 @@ class ProfileCityUnlockMoveToCityAction(CustomAction):
         city = str(params.get("city") or params.get("destination_city") or "").strip()
         state = _city_unlock_state(reset=bool(params.get("reset")))
         run_id = str(state.get("profile_read_run_id") or "")
+        if normalize_city_name(city) == WULINYUAN_CITY_NAME and _trade_wulinyuan_disabled():
+            _mark_wulinyuan_disabled_for_city_unlock(state)
+            _update_city_unlock_lists(state)
+            config_path = _save_profile_result(copy.deepcopy(state), task_entry=CITY_UNLOCK_TASK_ENTRY)
+            payload = {
+                "ok": True,
+                "city": WULINYUAN_CITY_NAME,
+                "reason": "wulinyuan_disabled",
+                "status": "unavailable",
+                "config_path": config_path,
+            }
+            _append_user_log(
+                CITY_UNLOCK_TASK_ENTRY,
+                f"跳过城市定位：{WULINYUAN_CITY_NAME} 当前临时关闭。",
+                run_id=run_id,
+                event="city_unlock_locate_skipped_wulinyuan_disabled",
+                data=payload,
+            )
+            _json_payload("profile_city_unlock_move_to_city", payload)
+            return False
         try:
             city_index = CITY_UNLOCK_TARGETS.index(city) + 1
         except ValueError:
@@ -2743,6 +2838,7 @@ class ManualTwoCityBusinessCalculateAction(CustomAction):
         run_id = f"manual-two-city-{int(time.time())}"
         start_city = str(params.get("manual_start_city") or params.get("start_city") or "").strip()
         target_city = str(params.get("manual_target_city") or params.get("target_city") or "").strip()
+        wulinyuan_enabled = _trade_wulinyuan_enabled()
         uid = str(params.get("uid") or "").strip()
         start_book = _int_param(params, "start_book", 4, minimum=0)
         target_book = _int_param(params, "target_book", 0, minimum=0)
@@ -2790,6 +2886,7 @@ class ManualTwoCityBusinessCalculateAction(CustomAction):
             "start_raise_percent": start_raise_percent,
             "target_bargain_percent": target_bargain_percent,
             "target_raise_percent": target_raise_percent,
+            "wulinyuan_enabled": wulinyuan_enabled,
         }
 
         _start_user_log(
@@ -2812,12 +2909,14 @@ class ManualTwoCityBusinessCalculateAction(CustomAction):
                 start_raise_percent=start_raise_percent,
                 target_bargain_percent=target_bargain_percent,
                 target_raise_percent=target_raise_percent,
+                wulinyuan_enabled=wulinyuan_enabled,
                 allow_default_account=True,
             )
             state = _manual_two_city_state()
             state["task_entry"] = MANUAL_TWO_CITY_TASK_ENTRY
             state["auto_route_enabled"] = False
             state["auto_route_params"] = {}
+            state["wulinyuan_enabled"] = wulinyuan_enabled
             state["result"] = result
             state["active_leg_index"] = 0
             state["selected_buy_goods"] = []
@@ -2913,6 +3012,11 @@ class AutoTwoCityBusinessCalculateAction(CustomAction):
         exclude_cities = _manual_two_city_collect_city_options(params, "exclude_city_", "exclude_cities")
         max_restock = _int_param(params, "max_restock", 6, minimum=0)
         wulinyuan_priority = str(params.get("wulinyuan_priority") or "total").strip() or "total"
+        wulinyuan_enabled = _trade_wulinyuan_enabled()
+        if not wulinyuan_enabled:
+            priority_cities = [city for city in priority_cities if normalize_city_name(city) != WULINYUAN_CITY_NAME]
+            if WULINYUAN_CITY_NAME not in {normalize_city_name(city) for city in exclude_cities}:
+                exclude_cities.append(WULINYUAN_CITY_NAME)
         run_mode = _manual_two_city_run_mode(params.get("run_mode"))
         account_read_mode = _manual_two_city_account_read_mode(params.get("account_profile_read_mode"))
         smart_scan_interval = _manual_two_city_smart_scan_interval(params.get("account_profile_smart_scan_interval"))
@@ -2929,6 +3033,7 @@ class AutoTwoCityBusinessCalculateAction(CustomAction):
             "exclude_cities": exclude_cities,
             "max_restock": max_restock,
             "wulinyuan_priority": wulinyuan_priority,
+            "wulinyuan_enabled": wulinyuan_enabled,
         }
 
         _start_user_log(
@@ -2948,12 +3053,14 @@ class AutoTwoCityBusinessCalculateAction(CustomAction):
                 exclude_cities=exclude_cities,
                 max_restock=max_restock,
                 wulinyuan_priority=wulinyuan_priority,
+                wulinyuan_enabled=wulinyuan_enabled,
                 allow_default_account=True,
             )
             state = _manual_two_city_state()
             state["task_entry"] = AUTO_TWO_CITY_TASK_ENTRY
             state["auto_route_enabled"] = True
             state["auto_route_params"] = auto_params
+            state["wulinyuan_enabled"] = wulinyuan_enabled
             state["result"] = result
             state["active_leg_index"] = 0
             state["selected_buy_goods"] = []
@@ -2967,6 +3074,7 @@ class AutoTwoCityBusinessCalculateAction(CustomAction):
                 "start_raise_percent": result.get("start_raise_percent", 0),
                 "target_bargain_percent": result.get("target_bargain_percent", 0),
                 "target_raise_percent": result.get("target_raise_percent", 0),
+                "wulinyuan_enabled": wulinyuan_enabled,
             }
             state["manual_start_city"] = result.get("start_city")
             state["manual_target_city"] = result.get("target_city")
@@ -4265,6 +4373,7 @@ def _manual_two_city_defaults() -> dict[str, Any]:
         "task_entry": MANUAL_TWO_CITY_TASK_ENTRY,
         "auto_route_enabled": False,
         "auto_route_params": {},
+        "wulinyuan_enabled": TRADE_WULINYUAN_DEFAULT_ENABLED,
         "manual_start_city": "修格里城",
         "manual_target_city": "7号自由港",
         "account_profile_read_mode": MANUAL_TWO_CITY_ACCOUNT_READ_SMART,
@@ -4363,6 +4472,7 @@ def _manual_two_city_calculate_params_from_state() -> dict[str, Any]:
             "target_bargain_percent": result.get("target_bargain_percent", state.get("target_bargain_percent", 0)),
             "target_raise_percent": result.get("target_raise_percent", state.get("target_raise_percent", 0)),
         }
+    params["wulinyuan_enabled"] = _trade_wulinyuan_enabled(state)
     return params
 
 
@@ -4390,6 +4500,7 @@ def _manual_two_city_recalculate_after_account_profile() -> bool:
         transient_status = state.get("transient_product_status_by_city")
         if state.get("auto_route_enabled"):
             params = dict(state.get("auto_route_params") or {})
+            params["wulinyuan_enabled"] = _trade_wulinyuan_enabled(state)
             if isinstance(transient_status, dict) and transient_status:
                 params["transient_product_status_by_city"] = transient_status
             params["allow_default_account"] = False
@@ -4404,6 +4515,7 @@ def _manual_two_city_recalculate_after_account_profile() -> bool:
                 "start_raise_percent": new_result.get("start_raise_percent", 0),
                 "target_bargain_percent": new_result.get("target_bargain_percent", 0),
                 "target_raise_percent": new_result.get("target_raise_percent", 0),
+                "wulinyuan_enabled": params.get("wulinyuan_enabled"),
             }
         else:
             if isinstance(transient_status, dict) and transient_status:
@@ -11602,6 +11714,7 @@ def _manual_two_city_recalculate_after_product_scan(city_name: Any) -> bool:
         transient_status = state.get("transient_product_status_by_city")
         if state.get("auto_route_enabled"):
             params = dict(state.get("auto_route_params") or {})
+            params["wulinyuan_enabled"] = _trade_wulinyuan_enabled(state)
             if isinstance(transient_status, dict) and transient_status:
                 params["transient_product_status_by_city"] = transient_status
             params["allow_default_account"] = True
@@ -11616,6 +11729,7 @@ def _manual_two_city_recalculate_after_product_scan(city_name: Any) -> bool:
                 "start_raise_percent": new_result.get("start_raise_percent", 0),
                 "target_bargain_percent": new_result.get("target_bargain_percent", 0),
                 "target_raise_percent": new_result.get("target_raise_percent", 0),
+                "wulinyuan_enabled": params.get("wulinyuan_enabled"),
             }
         else:
             if isinstance(transient_status, dict) and transient_status:

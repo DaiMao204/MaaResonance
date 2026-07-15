@@ -134,6 +134,7 @@ def generate_pipeline() -> dict[str, Any]:
         action("Click"),
         post_delay=200,
         next_node="AccountProfileCityUnlockMapReady",
+        on_error="StateRecoveryStart",
     )
     pipeline["AccountProfileCityUnlockMapReady"] = node(
         reco("OCR", {"expected": [*ROUTE_MAP_TEXTS, *[item["city"] for item in CITY_ORDER]]}),
@@ -169,6 +170,7 @@ def generate_pipeline() -> dict[str, Any]:
         }
         if index == 1:
             move_param["reset"] = True
+        move_on_error = next_move if city == "武林源" else None
 
         pipeline[f"{prefix}MoveToCity"] = node(
             reco("DirectHit"),
@@ -183,6 +185,7 @@ def generate_pipeline() -> dict[str, Any]:
                 f"{prefix}SelectByText",
                 f"{prefix}Unknown",
             ],
+            on_error=move_on_error,
         )
         pipeline[f"{prefix}ExistingPanelTitle"] = node(
             reco("OCR", {"expected": item["aliases"], "roi": [690, 80, 560, 95]}),
