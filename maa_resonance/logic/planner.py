@@ -51,8 +51,8 @@ CITY_NAME_ALIASES = {
     "\u4e03\u53f7\u81ea\u7531\u6e2f": "7\u53f7\u81ea\u7531\u6e2f",
 }
 WULINYUAN_CITY_NAME = "武林源"
-# Temporary city availability switch. Set to True when 武林源 reopens.
-WULINYUAN_TRADE_ENABLED = False
+# Global safety switch. Task configuration can still disable 武林源 per run.
+WULINYUAN_TRADE_ENABLED = True
 WULINYUAN_CURRENCY_NAME = "交子"
 WULINYUAN_BASE_CURRENCY_NAME = "铁盟币"
 WULINYUAN_PRICE_DIVISOR_FROM_BASE = 20

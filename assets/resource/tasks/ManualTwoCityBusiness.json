@@ -82,6 +82,7 @@
                 "ManualTwoCityStartParams",
                 "ManualTwoCityTargetCity",
                 "ManualTwoCityTargetParams",
+                "ManualTwoCityWulinyuanEnabled",
                 "ManualTwoCityRunMode",
                 "ManualTwoCityAccountProfileReadMode",
                 "ManualTwoCityAccountProfileSmartInterval",
@@ -635,6 +636,34 @@
                     }
                 }
             }
+        },
+        "ManualTwoCityWulinyuanEnabled": {
+            "type": "switch",
+            "label": "启用武林源",
+            "description": "开启后武林源可参与跑商及账号城市开放识别；关闭后自动规划会排除武林源，手动路线也无法选择武林源。",
+            "default_case": "Yes",
+            "cases": [
+                {
+                    "name": "No",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetWulinyuanEnabled": {
+                            "custom_action_param": {
+                                "wulinyuan_enabled": false
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Yes",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetWulinyuanEnabled": {
+                            "custom_action_param": {
+                                "wulinyuan_enabled": true
+                            }
+                        }
+                    }
+                }
+            ]
         },
         "ManualTwoCityRunMode": {
             "type": "select",

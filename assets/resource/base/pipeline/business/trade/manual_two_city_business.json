@@ -75,7 +75,7 @@
                 }
             }
         },
-        "next": "ManualTwoCityBusinessSetRunMode"
+        "next": "ManualTwoCityBusinessSetWulinyuanEnabled"
     },
     "ManualTwoCityBusinessSetOutboundCity": {
         "recognition": {
@@ -136,6 +136,21 @@
                     "target_book": 0,
                     "target_bargain_percent": 0,
                     "target_raise_percent": 0
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessSetWulinyuanEnabled"
+    },
+    "ManualTwoCityBusinessSetWulinyuanEnabled": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_config",
+                "custom_action_param": {
+                    "wulinyuan_enabled": true
                 }
             }
         },

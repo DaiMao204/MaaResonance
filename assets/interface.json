@@ -8,7 +8,7 @@
     "license": "AGPL-3.0-only",
     "welcome": "当前处于公开测试阶段，主要测试功能稳定性。遇到异常请附带 MXU 日志、任务配置和出错界面截图反馈。",
     "github": "https://github.com/DaiMao204/MaaResonance",
-    "version": "v1.3.0",
+    "version": "v1.4.0",
     "mirrorchyan_rid": "MaaResonance",
     "mirrorchyan_multiplatform": true,
     "controller": [
@@ -75,6 +75,7 @@
                         "AutoTwoCityPlannerParams": {
                             "max_restock": "6"
                         },
+                        "ManualTwoCityWulinyuanEnabled": "Yes",
                         "AutoTwoCityWulinyuanPriority": "total",
                         "ManualTwoCityRunMode": "until_fatigue_exhausted",
                         "ManualTwoCityAccountProfileReadMode": "smart",
@@ -112,6 +113,7 @@
                             "target_bargain_percent": "20",
                             "target_raise_percent": "20"
                         },
+                        "ManualTwoCityWulinyuanEnabled": "Yes",
                         "ManualTwoCityRunMode": "until_fatigue_exhausted",
                         "ManualTwoCityAccountProfileReadMode": "smart",
                         "ManualTwoCityAutoImpactDrill": "Yes",

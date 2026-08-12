@@ -85,6 +85,7 @@
                 "AutoTwoCityPriorityCity2",
                 "AutoTwoCityExcludeCities",
                 "AutoTwoCityPlannerParams",
+                "ManualTwoCityWulinyuanEnabled",
                 "AutoTwoCityWulinyuanPriority",
                 "ManualTwoCityRunMode",
                 "ManualTwoCityAccountProfileReadMode",
@@ -663,17 +664,6 @@
                         "AutoTwoCityBusinessSetExcludeCities": {
                             "custom_action_param": {
                                 "exclude_city_007": "栖羽站"
-                            }
-                        }
-                    }
-                },
-                {
-                    "name": "武林源",
-                    "label": "武林源",
-                    "pipeline_override": {
-                        "AutoTwoCityBusinessSetExcludeCities": {
-                            "custom_action_param": {
-                                "exclude_city_008": "武林源"
                             }
                         }
                     }

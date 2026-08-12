@@ -91,7 +91,8 @@ MANUAL_TWO_CITY_TASK_ENTRY = "ManualTwoCityBusiness"
 AUTO_TWO_CITY_TASK_ENTRY = "AutoTwoCityBusiness"
 AUTO_TWO_CITY_EXCLUDE_OPTION = "AutoTwoCityExcludeCities"
 TRADE_WULINYUAN_DEFAULT_ENABLED = WULINYUAN_TRADE_ENABLED
-TRADE_WULINYUAN_DISABLED_REASON = "武林源当前临时关闭"
+TRADE_WULINYUAN_DISABLED_REASON = "跑商任务配置已关闭武林源"
+TRADE_WULINYUAN_LEGACY_DISABLED_REASONS = {"武林源当前临时关闭"}
 MANUAL_TWO_CITY_RUN_MODE_ONE_ROUND = "one_round"
 MANUAL_TWO_CITY_RUN_MODE_UNTIL_FATIGUE_EXHAUSTED = "until_fatigue_exhausted"
 MANUAL_TWO_CITY_ACCOUNT_READ_SMART = "smart"
@@ -841,7 +842,22 @@ def _int_param(params: dict[str, Any], key: str, default: int, *, minimum: int |
 
 
 def _trade_wulinyuan_enabled(state: dict[str, Any] | None = None) -> bool:
-    return bool(TRADE_WULINYUAN_DEFAULT_ENABLED)
+    if not TRADE_WULINYUAN_DEFAULT_ENABLED:
+        return False
+    current_state = state if isinstance(state, dict) and "wulinyuan_enabled" in state else _MANUAL_TWO_CITY_STATE
+    if not isinstance(current_state, dict) or "wulinyuan_enabled" not in current_state:
+        return True
+    value = current_state.get("wulinyuan_enabled")
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    text = str(value or "").strip().lower()
+    if text in {"1", "true", "yes", "on", "enable", "enabled", "启用", "开启", "是"}:
+        return True
+    if text in {"0", "false", "no", "off", "disable", "disabled", "禁用", "关闭", "否"}:
+        return False
+    return True
 
 
 def _trade_wulinyuan_disabled(state: dict[str, Any] | None = None) -> bool:
@@ -1645,7 +1661,7 @@ def _initial_city_unlock_state() -> dict[str, Any]:
 
 
 def _mark_wulinyuan_disabled_for_city_unlock(state: dict[str, Any]) -> None:
-    if not _trade_wulinyuan_disabled():
+    if not _trade_wulinyuan_disabled(state):
         return
     state.setdefault("city_unlock_probe", {})[WULINYUAN_CITY_NAME] = {
         "status": "unavailable",
@@ -1664,10 +1680,18 @@ def _initial_city_unlock_state_from_saved() -> dict[str, Any]:
         if not isinstance(item, dict):
             continue
         status = str(item.get("status") or "").strip()
+        texts = item.get("texts") if isinstance(item.get("texts"), list) else []
+        if (
+            normalize_city_name(str(city)) == WULINYUAN_CITY_NAME
+            and _trade_wulinyuan_enabled()
+            and status == "unavailable"
+            and any(reason in str(text) for reason in TRADE_WULINYUAN_LEGACY_DISABLED_REASONS for text in texts)
+        ):
+            continue
         if status:
             state.setdefault("city_unlock_probe", {})[str(city)] = {
                 "status": status,
-                "texts": item.get("texts") if isinstance(item.get("texts"), list) else [],
+                "texts": texts,
             }
     _mark_wulinyuan_disabled_for_city_unlock(state)
     _update_city_unlock_lists(state)
@@ -2773,7 +2797,7 @@ class ProfileCityUnlockMoveToCityAction(CustomAction):
             }
             _append_user_log(
                 CITY_UNLOCK_TASK_ENTRY,
-                f"跳过城市定位：{WULINYUAN_CITY_NAME} 当前临时关闭。",
+                f"跳过城市定位：{TRADE_WULINYUAN_DISABLED_REASON}。",
                 run_id=run_id,
                 event="city_unlock_locate_skipped_wulinyuan_disabled",
                 data=payload,
@@ -3013,7 +3037,9 @@ class AutoTwoCityBusinessCalculateAction(CustomAction):
         max_restock = _int_param(params, "max_restock", 6, minimum=0)
         wulinyuan_priority = str(params.get("wulinyuan_priority") or "total").strip() or "total"
         wulinyuan_enabled = _trade_wulinyuan_enabled()
-        if not wulinyuan_enabled:
+        if wulinyuan_enabled:
+            exclude_cities = [city for city in exclude_cities if normalize_city_name(city) != WULINYUAN_CITY_NAME]
+        else:
             priority_cities = [city for city in priority_cities if normalize_city_name(city) != WULINYUAN_CITY_NAME]
             if WULINYUAN_CITY_NAME not in {normalize_city_name(city) for city in exclude_cities}:
                 exclude_cities.append(WULINYUAN_CITY_NAME)
@@ -3043,7 +3069,8 @@ class AutoTwoCityBusinessCalculateAction(CustomAction):
                 f"开始计算自动双城跑商（{run_mode_label}，账号配置{account_read_mode_label}）："
                 f"优先城市 {('、'.join(priority_cities) if priority_cities else '无')}，"
                 f"排除城市 {('、'.join(exclude_cities) if exclude_cities else '无')}，"
-                f"全程进货书上限 {max_restock}，武林源优先级 {wulinyuan_priority}。"
+                f"全程进货书上限 {max_restock}，武林源 {'已启用' if wulinyuan_enabled else '已关闭'}，"
+                f"武林源优先级 {wulinyuan_priority}。"
             ),
         )
         try:
@@ -4586,6 +4613,7 @@ class ManualTwoCityBusinessConfigAction(CustomAction):
             "exclude_cities",
             "max_restock",
             "wulinyuan_priority",
+            "wulinyuan_enabled",
             "manual_start_city",
             "manual_target_city",
             "account_profile_read_mode",
@@ -4617,6 +4645,8 @@ class ManualTwoCityBusinessConfigAction(CustomAction):
                     state[key] = _manual_two_city_account_read_mode(params[key])
                 elif key == "account_profile_smart_scan_interval":
                     state[key] = _manual_two_city_smart_scan_interval(params[key])
+                elif key == "wulinyuan_enabled":
+                    state[key] = _manual_two_city_bool(params[key], TRADE_WULINYUAN_DEFAULT_ENABLED)
                 else:
                     state[key] = params[key]
         for key, value in params.items():
@@ -6775,16 +6805,35 @@ def _manual_two_city_parse_buy_page_cargo_load(
         roi_entries.append(entry)
         raw_text = str(entry.get("text") or "")
         for candidate_text in cargo_text_variants(raw_text):
+            for match in re.finditer(r"(\d{1,5})\s*\+\s*(\d{1,5})\s*/\s*(\d{2,5})", candidate_text):
+                base_used = int(match.group(1))
+                selected_used = int(match.group(2))
+                capacity = int(match.group(3))
+                add_candidate(
+                    base_used + selected_used,
+                    capacity,
+                    raw_text,
+                    f"{base_used}+{selected_used}/{capacity}",
+                    entry,
+                    priority=5,
+                )
             for match in re.finditer(r"(\d{1,5})\+(\d{1,5})", candidate_text):
                 used_fragments.append((int(match.group(1)) + int(match.group(2)), entry, raw_text))
             for match in re.finditer(r"(?:^|[^\d])0?\+(\d{2,5})", candidate_text):
                 used_fragments.append((int(match.group(1)), entry, raw_text))
             digits = re.sub(r"\D+", "", candidate_text)
-            if digits and "%" not in candidate_text:
+            if "%" not in candidate_text:
+                for match in re.finditer(r"(?<![\d+])(\d{3,5})(?!\d)", candidate_text):
+                    capacity = int(match.group(1))
+                    if 100 <= capacity <= 9999:
+                        capacity_fragments.append(capacity)
+            if digits and "%" not in candidate_text and "+" not in candidate_text:
                 if len(digits) == 4 and 100 <= int(digits) <= 9999:
                     capacity_fragments.append(int(digits))
                 elif len(digits) == 5 and digits[0] in {"0", "1"} and 100 <= int(digits[1:]) <= 9999:
                     capacity_fragments.append(int(digits[1:]))
+                elif len(digits) == 6 and 100 <= int(digits[-4:]) <= 9999:
+                    capacity_fragments.append(int(digits[-4:]))
 
             for match in re.finditer(r"(\d{1,5})\s*/\s*[^\d]{0,3}(\d{1,5})\+?", candidate_text):
                 used = int(match.group(1))
@@ -6808,7 +6857,9 @@ def _manual_two_city_parse_buy_page_cargo_load(
                     add_candidate(used, capacity, raw_text, f"{digits[:split]}/{digits[split:]}", entry, priority=-1)
 
     if used_fragments and capacity_fragments:
-        capacity = max(capacity_fragments)
+        used = max(item[0] for item in used_fragments)
+        valid_capacities = sorted({capacity for capacity in capacity_fragments if capacity >= used})
+        capacity = valid_capacities[0] if valid_capacities else max(capacity_fragments)
         valid_used_fragments = [
             item
             for item in used_fragments

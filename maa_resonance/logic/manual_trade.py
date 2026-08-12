@@ -557,7 +557,9 @@ def calculate_auto_two_city_trade(
     priority_city_set = _city_set(priority_cities)
     exclude_city_set = _city_set(exclude_cities)
     wulinyuan_enabled = _wulinyuan_enabled(wulinyuan_enabled)
-    if not wulinyuan_enabled:
+    if wulinyuan_enabled:
+        exclude_city_set.discard(WULINYUAN_CITY_NAME)
+    else:
         priority_city_set.discard(WULINYUAN_CITY_NAME)
         exclude_city_set.add(WULINYUAN_CITY_NAME)
     conflict_cities = sorted(priority_city_set & exclude_city_set)
@@ -582,6 +584,11 @@ def calculate_auto_two_city_trade(
         mixed_currency_priority=wulinyuan_priority,
         transient_product_status_by_city=transient_product_status_by_city,
     )
+    account_trade = account.get("trade") if isinstance(account.get("trade"), dict) else {}
+    account_planner = account.get("planner") if isinstance(account.get("planner"), dict) else {}
+    available_cities = _city_set(account_trade.get("available_cities") or account_planner.get("available_cities"))
+    if wulinyuan_enabled and WULINYUAN_CITY_NAME in available_cities:
+        options.exclude_cities.discard(WULINYUAN_CITY_NAME)
     routes = plan_two_city_routes(market, options)
     if priority_city_set:
         routes = [
@@ -654,7 +661,7 @@ def calculate_manual_two_city_trade(
         raise ValueError("起点城市和目标城市不能相同")
     wulinyuan_enabled = _wulinyuan_enabled(wulinyuan_enabled)
     if not wulinyuan_enabled and WULINYUAN_CITY_NAME in {start_city, target_city}:
-        raise ValueError("武林源当前临时关闭，请在代码开关恢复后再使用")
+        raise ValueError("跑商任务配置已关闭武林源，请开启后再使用")
 
     config_path, account = find_account_config(uid)
     if not account:
