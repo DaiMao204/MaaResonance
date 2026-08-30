@@ -74,6 +74,221 @@ class TradeRuntimeFixTest(unittest.TestCase):
         self.assertFalse(trade._manual_two_city_product_scan_buy_lot_plausible(1, 39))
         self.assertFalse(trade._manual_two_city_product_scan_buy_lot_plausible(6, 65))
 
+    def test_truncated_product_lot_retries_enhanced_ocr(self) -> None:
+        digit_rois = [[578, 222, 56, 25], [572, 204, 74, 35]]
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch.object(
+                    trade,
+                    "_manual_two_city_product_icon_lot_row_roi",
+                    return_value=[560, 206, 92, 68],
+                )
+            )
+            stack.enter_context(
+                patch.object(
+                    trade,
+                    "_manual_two_city_product_icon_lot_digit_rois",
+                    return_value=digit_rois,
+                )
+            )
+            direct = stack.enter_context(
+                patch.object(
+                    trade,
+                    "_manual_two_city_direct_digit_lot_ocr",
+                    side_effect=[{"buy_lot": 1}, {"buy_lot": 11}],
+                )
+            )
+            scaled = stack.enter_context(
+                patch.object(
+                    trade,
+                    "_manual_two_city_scaled_digit_lot_ocr",
+                    return_value={"buy_lot": 1},
+                )
+            )
+
+            result = trade._manual_two_city_read_product_icon_lot_by_row(
+                None,
+                1,
+                1,
+                "岚心锦服",
+                167.5,
+                image=object(),
+                expected_lot=9,
+            )
+
+        self.assertEqual(result["buy_lot"], 11)
+        self.assertEqual(direct.call_count, 2)
+        self.assertEqual(scaled.call_count, 2)
+        first_attempt = result["digit_roi_attempts"][0]
+        self.assertFalse(first_attempt["direct_digit_ocr"]["plausible"])
+        self.assertFalse(first_attempt["scaled_digit_ocr"]["plausible"])
+
+    def test_scaled_product_lot_prefers_plausible_variant(self) -> None:
+        import numpy as np
+
+        truncated = [{"text": "1", "x": 0, "y": 0, "w": 20, "h": 20, "center_x": 10, "center_y": 10}]
+        complete = [{"text": "11", "x": 0, "y": 0, "w": 24, "h": 20, "center_x": 12, "center_y": 10}]
+        with patch.object(
+            trade,
+            "_manual_two_city_ocr_entries_from_image",
+            side_effect=[
+                (True, truncated, ["1"]),
+                (True, complete, ["11"]),
+                (False, [], []),
+                (False, [], []),
+            ],
+        ) as ocr:
+            result = trade._manual_two_city_scaled_digit_lot_ocr(
+                None,
+                "TradeRuntimeFix",
+                np.zeros((30, 70, 3), dtype=np.uint8),
+                [0, 0, 56, 25],
+                expected_lot=9,
+            )
+
+        self.assertEqual(result["buy_lot"], 11)
+        self.assertEqual(result["source"], "contrast")
+        self.assertEqual(ocr.call_count, 4)
+        self.assertFalse(result["variants"][0]["plausible"])
+        self.assertTrue(result["variants"][1]["plausible"])
+
+    def test_product_lot_candidate_consensus_rejects_conflict(self) -> None:
+        selected = trade._manual_two_city_select_product_lot_candidates(
+            [
+                {"value": 1, "source": "direct:1"},
+                {"value": 11, "source": "direct:2"},
+                {"value": 11, "source": "scaled:contrast"},
+            ],
+            9,
+        )
+        self.assertEqual(selected["buy_lot"], 11)
+        self.assertEqual(selected["reason"], "candidate_consensus")
+
+        conflict = trade._manual_two_city_select_product_lot_candidates(
+            [
+                {"value": 11, "source": "direct:1"},
+                {"value": 12, "source": "direct:2"},
+            ],
+            9,
+        )
+        self.assertIsNone(conflict["buy_lot"])
+        self.assertEqual(conflict["reason"], "candidate_conflict")
+
+    def test_saved_product_lot_fallback_is_narrow_and_trusted(self) -> None:
+        completion = {
+            "missing_tax_rate": False,
+            "missing_observed_buy_lot_goods": ["岚心锦服"],
+            "saved_product_buy_lots": {"岚心锦服": 9},
+        }
+        self.assertEqual(
+            trade._manual_two_city_safe_saved_buy_lot_fallbacks(
+                completion,
+                {"岚心锦服": 9},
+            ),
+            {"岚心锦服": 9},
+        )
+        completion["saved_product_buy_lots"] = {"岚心锦服": 1}
+        self.assertEqual(
+            trade._manual_two_city_safe_saved_buy_lot_fallbacks(
+                completion,
+                {"岚心锦服": 9},
+            ),
+            {},
+        )
+        completion.update(
+            {
+                "missing_observed_buy_lot_goods": ["岚心锦服", "黑毛牛排"],
+                "saved_product_buy_lots": {"岚心锦服": 9, "黑毛牛排": 19},
+            }
+        )
+        self.assertEqual(
+            trade._manual_two_city_safe_saved_buy_lot_fallbacks(
+                completion,
+                {"岚心锦服": 9, "黑毛牛排": 19},
+            ),
+            {},
+        )
+        completion.update(
+            {
+                "missing_observed_buy_lot_goods": ["岚心锦服"],
+                "saved_product_buy_lots": {"岚心锦服": 12},
+            }
+        )
+        self.assertEqual(
+            trade._manual_two_city_safe_saved_buy_lot_fallbacks(
+                completion,
+                {"岚心锦服": 9},
+            ),
+            {},
+        )
+
+    def test_product_scan_degrades_without_marking_saved_value_fresh(self) -> None:
+        state = {
+            "run_id": "trade-runtime-fix",
+            "product_scan_city": "岚心城",
+            "product_scan_targets": ["岚心锦服", "黑毛牛排"],
+            "product_scan_statuses": {"岚心锦服": "normal", "黑毛牛排": "normal"},
+            "product_scan_buy_lots": {"黑毛牛排": 22},
+            "product_scan_expected_buy_lots": {"岚心锦服": 9, "黑毛牛排": 19},
+            "product_scan_tax_rate": 0.05,
+            "product_scan_city_trade_due": True,
+            "product_scan_missing_trade_field_retry_count": 2,
+            "product_scan_completed_cities": [],
+        }
+        completion = {
+            "complete": False,
+            "required_buy_lot_goods": ["岚心锦服", "黑毛牛排"],
+            "missing_buy_lot_goods": ["岚心锦服"],
+            "missing_observed_buy_lot_goods": ["岚心锦服"],
+            "missing_effective_buy_lot_goods": [],
+            "saved_fallback_buy_lot_goods": ["岚心锦服"],
+            "saved_product_buy_lots": {"岚心锦服": 9, "黑毛牛排": 19},
+            "missing_tax_rate": False,
+            "effective_city_tax_rate": 0.05,
+        }
+        with ExitStack() as stack:
+            stack.enter_context(patch.object(trade, "_manual_two_city_state", return_value=state))
+            stack.enter_context(
+                patch.object(
+                    trade,
+                    "_manual_two_city_update_city_product_statuses",
+                    return_value={"changed": False},
+                )
+            )
+            stack.enter_context(
+                patch.object(
+                    trade,
+                    "_manual_two_city_city_trade_completion",
+                    return_value=completion,
+                )
+            )
+            observation = stack.enter_context(
+                patch.object(
+                    trade,
+                    "_manual_two_city_update_city_trade_observation",
+                    return_value={"changed": True},
+                )
+            )
+            recalculate = stack.enter_context(
+                patch.object(trade, "_manual_two_city_recalculate_after_product_scan", return_value=True)
+            )
+            stack.enter_context(patch.object(trade, "_append_user_log"))
+            stack.enter_context(patch.object(trade, "_json_payload"))
+
+            ok = trade.ManualTwoCityBusinessProductScanCompleteAction().run(None, None)
+
+        self.assertTrue(ok)
+        observation.assert_called_once()
+        self.assertEqual(observation.call_args.kwargs["product_buy_lots"], {"黑毛牛排": 22})
+        self.assertFalse(observation.call_args.kwargs["mark_read"])
+        self.assertEqual(
+            state["product_scan_degraded_trade_fallbacks"]["岚心城"]["product_buy_lots"],
+            {"岚心锦服": 9},
+        )
+        self.assertIn("岚心城", state["product_scan_completed_cities"])
+        self.assertFalse(state["product_scan_retry_missing_trade_fields"]["needed"])
+        recalculate.assert_called_once_with("岚心城")
+
     def test_cargo_load_ocr_excludes_haggle_and_retries_until_stable(self) -> None:
         compact_entries = [
             {"text": "711300", "x": 1180, "y": 386, "w": 65, "h": 19},

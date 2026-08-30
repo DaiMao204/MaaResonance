@@ -251,6 +251,9 @@ PRODUCT_SCAN_BUY_LOT_TRUST_RATIO = 3.0
 PRODUCT_SCAN_BUY_LOT_MIN_TRUST_RATIO = 0.5
 PRODUCT_SCAN_OBSERVED_BUY_LOT_MAX = 99999
 PRODUCT_SCAN_MISSING_TRADE_FIELD_RETRY_LIMIT = 2
+PRODUCT_SCAN_SCALED_LOT_ROI_LIMIT = 3
+PRODUCT_SCAN_SAVED_FALLBACK_MAX_MISSING = 1
+PRODUCT_SCAN_SAVED_FALLBACK_MAX_DEVIATION_RATIO = 0.20
 BUY_BOOK_MENU_TEXTS = ["使用进货书", "使用进货采购书", "进货采购书", "进货采买书", "进货书", "采购书", "采买书"]
 BUY_BOOK_POPUP_TEXTS = ["是否使用", "增加交易品库存", "确认"]
 BUY_HAGGLE_BUTTON_TEXTS = ["议价", "砍价", "降价", "抬价"]
@@ -8334,6 +8337,87 @@ def _manual_two_city_product_scan_observed_buy_lot_acceptable(observed: Any) -> 
     return 0 < observed_lot <= PRODUCT_SCAN_OBSERVED_BUY_LOT_MAX
 
 
+def _manual_two_city_select_product_lot_candidates(
+    candidates: list[dict[str, Any]],
+    expected_lot: Any,
+    *,
+    allow_single_expected: bool = False,
+) -> dict[str, Any]:
+    expected = _manual_two_city_positive_int(expected_lot)
+    grouped: dict[int, dict[str, Any]] = {}
+    for index, candidate in enumerate(candidates):
+        if not isinstance(candidate, dict):
+            continue
+        value = _manual_two_city_positive_int(candidate.get("value"))
+        if not _manual_two_city_product_scan_buy_lot_plausible(value, expected):
+            continue
+        source = str(candidate.get("source") or f"candidate:{index}").strip() or f"candidate:{index}"
+        group = grouped.setdefault(
+            value,
+            {
+                "value": value,
+                "sources": [],
+                "expected_trusted": _manual_two_city_product_scan_buy_lot_trusted(value, expected),
+            },
+        )
+        if source not in group["sources"]:
+            group["sources"].append(source)
+
+    summaries = list(grouped.values())
+    for summary in summaries:
+        summary["votes"] = len(summary.get("sources") or [])
+        summary["expected_distance_ratio"] = (
+            abs(int(summary["value"]) - expected) / expected
+            if expected > 0
+            else None
+        )
+    summaries.sort(
+        key=lambda item: (
+            -int(item.get("votes") or 0),
+            not bool(item.get("expected_trusted")),
+            float(item.get("expected_distance_ratio") or 0.0),
+            int(item.get("value") or 0),
+        )
+    )
+
+    selected: dict[str, Any] | None = None
+    reason = "no_plausible_candidate"
+    if summaries:
+        top = summaries[0]
+        runner_up = summaries[1] if len(summaries) > 1 else None
+        top_votes = int(top.get("votes") or 0)
+        runner_votes = int(runner_up.get("votes") or 0) if runner_up else 0
+        if top_votes >= 2 and top_votes > runner_votes:
+            selected = top
+            reason = "candidate_consensus"
+        elif (
+            top_votes >= 2
+            and runner_up is not None
+            and top_votes == runner_votes
+            and bool(top.get("expected_trusted"))
+            and not bool(runner_up.get("expected_trusted"))
+        ):
+            selected = top
+            reason = "expected_consensus_tiebreak"
+        elif (
+            allow_single_expected
+            and len(summaries) == 1
+            and (expected <= 0 or bool(top.get("expected_trusted")))
+        ):
+            selected = top
+            reason = "single_expected_candidate"
+        else:
+            reason = "candidate_conflict" if len(summaries) > 1 else "insufficient_candidate_evidence"
+
+    return {
+        "buy_lot": int(selected["value"]) if selected else None,
+        "reason": reason,
+        "expected_lot": expected or None,
+        "selected": copy.deepcopy(selected) if selected else None,
+        "candidates": copy.deepcopy(summaries),
+    }
+
+
 def _manual_two_city_icon_lot_candidates(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
     candidates: list[dict[str, Any]] = []
     for entry in entries:
@@ -8524,6 +8608,37 @@ def _manual_two_city_filter_product_scan_buy_lots(
             continue
         trusted[good] = observed
     return trusted, rejected
+
+
+def _manual_two_city_safe_saved_buy_lot_fallbacks(
+    trade_completion: dict[str, Any],
+    expected_buy_lots: dict[str, Any],
+) -> dict[str, int]:
+    if not isinstance(trade_completion, dict) or trade_completion.get("missing_tax_rate"):
+        return {}
+    missing = [
+        str(item)
+        for item in (trade_completion.get("missing_observed_buy_lot_goods") or [])
+        if str(item).strip()
+    ]
+    if not missing or len(missing) > PRODUCT_SCAN_SAVED_FALLBACK_MAX_MISSING:
+        return {}
+    saved = trade_completion.get("saved_product_buy_lots")
+    if not isinstance(saved, dict):
+        return {}
+
+    fallback: dict[str, int] = {}
+    for good in missing:
+        saved_value = _manual_two_city_positive_int(saved.get(good))
+        expected_value = _manual_two_city_positive_int(expected_buy_lots.get(good))
+        if expected_value <= 0:
+            return {}
+        if not _manual_two_city_product_scan_buy_lot_trusted(saved_value, expected_value):
+            return {}
+        if abs(saved_value - expected_value) / expected_value > PRODUCT_SCAN_SAVED_FALLBACK_MAX_DEVIATION_RATIO:
+            return {}
+        fallback[good] = saved_value
+    return fallback
 
 
 def _manual_two_city_product_icon_lot_row_roi(center_y: Any) -> list[int] | None:
@@ -8784,6 +8899,7 @@ def _manual_two_city_scaled_digit_lot_ocr(
     first_positive_value: int | None = None
     first_positive_source = ""
     expected_value = _manual_two_city_positive_int(expected_lot)
+    lot_candidates: list[dict[str, Any]] = []
     for variant_name, variant_image in variants:
         _hit, entries, texts = _manual_two_city_ocr_entries_from_image(
             context,
@@ -8811,18 +8927,41 @@ def _manual_two_city_scaled_digit_lot_ocr(
         }
         expected_trusted = _manual_two_city_product_scan_buy_lot_trusted(value, expected_value)
         trusted = _manual_two_city_product_scan_observed_buy_lot_acceptable(value)
+        plausible = _manual_two_city_product_scan_buy_lot_plausible(value, expected_value)
         variant_result["trusted"] = trusted
         variant_result["expected_trusted"] = expected_trusted
+        variant_result["plausible"] = plausible
         result["variants"].append(variant_result)
         if value is not None and value > 0:
             if first_positive_value is None:
                 first_positive_value = value
                 first_positive_source = variant_name
-            if trusted:
-                result["buy_lot"] = value
-                result["source"] = variant_name
-                result["trusted"] = True
-                return result
+            if plausible:
+                lot_candidates.append(
+                    {
+                        "value": value,
+                        "source": f"scaled:{variant_name}",
+                    }
+                )
+    selection = _manual_two_city_select_product_lot_candidates(
+        lot_candidates,
+        expected_value,
+        allow_single_expected=True,
+    )
+    result["candidate_selection"] = selection
+    selected_value = _manual_two_city_positive_int(selection.get("buy_lot"))
+    if selected_value > 0:
+        selected = selection.get("selected") if isinstance(selection.get("selected"), dict) else {}
+        selected_sources = [str(item) for item in (selected.get("sources") or []) if str(item).strip()]
+        result["buy_lot"] = selected_value
+        result["source"] = selected_sources[0].removeprefix("scaled:") if selected_sources else "scaled_consensus"
+        result["trusted"] = True
+        result["expected_trusted"] = _manual_two_city_product_scan_buy_lot_trusted(
+            selected_value,
+            expected_value,
+        )
+        result["plausible"] = True
+        return result
     if first_positive_value is not None:
         result["raw_buy_lot"] = first_positive_value
         result["raw_source"] = first_positive_source
@@ -8906,6 +9045,31 @@ def _manual_two_city_read_product_icon_lot_by_row(
     digit_roi_attempts: list[dict[str, Any]] = []
     direct_digit_ocr: dict[str, Any] | None = None
     scaled_digit_ocr: dict[str, Any] | None = None
+    lot_candidates: list[dict[str, Any]] = []
+    candidate_selection: dict[str, Any] = {
+        "buy_lot": None,
+        "reason": "no_candidate_attempted",
+        "candidates": [],
+    }
+
+    def selected_digit_result(selection: dict[str, Any], selected_roi: list[int] | None) -> dict[str, Any]:
+        value = _manual_two_city_positive_int(selection.get("buy_lot"))
+        return {
+            "good": good,
+            "center_y": center_y,
+            "roi": roi,
+            "digit_roi": selected_roi or digit_roi,
+            "digit_roi_attempts": digit_roi_attempts,
+            "direct_digit_ocr": direct_digit_ocr,
+            "scaled_digit_ocr": scaled_digit_ocr,
+            "candidate_selection": selection,
+            "texts": [],
+            "entries": [],
+            "raw_buy_lot": value or None,
+            "trusted": value > 0,
+            "buy_lot": value or None,
+        }
+
     if page_image is not None:
         for attempt_index, digit_roi_item in enumerate(digit_rois, start=1):
             direct_digit_ocr = _manual_two_city_direct_digit_lot_ocr(
@@ -8920,25 +9084,32 @@ def _manual_two_city_read_product_icon_lot_by_row(
                 direct_value = 0
             direct_expected_trusted = _manual_two_city_product_scan_buy_lot_trusted(direct_value, expected_lot)
             direct_trusted = _manual_two_city_product_scan_observed_buy_lot_acceptable(direct_value)
+            direct_plausible = _manual_two_city_product_scan_buy_lot_plausible(direct_value, expected_lot)
             direct_digit_ocr["attempt_index"] = attempt_index
             direct_digit_ocr["trusted"] = direct_trusted
             direct_digit_ocr["expected_trusted"] = direct_expected_trusted
+            direct_digit_ocr["plausible"] = direct_plausible
             digit_roi_attempts.append({"roi": digit_roi_item, "direct_digit_ocr": direct_digit_ocr})
-            if direct_value > 0 and direct_trusted:
-                return {
-                    "good": good,
-                    "center_y": center_y,
-                    "roi": roi,
-                    "digit_roi": digit_roi_item,
-                    "digit_roi_attempts": digit_roi_attempts,
-                    "direct_digit_ocr": direct_digit_ocr,
-                    "scaled_digit_ocr": None,
-                    "texts": [],
-                    "entries": [],
-                    "raw_buy_lot": direct_value,
-                    "trusted": True,
-                    "buy_lot": direct_value,
-                }
+            if direct_value > 0 and direct_plausible:
+                lot_candidates.append(
+                    {
+                        "value": direct_value,
+                        "source": f"direct:{attempt_index}",
+                    }
+                )
+            candidate_selection = _manual_two_city_select_product_lot_candidates(
+                lot_candidates,
+                expected_lot,
+            )
+            if _manual_two_city_positive_int(candidate_selection.get("buy_lot")) > 0:
+                return selected_digit_result(candidate_selection, digit_roi_item)
+
+        scaled_attempts = sorted(
+            list(enumerate(digit_roi_attempts, start=1)),
+            key=lambda item: not bool((item[1].get("direct_digit_ocr") or {}).get("plausible")),
+        )[:PRODUCT_SCAN_SCALED_LOT_ROI_LIMIT]
+        for attempt_index, attempt in scaled_attempts:
+            digit_roi_item = list(attempt.get("roi") or [])
             scaled_digit_ocr = _manual_two_city_scaled_digit_lot_ocr(
                 context,
                 f"ManualTwoCityProductScanDigitLot{page_index:03d}_{row_index:02d}_{attempt_index:02d}",
@@ -8952,25 +9123,46 @@ def _manual_two_city_read_product_icon_lot_by_row(
                 scaled_value = 0
             scaled_expected_trusted = _manual_two_city_product_scan_buy_lot_trusted(scaled_value, expected_lot)
             scaled_trusted = _manual_two_city_product_scan_observed_buy_lot_acceptable(scaled_value)
+            scaled_plausible = _manual_two_city_product_scan_buy_lot_plausible(scaled_value, expected_lot)
             scaled_digit_ocr["attempt_index"] = attempt_index
             scaled_digit_ocr["trusted"] = scaled_trusted
             scaled_digit_ocr["expected_trusted"] = scaled_expected_trusted
-            digit_roi_attempts[-1]["scaled_digit_ocr"] = scaled_digit_ocr
-            if scaled_value > 0 and scaled_trusted:
-                return {
-                    "good": good,
-                    "center_y": center_y,
-                    "roi": roi,
-                    "digit_roi": digit_roi_item,
-                    "digit_roi_attempts": digit_roi_attempts,
-                    "direct_digit_ocr": direct_digit_ocr,
-                    "scaled_digit_ocr": scaled_digit_ocr,
-                    "texts": [],
-                    "entries": [],
-                    "raw_buy_lot": scaled_value,
-                    "trusted": True,
-                    "buy_lot": scaled_value,
-                }
+            scaled_digit_ocr["plausible"] = scaled_plausible
+            attempt["scaled_digit_ocr"] = scaled_digit_ocr
+            scaled_variant_added = False
+            for variant in scaled_digit_ocr.get("variants") or []:
+                variant_value = _manual_two_city_positive_int(variant.get("buy_lot"))
+                if not _manual_two_city_product_scan_buy_lot_plausible(variant_value, expected_lot):
+                    continue
+                variant_name = str(variant.get("variant") or "unknown")
+                lot_candidates.append(
+                    {
+                        "value": variant_value,
+                        "source": f"scaled:{attempt_index}:{variant_name}",
+                    }
+                )
+                scaled_variant_added = True
+            if scaled_value > 0 and scaled_plausible and not scaled_variant_added:
+                lot_candidates.append(
+                    {
+                        "value": scaled_value,
+                        "source": f"scaled:{attempt_index}:selected",
+                    }
+                )
+            candidate_selection = _manual_two_city_select_product_lot_candidates(
+                lot_candidates,
+                expected_lot,
+            )
+            if _manual_two_city_positive_int(candidate_selection.get("buy_lot")) > 0:
+                return selected_digit_result(candidate_selection, digit_roi_item)
+
+        candidate_selection = _manual_two_city_select_product_lot_candidates(
+            lot_candidates,
+            expected_lot,
+            allow_single_expected=True,
+        )
+        if _manual_two_city_positive_int(candidate_selection.get("buy_lot")) > 0:
+            return selected_digit_result(candidate_selection, digit_roi)
 
     if page_image is not None:
         _hit, entries, texts = _manual_two_city_ocr_entries_from_image(
@@ -8989,7 +9181,14 @@ def _manual_two_city_read_product_icon_lot_by_row(
         )
     value = _manual_two_city_parse_icon_lot_entries(entries)
     raw_value = _manual_two_city_positive_int(value)
-    trusted = _manual_two_city_product_scan_buy_lot_trusted(raw_value, expected_lot)
+    if _manual_two_city_product_scan_buy_lot_plausible(raw_value, expected_lot):
+        lot_candidates.append({"value": raw_value, "source": "row_ocr"})
+    candidate_selection = _manual_two_city_select_product_lot_candidates(
+        lot_candidates,
+        expected_lot,
+        allow_single_expected=True,
+    )
+    selected_value = _manual_two_city_positive_int(candidate_selection.get("buy_lot"))
     return {
         "good": good,
         "center_y": center_y,
@@ -8998,6 +9197,7 @@ def _manual_two_city_read_product_icon_lot_by_row(
         "digit_roi_attempts": digit_roi_attempts,
         "direct_digit_ocr": direct_digit_ocr,
         "scaled_digit_ocr": scaled_digit_ocr,
+        "candidate_selection": candidate_selection,
         "texts": texts[:20],
         "entries": [
             {
@@ -9012,8 +9212,9 @@ def _manual_two_city_read_product_icon_lot_by_row(
             for entry in entries[:12]
         ],
         "raw_buy_lot": raw_value or None,
-        "trusted": trusted,
-        "buy_lot": raw_value if trusted else None,
+        "trusted": selected_value > 0,
+        "buy_lot": selected_value or None,
+        "reason": candidate_selection.get("reason"),
     }
 
 
@@ -12742,15 +12943,59 @@ class ManualTwoCityBusinessProductScanCompleteAction(CustomAction):
             require_observed_buy_lots=city_trade_due,
         )
         missing_observed_buy_lot_goods = list(trade_completion.get("missing_observed_buy_lot_goods") or [])
-        city_trade_complete = bool(trade_completion.get("complete"))
+        observed_city_trade_complete = bool(trade_completion.get("complete"))
         missing_buy_lot_goods = list(trade_completion.get("missing_buy_lot_goods") or [])
         saved_fallback_buy_lot_goods = list(trade_completion.get("saved_fallback_buy_lot_goods") or [])
         missing_tax_rate = bool(trade_completion.get("missing_tax_rate"))
         retry_count = int(state.get("product_scan_missing_trade_field_retry_count") or 0)
+        expected_buy_lots = {
+            str(good): value
+            for good, value in (state.get("product_scan_expected_buy_lots") or {}).items()
+            if str(good).strip()
+        }
+        degraded_fallback_buy_lots: dict[str, int] = {}
+        if (
+            city_trade_due
+            and not observed_city_trade_complete
+            and retry_count >= PRODUCT_SCAN_MISSING_TRADE_FIELD_RETRY_LIMIT
+        ):
+            degraded_fallback_buy_lots = _manual_two_city_safe_saved_buy_lot_fallbacks(
+                trade_completion,
+                expected_buy_lots,
+            )
+        unresolved_missing_buy_lot_goods = [
+            good
+            for good in missing_buy_lot_goods
+            if good not in degraded_fallback_buy_lots
+        ]
+        degraded_city_trade_complete = bool(
+            degraded_fallback_buy_lots
+            and not unresolved_missing_buy_lot_goods
+            and not missing_tax_rate
+        )
+        city_trade_complete = observed_city_trade_complete or degraded_city_trade_complete
+        trade_completion = dict(trade_completion)
+        trade_completion.update(
+            {
+                "complete": city_trade_complete,
+                "observed_complete": observed_city_trade_complete,
+                "degraded_complete": degraded_city_trade_complete,
+                "degraded_fallback_product_buy_lots": degraded_fallback_buy_lots,
+                "unresolved_missing_buy_lot_goods": unresolved_missing_buy_lot_goods,
+            }
+        )
+        if degraded_city_trade_complete:
+            degraded_by_city = state.setdefault("product_scan_degraded_trade_fallbacks", {})
+            if isinstance(degraded_by_city, dict):
+                degraded_by_city[city] = {
+                    "product_buy_lots": dict(degraded_fallback_buy_lots),
+                    "retry_count": retry_count,
+                    "reason": "saved_value_matches_planner_after_ocr_retries",
+                }
         retry_needed = bool(
             city_trade_due
             and not city_trade_complete
-            and (missing_buy_lot_goods or missing_tax_rate)
+            and (unresolved_missing_buy_lot_goods or missing_tax_rate)
             and retry_count < PRODUCT_SCAN_MISSING_TRADE_FIELD_RETRY_LIMIT
         )
         state["product_scan_retry_missing_trade_fields"] = {
@@ -12758,8 +13003,9 @@ class ManualTwoCityBusinessProductScanCompleteAction(CustomAction):
             "city": city,
             "retry_count": retry_count,
             "retry_limit": PRODUCT_SCAN_MISSING_TRADE_FIELD_RETRY_LIMIT,
-            "missing_buy_lot_goods": missing_buy_lot_goods,
+            "missing_buy_lot_goods": unresolved_missing_buy_lot_goods,
             "missing_observed_buy_lot_goods": missing_observed_buy_lot_goods,
+            "degraded_fallback_product_buy_lots": degraded_fallback_buy_lots,
             "missing_tax_rate": missing_tax_rate,
             "stop_reason": state.get("product_scan_stop_reason") or "",
         }
@@ -12771,7 +13017,7 @@ class ManualTwoCityBusinessProductScanCompleteAction(CustomAction):
             city,
             product_buy_lots=product_buy_lots_to_save,
             city_tax_rate=city_tax_rate_to_save,
-            mark_read=city_trade_due and city_trade_complete,
+            mark_read=city_trade_due and observed_city_trade_complete,
             reason="交易所买入页预扫描",
         )
         completed = list(state.get("product_scan_completed_cities") or [])
@@ -12793,8 +13039,14 @@ class ManualTwoCityBusinessProductScanCompleteAction(CustomAction):
             message += "未触发交易数据读取，沿用已保存可购入量"
         if rejected_count:
             message += f"，丢弃异常可购入量 {rejected_count} 个"
-        if city_trade_due and saved_fallback_buy_lot_goods:
+        if city_trade_due and saved_fallback_buy_lot_goods and not degraded_city_trade_complete:
             message += f"，旧配置可补 {len(saved_fallback_buy_lot_goods)} 个（{'、'.join(saved_fallback_buy_lot_goods)}）"
+        if degraded_city_trade_complete:
+            fallback_goods = list(degraded_fallback_buy_lots)
+            message += (
+                f"，低置信度沿用旧数据 {len(fallback_goods)} 个（{'、'.join(fallback_goods)}）"
+                "，本次不会标记为完整读取"
+            )
         if isinstance(city_tax_rate, (int, float)):
             message += f"，税率 {city_tax_rate * 100:.1f}%"
         else:
@@ -12805,8 +13057,12 @@ class ManualTwoCityBusinessProductScanCompleteAction(CustomAction):
                 message += "，税率未识别"
         if city_trade_due and not city_trade_complete:
             message += (
-                f"，交易数据未完整（缺单批量 {len(missing_buy_lot_goods)} 个"
-                + (f"：{'、'.join(missing_buy_lot_goods)}" if missing_buy_lot_goods else "")
+                f"，交易数据未完整（缺单批量 {len(unresolved_missing_buy_lot_goods)} 个"
+                + (
+                    f"：{'、'.join(unresolved_missing_buy_lot_goods)}"
+                    if unresolved_missing_buy_lot_goods
+                    else ""
+                )
                 + ("，缺税率" if missing_tax_rate else "")
                 + "）"
             )
@@ -12821,7 +13077,15 @@ class ManualTwoCityBusinessProductScanCompleteAction(CustomAction):
                 else ("，停止本轮避免误买。" if city_trade_due and not city_trade_complete else "，准备重算。")
             ),
             run_id=str(state.get("run_id") or ""),
-            level="warning" if locked or missing or rejected_count or (city_trade_due and not city_trade_complete) else "info",
+            level=(
+                "warning"
+                if locked
+                or missing
+                or rejected_count
+                or degraded_city_trade_complete
+                or (city_trade_due and not city_trade_complete)
+                else "info"
+            ),
             event="manual_two_city_product_scan_complete",
             data={
                 "city": city,
@@ -12833,6 +13097,8 @@ class ManualTwoCityBusinessProductScanCompleteAction(CustomAction):
                 "product_buy_lots": product_buy_lots,
                 "saved_product_buy_lots": product_buy_lots_to_save,
                 "saved_fallback_buy_lot_goods": saved_fallback_buy_lot_goods,
+                "degraded_fallback_product_buy_lots": degraded_fallback_buy_lots,
+                "observed_city_trade_complete": observed_city_trade_complete,
                 "missing_observed_buy_lot_goods": missing_observed_buy_lot_goods,
                 "rejected_product_buy_lots": rejected_product_buy_lots,
                 "retry_missing_trade_fields": state.get("product_scan_retry_missing_trade_fields") or {},
@@ -12862,6 +13128,8 @@ class ManualTwoCityBusinessProductScanCompleteAction(CustomAction):
                     "product_buy_lots": product_buy_lots,
                     "saved_product_buy_lots": product_buy_lots_to_save,
                     "saved_fallback_buy_lot_goods": saved_fallback_buy_lot_goods,
+                    "degraded_fallback_product_buy_lots": degraded_fallback_buy_lots,
+                    "observed_city_trade_complete": observed_city_trade_complete,
                     "missing_observed_buy_lot_goods": missing_observed_buy_lot_goods,
                     "rejected_product_buy_lots": rejected_product_buy_lots,
                     "retry_missing_trade_fields": state.get("product_scan_retry_missing_trade_fields") or {},
@@ -12886,6 +13154,8 @@ class ManualTwoCityBusinessProductScanCompleteAction(CustomAction):
                 "product_buy_lots": product_buy_lots,
                 "saved_product_buy_lots": product_buy_lots_to_save,
                 "saved_fallback_buy_lot_goods": saved_fallback_buy_lot_goods,
+                "degraded_fallback_product_buy_lots": degraded_fallback_buy_lots,
+                "observed_city_trade_complete": observed_city_trade_complete,
                 "missing_observed_buy_lot_goods": missing_observed_buy_lot_goods,
                 "rejected_product_buy_lots": rejected_product_buy_lots,
                 "retry_missing_trade_fields": state.get("product_scan_retry_missing_trade_fields") or {},
