@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import copy
 import calendar
+import hashlib
 import json
 import math
 import os
 import re
-import subprocess
 import sys
 import time
 import traceback
@@ -48,6 +48,7 @@ from maa_resonance.logic.profile_parser import planner_role_resonance_level
 from maa_resonance.logic.profile_parser import normalize_role_resonance_level
 from maa_resonance.logic.profile_parser import prestige_values_to_levels
 from maa_resonance.logic.profile_parser import resolve_resonance_votes
+from maa_resonance.logic.profile_parser import role_resonance_max
 from maa_resonance.logic.profile_parser import save_role_badge_debug_crops
 from maa_resonance.logic.profile_parser import visible_role_names_from_entries
 from maa_resonance.logic.fatigue import huashi_daily_remaining
@@ -58,7 +59,9 @@ from maa_resonance.logic.fatigue import medicine_no_inventory_seen
 from maa_resonance.logic.fatigue import strength_status_from_texts
 from maa_resonance.logic.manual_trade import calculate_auto_two_city_trade
 from maa_resonance.logic.manual_trade import calculate_manual_two_city_trade
+from maa_resonance.logic.manual_trade import build_default_account_config
 from maa_resonance.logic.manual_trade import save_manual_two_city_result
+from maa_resonance.logic.navigation_runtime import run_navigation_transition
 from maa_resonance.logic.planner import COLUMBA_LOCAL_MARKET_DATA_PATH
 from maa_resonance.logic.planner import COLUMBA_TRADE_DATA_PATH
 from maa_resonance.logic.planner import RoutePlanOptions
@@ -77,6 +80,8 @@ from maa_resonance.logic.trade_parser import trade_list_text_signature
 from maa_resonance.logic.trade_parser import visible_product_unlock_status
 from maa_resonance.logic.trade_parser import visible_product_unlock_status_from_texts
 from maa_resonance.logic.travel_parser import travel_status_from_texts
+from maa_resonance.logic.travel_pickup import is_travel_hud
+from maa_resonance.logic.travel_pickup_runtime import run_pickup_window
 from utils.map_probe import destination_map_coordinate_probe
 from utils.map_probe import destination_map_vicinity_probe
 
@@ -271,6 +276,10 @@ BUY_HAGGLE_BOOK_POPUP_TEXTS = [
 BUY_HAGGLE_BOOK_POPUP_ROI = [250, 220, 780, 360]
 BUY_HAGGLE_BOOK_CONFIRM_ROI = [880, 500, 200, 90]
 BUY_HAGGLE_BOOK_CONFIRM_TARGET = (966, 537)
+BUY_HAGGLE_BOOK_CANCEL_ROI = [250, 500, 220, 90]
+BUY_HAGGLE_BOOK_CANCEL_TARGET = (315, 537)
+HAGGLE_ACTION_TIMEOUT_SECONDS = 180.0
+HAGGLE_BOOK_MAX_USES_PER_TRADE = 1
 FATIGUE_MEDICINE_RESOURCES = {
     "提神棒棒糖": {"restore": 60, "limit_key": "lollipop_use_limit"},
     "提神口香糖": {"restore": 100, "limit_key": "gum_use_limit"},
@@ -388,6 +397,20 @@ MANUAL_TWO_CITY_TRAVEL_STALL_MIN_HITS = 8
 MANUAL_TWO_CITY_TRAVEL_STALL_MAX_RESTARTS = 1
 TRAVEL_ROUTE_EVENT_TEXTS = ["护卫队迎击", "敌方等级", "诱饵气球", "立即返航", "应对方式", "请选择"]
 TRAVEL_HUD_TEXTS = ["目的地", "剩余行程", "巡航"]
+ROUTE_SPEED_PROJECTILE_COUNT_ROI = [1010, 650, 125, 70]
+ROUTE_SPEED_PROJECTILE_UNAVAILABLE_ROI = [220, 120, 840, 460]
+ROUTE_SPEED_PROJECTILE_UNAVAILABLE_TEXTS = [
+    "急行弹丸不足",
+    "加速弹丸不足",
+    "道具不足",
+    "数量不足",
+    "库存不足",
+    "已经用完",
+    "已用完",
+    "已耗尽",
+    "没有可用",
+    "无法使用",
+]
 FATIGUE_DRINK_OCR_EXPECTED = list(
     dict.fromkeys(
         FATIGUE_DRINK_ACTION_TEXTS
@@ -921,8 +944,22 @@ def _cargo_state(*, reset: bool = False) -> dict[str, Any]:
 def _record_profile_uid(texts: list[str]) -> dict[str, Any]:
     global _PROFILE_UID
     uid = parse_account_uid(texts)
-    if uid:
-        _PROFILE_UID = uid
+    identity_state = _MANUAL_TWO_CITY_STATE or {}
+    if identity_state.get("account_identity_confirmed") and uid != identity_state.get("account_identity_uid"):
+        _manual_two_city_account_identity_failed(
+            identity_state, "账号资料读取时 UID 与本轮已确认账号不一致或无法识别，已停止，未写入账号配置。"
+        )
+        return {"ok": False, "uid": "unknown", "observed_uid": uid, "config_path": "", "texts": texts[:12]}
+    _PROFILE_UID = uid or ""
+    if not uid:
+        _append_user_log(
+            ACCOUNT_PROFILE_TASK_ENTRY,
+            "账号 UID 识别失败，已清除上次账号标识，本次不写入账号配置。",
+            level="error",
+            event="account_profile_uid_read_failed",
+            data={"texts": texts[:8]},
+        )
+        return {"ok": False, "uid": "unknown", "config_path": "", "texts": texts[:12]}
     state = {
         "ok": bool(uid),
         "task_entry": ACCOUNT_PROFILE_TASK_ENTRY,
@@ -1304,6 +1341,28 @@ def _city_trade_read_meta_by_city(*values: Any) -> dict[str, dict[str, Any]]:
     }
 
 
+def _city_unlock_probe_map(value: Any) -> dict[str, dict[str, Any]]:
+    probes: dict[str, dict[str, Any]] = {}
+    if not isinstance(value, dict):
+        return probes
+    for city, raw_item in value.items():
+        city_name = normalize_city_name(str(city or "").strip())
+        if not city_name or not isinstance(raw_item, dict):
+            continue
+        status = str(raw_item.get("status") or "").strip().lower()
+        if status not in {"available", "unavailable", "unknown"}:
+            continue
+        item: dict[str, Any] = {
+            "status": status,
+            "texts": [str(text) for text in (raw_item.get("texts") or []) if str(text).strip()][:40],
+        }
+        for key in ("observed_at", "source"):
+            if str(raw_item.get(key) or "").strip():
+                item[key] = str(raw_item[key]).strip()
+        probes[city_name] = item
+    return probes
+
+
 def _profile_result_from_account_config(payload: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(payload, dict):
         return {}
@@ -1327,6 +1386,9 @@ def _profile_result_from_account_config(payload: dict[str, Any]) -> dict[str, An
         result["unavailable_cities"] = list(trade.get("unavailable_cities") or [])
     if isinstance(trade.get("unknown_cities"), list):
         result["unknown_cities"] = list(trade.get("unknown_cities") or [])
+    city_unlock_probe = _city_unlock_probe_map(trade.get("city_unlock_probe"))
+    if city_unlock_probe:
+        result["city_unlock_probe"] = city_unlock_probe
     product_status_by_city = _merge_product_status_by_city(
         trade.get("product_status_by_city"),
         planner.get("product_status_by_city"),
@@ -1466,6 +1528,7 @@ def _compact_account_profile(result: dict[str, Any], *, uid: str) -> dict[str, A
     unavailable = sorted(str(city) for city in (result.get("unavailable_cities") or []) if str(city).strip())
     unknown = sorted(str(city) for city in (result.get("unknown_cities") or []) if str(city).strip())
     available = sorted(str(city) for city in (result.get("available_cities") or []) if str(city).strip())
+    city_unlock_probe = _city_unlock_probe_map(result.get("city_unlock_probe"))
     product_status_by_city = _complete_product_status_by_city(
         _merge_product_status_by_city(
             result.get("product_status_by_city"),
@@ -1508,6 +1571,7 @@ def _compact_account_profile(result: dict[str, Any], *, uid: str) -> dict[str, A
             "available_cities": available,
             "unavailable_cities": unavailable,
             "unknown_cities": unknown,
+            "city_unlock_probe": city_unlock_probe,
             "role_resonance": role_resonance,
             "product_status_by_city": product_status_by_city,
             "product_unlock_status_by_city": product_unlock_status_by_city,
@@ -1678,7 +1742,8 @@ def _mark_wulinyuan_disabled_for_city_unlock(state: dict[str, Any]) -> None:
 
 def _initial_city_unlock_state_from_saved() -> dict[str, Any]:
     state = _initial_city_unlock_state()
-    saved = _load_profile_result(CITY_UNLOCK_TASK_ENTRY)
+    current_uid = _current_profile_uid()
+    saved = _profile_result_from_account_config(_load_account_config(current_uid))
     probes = saved.get("city_unlock_probe") if isinstance(saved.get("city_unlock_probe"), dict) else {}
     for city, item in probes.items():
         if not isinstance(item, dict):
@@ -1988,7 +2053,19 @@ def _configured_role_resonance_roles(uid: Any) -> set[str]:
     return configured
 
 
+def _role_catalog_fingerprint(role_names: tuple[str, ...] | None = None) -> str:
+    """Identify the role names and resonance limits understood by this scanner."""
+    roles = sorted(set(load_role_names() if role_names is None else role_names))
+    catalog = [(role, role_resonance_max(role)) for role in roles]
+    payload = json.dumps(catalog, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    return "sha256:" + hashlib.sha256(payload).hexdigest()
+
+
 def _initial_role_resonance_state() -> dict[str, Any]:
+    role_names = load_role_names()
+    fingerprint = _role_catalog_fingerprint(role_names)
+    account = _load_account_config(_current_profile_uid())
+    previous_meta = _manual_two_city_account_profile_read_meta(account)
     return {
         "ok": False,
         "task_entry": ROLE_RESONANCE_TASK_ENTRY,
@@ -2003,6 +2080,9 @@ def _initial_role_resonance_state() -> dict[str, Any]:
         "role_resonance_pages": [],
         "role_resonance_sort_state": {},
         "role_resonance_scan_mode": "full",
+        "role_catalog_roles": list(role_names),
+        "role_catalog_fingerprint": fingerprint,
+        "role_catalog_refresh_required": previous_meta.get("role_catalog_fingerprint") != fingerprint,
     }
 
 
@@ -2364,6 +2444,25 @@ def _record_role_resonance_page(
     }
 
 
+def _role_resonance_has_page_progress(state: dict[str, Any]) -> bool:
+    first_roles: set[str] = set()
+    for page in state.get("role_resonance_pages") or []:
+        roles = (
+            set(page.get("visible_roles") or [])
+            | set((page.get("page_roles") or {}).keys())
+            | set((page.get("badge_roles") or {}).keys())
+        )
+        if len(roles) < 2:
+            continue
+        if not first_roles:
+            first_roles = roles
+        elif roles - first_roles and first_roles - roles:
+            # Require roles to enter and leave the page. Reordering, OCR loss,
+            # or recovering a missing name on the same page is not progress.
+            return True
+    return False
+
+
 def _role_resonance_continue_state(
     page_index: int,
     *,
@@ -2375,6 +2474,9 @@ def _role_resonance_continue_state(
     state = _role_resonance_state()
     run_id = str(state.get("profile_read_run_id") or "")
     scan_mode = str(scan_mode or state.get("role_resonance_scan_mode") or "full").strip()
+    if scan_mode == "missing_roles" and state.get("role_catalog_refresh_required"):
+        # An updated catalog requires looking beyond an already-known first page.
+        scan_mode = "catalog_refresh"
     if scan_mode:
         state["role_resonance_scan_mode"] = scan_mode
     resonance = state.get("role_resonance") or {}
@@ -2387,6 +2489,7 @@ def _role_resonance_continue_state(
         | set((last_page.get("badge_roles") or {}).keys())
     )
     configured_roles = _configured_role_resonance_roles(state.get("uid") or _current_profile_uid())
+    page_progressed = _role_resonance_has_page_progress(state)
     missing_config_roles_on_page = [
         role for role in current_page_roles if role and role not in configured_roles
     ]
@@ -2412,7 +2515,7 @@ def _role_resonance_continue_state(
         reason = "all_targets_resolved"
     elif current_signature and len(current_signature) >= 2 and same_signature_count >= stale_limit:
         should_continue = False
-        reason = "stale_page_signature"
+        reason = "stale_page_signature" if page_progressed else "stale_without_page_progress"
     elif page_index >= max_pages:
         should_continue = False
         reason = "max_pages_reached"
@@ -2439,6 +2542,7 @@ def _role_resonance_continue_state(
             "resolved_count": len(resonance),
             "target_count": len(role_names),
             "same_signature_count": same_signature_count,
+            "page_progressed": page_progressed,
             "scan_mode": scan_mode,
             "current_page_roles": current_page_roles[:20],
             "configured_role_count": len(configured_roles),
@@ -2452,6 +2556,7 @@ def _role_resonance_continue_state(
         "resolved_count": len(resonance),
         "target_count": len(role_names),
         "same_signature_count": same_signature_count,
+        "page_progressed": page_progressed,
         "current_signature": current_signature,
         "scan_mode": scan_mode,
         "current_page_roles": current_page_roles[:20],
@@ -2469,16 +2574,29 @@ def _complete_role_resonance_read(role_names: tuple[str, ...], *, scan_mode: str
     state = _role_resonance_state()
     run_id = str(state.get("profile_read_run_id") or "")
     scan_mode = str(scan_mode or state.get("role_resonance_scan_mode") or "full").strip()
+    if scan_mode == "missing_roles" and state.get("role_catalog_refresh_required"):
+        scan_mode = "catalog_refresh"
     votes = state.setdefault("role_resonance_votes", {})
     resonance = _resolve_role_resonance_votes(votes)
     seen_roles = set(state.get("role_resonance_seen_roles") or [])
-    if scan_mode == "missing_roles":
+    scan_has_data = bool(resonance or seen_roles)
+    partial_scan = scan_mode in {"missing_roles", "catalog_refresh"} or set(role_names) != set(
+        state.get("role_catalog_roles") or load_role_names()
+    )
+    previous_account = _load_account_config(state.get("uid") or _current_profile_uid())
+    previous = _profile_result_from_account_config(previous_account)
+    previous_roles = dict(previous.get("role_resonance") or {})
+    if partial_scan:
         unresolved_roles = sorted(role for role in seen_roles if role not in resonance)
     else:
         unresolved_roles = sorted(role for role in role_names if role not in resonance)
     if seen_roles:
         for role in unresolved_roles:
-            resonance[role] = -1
+            resonance[role] = previous_roles.get(role, -1) if partial_scan else -1
+    if partial_scan:
+        # A missing-role/catalog scan must not erase previously read roles or
+        # invent ownership for catalog entries that were never seen.
+        resonance = {**previous_roles, **resonance}
     state["role_resonance"] = resonance
     completed = state.setdefault("completed_parts", [])
     if "read_role_resonance" not in completed:
@@ -2487,7 +2605,26 @@ def _complete_role_resonance_read(role_names: tuple[str, ...], *, scan_mode: str
     missing_roles = sorted(set(missing_seen_roles) | set(unresolved_roles))
     state["missing_role_resonance"] = missing_roles
     state["unresolved_role_resonance"] = unresolved_roles
-    state["ok"] = bool(resonance or seen_roles) and not missing_roles
+    state["ok"] = scan_has_data and not missing_roles
+    stop = state.get("role_resonance_continue_state") or {}
+    reliable_end = not stop.get("should_continue", True) and (
+        stop.get("reason") == "all_targets_resolved"
+        or (stop.get("reason") == "stale_page_signature" and _role_resonance_has_page_progress(state))
+    )
+    if scan_mode == "catalog_refresh" and not reliable_end:
+        state["ok"] = False
+    fingerprint = str(state.get("role_catalog_fingerprint") or "")
+    catalog_roles = set(state.get("role_catalog_roles") or [])
+    if (
+        state["ok"]
+        and reliable_end
+        and set(role_names) == catalog_roles
+        and fingerprint == _role_catalog_fingerprint()
+    ):
+        meta = copy.deepcopy(_manual_two_city_account_profile_read_meta(previous_account))
+        meta["role_catalog_fingerprint"] = fingerprint
+        meta["role_catalog_scanned_at"] = time.strftime("%Y-%m-%d %H:%M:%S")
+        state["account_profile_read"] = meta
     state["status"] = "RoleResonancePipelineSucceeded" if state["ok"] else "RoleResonancePipelineIncomplete"
     config_path = _save_profile_result(copy.deepcopy(state), task_entry=ROLE_RESONANCE_TASK_ENTRY)
     log_level = "info" if state["ok"] else "warning"
@@ -2551,7 +2688,7 @@ class ProfileUidReadAction(CustomAction):
     def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
         payload = _record_profile_uid(_ocr_texts(argv))
         _json_payload("profile_uid_read", payload)
-        return True
+        return bool(payload.get("ok"))
 
 
 @AgentServer.custom_action("profile_cargo_read")
@@ -2939,6 +3076,7 @@ class ManualTwoCityBusinessCalculateAction(CustomAction):
                 target_raise_percent=target_raise_percent,
                 wulinyuan_enabled=wulinyuan_enabled,
                 allow_default_account=True,
+                require_uid=True,
             )
             state = _manual_two_city_state()
             state["task_entry"] = MANUAL_TWO_CITY_TASK_ENTRY
@@ -2981,10 +3119,10 @@ class ManualTwoCityBusinessCalculateAction(CustomAction):
                 },
             )
             if result.get("used_default_account_config"):
-                suffix = "回到主界面后会读取真实账号配置并重算。" if account_read_mode != MANUAL_TWO_CITY_ACCOUNT_READ_NONE else "本轮已选择不读取账号配置，将继续使用默认配置。"
+                suffix = "回到主界面后会确认当前 UID，再读取该账号配置并重算。" if account_read_mode != MANUAL_TWO_CITY_ACCOUNT_READ_NONE else "本轮已选择不扫描资料，确认当前 UID 后将使用该账号本地配置；缺失时使用默认配置。"
                 _append_user_log(
                     MANUAL_TWO_CITY_TASK_ENTRY,
-                    f"未找到账号配置，先使用默认配置临时计算：货仓 1016、城市商品全开、乘员共振按满级处理；{suffix}",
+                    f"当前账号尚未确认或无本地配置，先使用默认配置临时计算：货仓 1016、城市商品全开、乘员共振按满级处理；{suffix}",
                     run_id=run_id,
                     level="warning",
                     event="manual_two_city_business_default_account_used",
@@ -3086,6 +3224,7 @@ class AutoTwoCityBusinessCalculateAction(CustomAction):
                 wulinyuan_priority=wulinyuan_priority,
                 wulinyuan_enabled=wulinyuan_enabled,
                 allow_default_account=True,
+                require_uid=True,
             )
             state = _manual_two_city_state()
             state["task_entry"] = AUTO_TWO_CITY_TASK_ENTRY
@@ -3143,10 +3282,10 @@ class AutoTwoCityBusinessCalculateAction(CustomAction):
                 },
             )
             if result.get("used_default_account_config"):
-                suffix = "回到主界面后会读取真实账号配置并重新自动规划。" if account_read_mode != MANUAL_TWO_CITY_ACCOUNT_READ_NONE else "本轮已选择不读取账号配置，将继续使用默认配置。"
+                suffix = "回到主界面后会确认当前 UID，再读取该账号配置并重新自动规划。" if account_read_mode != MANUAL_TWO_CITY_ACCOUNT_READ_NONE else "本轮已选择不扫描资料，确认当前 UID 后将使用该账号本地配置；缺失时使用默认配置。"
                 _append_user_log(
                     AUTO_TWO_CITY_TASK_ENTRY,
-                    f"未找到账号配置，先使用默认配置临时规划：货仓 1016、城市商品全开、乘员共振按满级处理；{suffix}",
+                    f"当前账号尚未确认或无本地配置，先使用默认配置临时规划：货仓 1016、城市商品全开、乘员共振按满级处理；{suffix}",
                     run_id=run_id,
                     level="warning",
                     event="auto_two_city_business_default_account_used",
@@ -3806,189 +3945,21 @@ def _auto_two_city_normalize_city_cases(cities: Any) -> list[str]:
     return normalized
 
 
-def _merge_checkbox_case_names(option: dict[str, Any], case_names: list[str]) -> tuple[list[str], list[str]]:
-    current = option.get("caseNames") if isinstance(option, dict) else []
-    merged: list[str] = []
-    if isinstance(current, list):
-        for name in current:
-            text = str(name or "").strip()
-            if text and text not in merged:
-                merged.append(text)
-    before = list(merged)
-    for name in case_names:
-        if name not in merged:
-            merged.append(name)
-    return before, merged
-
-
-def _sync_auto_two_city_exclude_cities_in_config_payload(
-    data: Any,
-    case_names: list[str],
-    *,
-    path_label: str,
-) -> tuple[bool, list[dict[str, Any]], list[dict[str, Any]]]:
-    changed = False
-    matched = False
-    updates: list[dict[str, Any]] = []
-    observations: list[dict[str, Any]] = []
-    instances = data.get("instances", []) if isinstance(data, dict) else []
-    for instance in instances:
-        tasks = instance.get("tasks", []) if isinstance(instance, dict) else []
-        for task in tasks:
-            if not isinstance(task, dict) or task.get("taskName") != AUTO_TWO_CITY_TASK_ENTRY:
-                continue
-            matched = True
-            option_values = task.get("optionValues")
-            if not isinstance(option_values, dict):
-                option_values = {}
-                task["optionValues"] = option_values
-            option = option_values.get(AUTO_TWO_CITY_EXCLUDE_OPTION)
-            if not isinstance(option, dict):
-                option = {"type": "checkbox", "caseNames": []}
-                option_values[AUTO_TWO_CITY_EXCLUDE_OPTION] = option
-            option["type"] = "checkbox"
-            before, merged = _merge_checkbox_case_names(option, case_names)
-            if merged != before:
-                option["caseNames"] = merged
-                changed = True
-                updates.append(
-                    {
-                        "path": path_label,
-                        "task_name": AUTO_TWO_CITY_TASK_ENTRY,
-                        "option_name": AUTO_TWO_CITY_EXCLUDE_OPTION,
-                        "old_case_names": before,
-                        "new_case_names": merged,
-                        "added_case_names": [name for name in case_names if name not in before],
-                    }
-                )
-    if not matched:
-        observations.append({"path": path_label, "task_name": AUTO_TWO_CITY_TASK_ENTRY, "reason": "missing_task"})
-    return changed, updates, observations
-
-
-def _sync_auto_two_city_exclude_cities_via_mxu_api(case_names: list[str]) -> dict[str, Any]:
-    base_url, api_info = _mxu_find_config_api()
-    if not base_url:
-        return {
-            "available": False,
-            "updated": False,
-            "reason": "mxu_api_unavailable",
-            "paths": [],
-            "updates": [],
-            "observations": [],
-            "errors": api_info.get("errors", []),
-        }
-    endpoint = f"{base_url}/config"
-    try:
-        data = _mxu_http_json(endpoint, timeout=0.8)
-    except Exception as exc:
-        return {
-            "available": False,
-            "updated": False,
-            "paths": [endpoint],
-            "updates": [],
-            "observations": [],
-            "errors": [{"path": endpoint, "error": f"{type(exc).__name__}: {exc}"}],
-            "api": api_info,
-        }
-
-    changed, updates, observations = _sync_auto_two_city_exclude_cities_in_config_payload(
-        data,
-        case_names,
-        path_label=endpoint,
-    )
-    errors: list[dict[str, str]] = []
-    if changed:
-        try:
-            _mxu_http_json(endpoint, method="PUT", payload=data, timeout=1.2)
-        except Exception as exc:
-            errors.append({"path": endpoint, "error": f"{type(exc).__name__}: {exc}"})
-    return {
-        "available": True,
-        "via": "mxu_api",
-        "updated": bool(updates) and not errors,
-        "paths": [endpoint],
-        "updates": [] if errors else updates,
-        "pending_updates": updates if errors else [],
-        "observations": observations,
-        "errors": errors,
-        "api": api_info,
-    }
-
-
-def _sync_auto_two_city_exclude_cities(case_names: list[str]) -> dict[str, Any]:
-    api_result = _sync_auto_two_city_exclude_cities_via_mxu_api(case_names)
-    if api_result.get("available"):
-        return api_result
-
-    existing_paths = [path for path in _fatigue_option_config_paths() if path.exists()]
-    updates: list[dict[str, Any]] = []
-    observations: list[dict[str, Any]] = []
-    errors: list[dict[str, str]] = []
-    for option_path in existing_paths:
-        try:
-            data = json.loads(option_path.read_text(encoding="utf-8"))
-        except Exception as exc:
-            errors.append({"path": str(option_path), "error": f"{type(exc).__name__}: {exc}"})
-            continue
-        changed, path_updates, path_observations = _sync_auto_two_city_exclude_cities_in_config_payload(
-            data,
-            case_names,
-            path_label=str(option_path),
-        )
-        updates.extend(path_updates)
-        observations.extend(path_observations)
-        if changed:
-            try:
-                option_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-            except Exception as exc:
-                errors.append({"path": str(option_path), "error": f"{type(exc).__name__}: {exc}"})
-    return {
-        "available": bool(existing_paths),
-        "via": "config_file",
-        "updated": bool(updates) and not errors,
-        "paths": [str(path) for path in existing_paths],
-        "updates": updates,
-        "observations": observations,
-        "errors": errors,
-        "api_result": api_result,
-    }
-
-
 def _sync_auto_two_city_exclude_cities_from_unavailable(
     unavailable_cities: Any,
     *,
     run_id: str = "",
 ) -> dict[str, Any]:
-    case_names = _auto_two_city_normalize_city_cases(unavailable_cities)
-    if not case_names:
-        return {"updated": False, "reason": "empty_unavailable_cities", "case_names": []}
-    result = _sync_auto_two_city_exclude_cities(case_names)
-    result["case_names"] = case_names
-    added: list[str] = []
-    for item in result.get("updates") or []:
-        for name in item.get("added_case_names") or []:
-            if name not in added:
-                added.append(name)
-    if added:
-        _append_user_log(
-            CITY_UNLOCK_TASK_ENTRY,
-            f"城市开放读取：已同步 {len(added)} 个未开放城市到自动双城跑商排除城市：{'、'.join(added)}",
-            run_id=run_id,
-            level="info",
-            event="auto_two_city_exclude_cities_synced",
-            data={"added_cities": added, "sync_result": result},
-        )
-    elif result.get("errors"):
-        _append_user_log(
-            CITY_UNLOCK_TASK_ENTRY,
-            "城市开放读取：同步未开放城市到自动双城跑商配置失败。",
-            run_id=run_id,
-            level="warning",
-            event="auto_two_city_exclude_cities_sync_failed",
-            data={"sync_result": result},
-        )
-    return result
+    """City observations are already saved to the UID account by the caller.
+
+    Frontend exclusions are user choices. Never copy account observations into
+    those checkboxes, which may belong to other accounts or task instances.
+    """
+    return {
+        "updated": False,
+        "reason": "account_scoped_only",
+        "case_names": _auto_two_city_normalize_city_cases(unavailable_cities),
+    }
 
 
 def _fatigue_limit_key_for_resource(resource: str, resource_type: str) -> str:
@@ -4203,144 +4174,6 @@ def _fatigue_write_option_config_values(
     return file_result
 
 
-def _fatigue_schedule_delayed_option_config_write(
-    *,
-    task_name: str,
-    option_name: str,
-    values: dict[str, Any],
-    delays: list[float] | None = None,
-) -> dict[str, Any]:
-    normalized_values = {
-        str(key): str(value)
-        for key, value in (values or {}).items()
-        if str(key).strip()
-    }
-    existing_paths = [path for path in _fatigue_option_config_paths() if path.exists()]
-    if not normalized_values or not existing_paths:
-        return {
-            "scheduled": False,
-            "reason": "empty_values_or_paths",
-            "paths": [str(path) for path in existing_paths],
-            "values": normalized_values,
-        }
-    payload = {
-        "paths": [str(path) for path in existing_paths],
-        "task_name": task_name,
-        "option_name": option_name,
-        "values": normalized_values,
-        "delays": delays or [1.5, 4.0, 8.0],
-    }
-    code = (
-        "import json,sys,time,pathlib;"
-        "p=json.loads(sys.argv[1]);"
-        "last=0;"
-        "delays=p.get('delays') or [1.5,4,8];"
-        "\nfor d in delays:"
-        "\n    time.sleep(max(0,float(d)-last)); last=float(d)"
-        "\n    for path_text in p.get('paths') or []:"
-        "\n        path=pathlib.Path(path_text)"
-        "\n        try:"
-        "\n            data=json.loads(path.read_text(encoding='utf-8'))"
-        "\n        except Exception:"
-        "\n            continue"
-        "\n        changed=False"
-        "\n        for inst in data.get('instances',[]):"
-        "\n            tasks=inst.get('tasks',[]) if isinstance(inst,dict) else []"
-        "\n            for task in tasks:"
-        "\n                if not isinstance(task,dict) or task.get('taskName')!=p.get('task_name'): continue"
-        "\n                option_values=task.get('optionValues',{})"
-        "\n                option=option_values.get(p.get('option_name'),{}) if isinstance(option_values,dict) else {}"
-        "\n                values=option.get('values',{}) if isinstance(option,dict) else {}"
-        "\n                if not isinstance(values,dict): continue"
-        "\n                for key,value in (p.get('values') or {}).items():"
-        "\n                    if key in values and str(values.get(key,''))!=str(value):"
-        "\n                        values[key]=str(value); changed=True"
-        "\n        if changed:"
-        "\n            path.write_text(json.dumps(data,ensure_ascii=False,indent=2),encoding='utf-8')"
-    )
-    try:
-        popen_kwargs: dict[str, Any] = {
-            "stdin": subprocess.DEVNULL,
-            "stdout": subprocess.DEVNULL,
-            "stderr": subprocess.DEVNULL,
-            "close_fds": True,
-        }
-        if os.name == "nt":
-            creationflags = 0
-            for flag_name in ("CREATE_NEW_PROCESS_GROUP", "DETACHED_PROCESS", "CREATE_BREAKAWAY_FROM_JOB"):
-                creationflags |= int(getattr(subprocess, flag_name, 0) or 0)
-            if creationflags:
-                popen_kwargs["creationflags"] = creationflags
-        process = subprocess.Popen(
-            [sys.executable, "-c", code, json.dumps(payload, ensure_ascii=True)],
-            **popen_kwargs,
-        )
-    except Exception as exc:
-        if os.name == "nt" and popen_kwargs.get("creationflags"):
-            try:
-                process = subprocess.Popen(
-                    [sys.executable, "-c", code, json.dumps(payload, ensure_ascii=True)],
-                    stdin=subprocess.DEVNULL,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    close_fds=True,
-                )
-            except Exception as fallback_exc:
-                return {
-                    "scheduled": False,
-                    "error": f"{type(exc).__name__}: {exc}; fallback {type(fallback_exc).__name__}: {fallback_exc}",
-                    "paths": [str(path) for path in existing_paths],
-                    "values": normalized_values,
-                }
-        else:
-            return {
-                "scheduled": False,
-                "error": f"{type(exc).__name__}: {exc}",
-                "paths": [str(path) for path in existing_paths],
-                "values": normalized_values,
-            }
-    try:
-        pid = process.pid
-    except Exception:
-        pid = None
-    return {
-        "scheduled": True,
-        "pid": pid,
-        "paths": [str(path) for path in existing_paths],
-        "values": normalized_values,
-        "delays": delays or [1.5, 4.0, 8.0],
-    }
-
-
-def _fatigue_rewrite_option_config_values_with_retry(
-    *,
-    task_name: str,
-    option_name: str,
-    values: dict[str, Any],
-) -> dict[str, Any]:
-    immediate = _fatigue_write_option_config_values(
-        task_name=task_name,
-        option_name=option_name,
-        values=values,
-    )
-    if immediate.get("via") == "mxu_api" and immediate.get("available"):
-        delayed = _fatigue_schedule_delayed_option_config_write(
-            task_name=task_name,
-            option_name=option_name,
-            values=values,
-            delays=[2.0, 8.0, 30.0, 120.0, 300.0, 900.0],
-        )
-        return {
-            "immediate": immediate,
-            "delayed": delayed,
-        }
-    delayed = _fatigue_schedule_delayed_option_config_write(
-        task_name=task_name,
-        option_name=option_name,
-        values=values,
-        delays=[2.0, 8.0, 30.0, 120.0, 300.0, 900.0],
-    )
-    return {"immediate": immediate, "delayed": delayed}
 
 
 def _manual_two_city_reset_account_read_mode_to_smart() -> dict[str, Any]:
@@ -4416,6 +4249,7 @@ def _manual_two_city_defaults() -> dict[str, Any]:
         "start_raise_percent": 20,
         "target_bargain_percent": 0,
         "target_raise_percent": 0,
+        "use_haggle_book": False,
         "trade_phase": "buy",
         "terminal_status": "",
         "terminal_reason": "",
@@ -4429,6 +4263,13 @@ def _manual_two_city_defaults() -> dict[str, Any]:
         "drink_used_count": 0,
         "auto_use_impact_drill": False,
         "auto_use_speed_projectile": False,
+        "speed_projectile_unavailable": False,
+        "speed_projectile_unavailable_logged": False,
+        "auto_pickup": False,
+        "auto_pickup_tap_count": 0,
+        "auto_pickup_last_tap_at": 0.0,
+        "auto_pickup_next_point_index": 0,
+        "auto_pickup_started_logged": False,
         "use_bento": False,
         "use_fatigue_medicine": False,
         "lollipop_use_limit": 0,
@@ -4451,9 +4292,11 @@ def _manual_two_city_defaults() -> dict[str, Any]:
 
 
 def _manual_two_city_state(reset: bool = False) -> dict[str, Any]:
-    global _MANUAL_TWO_CITY_STATE
+    global _MANUAL_TWO_CITY_STATE, _PROFILE_UID
     if reset or not _MANUAL_TWO_CITY_STATE:
         _MANUAL_TWO_CITY_STATE = _manual_two_city_defaults()
+        if reset:
+            _PROFILE_UID = ""
     return _MANUAL_TWO_CITY_STATE
 
 
@@ -4507,7 +4350,7 @@ def _manual_two_city_calculate_params_from_state() -> dict[str, Any]:
     return params
 
 
-def _manual_two_city_recalculate_after_account_profile() -> bool:
+def _manual_two_city_recalculate_after_account_profile(*, allow_default_account: bool = False) -> bool:
     state = _manual_two_city_state()
     task_entry = _manual_two_city_current_task_entry(state)
     task_label = _manual_two_city_log_label(state)
@@ -4534,7 +4377,8 @@ def _manual_two_city_recalculate_after_account_profile() -> bool:
             params["wulinyuan_enabled"] = _trade_wulinyuan_enabled(state)
             if isinstance(transient_status, dict) and transient_status:
                 params["transient_product_status_by_city"] = transient_status
-            params["allow_default_account"] = False
+            params["allow_default_account"] = allow_default_account
+            params["require_uid"] = True
             new_result = calculate_auto_two_city_trade(**params)
             state["manual_params"] = {
                 "start_city": new_result.get("start_city"),
@@ -4551,7 +4395,8 @@ def _manual_two_city_recalculate_after_account_profile() -> bool:
         else:
             if isinstance(transient_status, dict) and transient_status:
                 params["transient_product_status_by_city"] = transient_status
-            params["allow_default_account"] = False
+            params["allow_default_account"] = allow_default_account
+            params["require_uid"] = True
             new_result = calculate_manual_two_city_trade(**params)
         state["result"] = new_result
         state["manual_start_city"] = new_result.get("start_city")
@@ -4575,7 +4420,7 @@ def _manual_two_city_recalculate_after_account_profile() -> bool:
         _append_user_log(
             task_entry,
             (
-                f"账号配置读取完成，已按真实配置重算{task_label}收益："
+                f"已按当前账号配置重算{task_label}收益："
                 f"利润 {summary.get('profit')}，参考利润 {summary.get('reference_profit')}，"
                 f"疲劳 {summary.get('tired')}，耗时 {elapsed_ms}ms。"
             ),
@@ -4595,7 +4440,7 @@ def _manual_two_city_recalculate_after_account_profile() -> bool:
         elapsed_ms = int((time.perf_counter() - recalc_started_at) * 1000)
         _append_user_log(
             task_entry,
-            f"账号配置读取后重算{task_label}失败：{type(exc).__name__}: {exc}，耗时 {elapsed_ms}ms",
+            f"按当前账号配置重算{task_label}失败：{type(exc).__name__}: {exc}，耗时 {elapsed_ms}ms",
             run_id=str(state.get("run_id") or ""),
             level="error",
             event="manual_two_city_account_profile_recalculate_failed",
@@ -4631,10 +4476,12 @@ class ManualTwoCityBusinessConfigAction(CustomAction):
             "start_raise_percent",
             "target_bargain_percent",
             "target_raise_percent",
+            "use_haggle_book",
             "auto_drink",
             "drink_fatigue_threshold",
             "auto_use_impact_drill",
             "auto_use_speed_projectile",
+            "auto_pickup",
             "use_bento",
             "use_fatigue_medicine",
             "lollipop_use_limit",
@@ -4651,6 +4498,8 @@ class ManualTwoCityBusinessConfigAction(CustomAction):
                     state[key] = _manual_two_city_smart_scan_interval(params[key])
                 elif key == "wulinyuan_enabled":
                     state[key] = _manual_two_city_bool(params[key], TRADE_WULINYUAN_DEFAULT_ENABLED)
+                elif key == "use_haggle_book":
+                    state[key] = _manual_two_city_bool(params[key], False)
                 else:
                     state[key] = params[key]
         for key, value in params.items():
@@ -4660,12 +4509,102 @@ class ManualTwoCityBusinessConfigAction(CustomAction):
         return True
 
 
+def _manual_two_city_account_identity_failed(state: dict[str, Any], reason: str) -> None:
+    global _PROFILE_UID
+    _PROFILE_UID = ""
+    state["account_identity_confirmed"] = False
+    state["account_identity_uid"] = ""
+    state["account_identity_failed"] = True
+    state["account_identity_pending"] = False
+    state["terminal_status"] = MANUAL_TWO_CITY_TERMINAL_FAILED
+    state["terminal_reason"] = reason
+    _append_user_log(
+        _manual_two_city_current_task_entry(state),
+        reason,
+        level="error",
+        event="manual_two_city_account_identity_failed",
+    )
+
+
+def _manual_two_city_confirm_account_identity(texts: list[str]) -> bool:
+    global _PROFILE_UID
+    state = _manual_two_city_state()
+    uid = parse_account_uid(texts)
+    if not uid:
+        _manual_two_city_account_identity_failed(state, "未能确认当前账号 UID，已停止跑商，请回到游戏主界面后重试。")
+        return False
+    _PROFILE_UID = uid
+    state["uid"] = uid
+    state["account_identity_uid"] = uid
+    state["account_identity_confirmed"] = True
+    state["account_identity_failed"] = False
+    state["account_identity_pending"] = False
+    for key in ("manual_params", "auto_route_params"):
+        params = state.get(key)
+        if isinstance(params, dict):
+            params["uid"] = uid
+    account = _load_account_config(uid)
+    if account and _safe_account_uid(account.get("uid")) != uid:
+        _manual_two_city_account_identity_failed(state, "当前 UID 对应的账号配置标识不一致，已停止跑商，请重新读取账号配置。")
+        return False
+    result = state.get("result") if isinstance(state.get("result"), dict) else {}
+    result["uid"] = uid
+    result["account_config"] = str(_account_config_path(uid)) if account else ""
+    result["used_default_account_config"] = not bool(account)
+    state["result"] = result
+    _append_user_log(
+        _manual_two_city_current_task_entry(state),
+        f"已确认当前账号 UID：{uid}，本轮只使用该账号的配置。",
+        event="manual_two_city_account_identity_confirmed",
+        data={"uid": uid, "has_account_config": bool(account)},
+    )
+    return True
+
+
+@AgentServer.custom_action("manual_two_city_business_account_identity_dispatch")
+class ManualTwoCityBusinessAccountIdentityDispatchAction(CustomAction):
+    def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
+        return bool(_manual_two_city_state().get("account_identity_pending"))
+
+
+@AgentServer.custom_action("manual_two_city_business_account_identity_main_map_ready")
+class ManualTwoCityBusinessAccountIdentityMainMapReadyAction(CustomAction):
+    def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
+        return _manual_two_city_state().get("account_identity_source") == "main_map"
+
+
+@AgentServer.custom_action("manual_two_city_business_account_identity_read")
+class ManualTwoCityBusinessAccountIdentityReadAction(CustomAction):
+    def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
+        return _manual_two_city_confirm_account_identity(_ocr_texts(argv))
+
+
+@AgentServer.custom_action("manual_two_city_business_account_identity_read_failed")
+class ManualTwoCityBusinessAccountIdentityReadFailedAction(CustomAction):
+    def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
+        _manual_two_city_account_identity_failed(
+            _manual_two_city_state(), "未能确认当前账号 UID，已停止跑商，请回到游戏主界面后重试。"
+        )
+        return True
+
+
+@AgentServer.custom_recognition("manual_two_city_business_account_identity_failed")
+class ManualTwoCityBusinessAccountIdentityFailedRecognition(CustomRecognition):
+    def analyze(self, context: Context, argv: CustomRecognition.AnalyzeArg) -> CustomRecognition.AnalyzeResult:
+        failed = bool(_manual_two_city_state().get("account_identity_failed"))
+        return CustomRecognition.AnalyzeResult(box=(0, 0, 1, 1) if failed else None, detail={"ok": failed})
+
+
 @AgentServer.custom_action("manual_two_city_business_account_profile_warmup_start")
 class ManualTwoCityBusinessAccountProfileWarmupStartAction(CustomAction):
     def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
         params = _argv_param(argv)
         state = _manual_two_city_state()
         task_entry = _manual_two_city_current_task_entry(state)
+        if not state.get("account_identity_confirmed"):
+            state["account_identity_pending"] = True
+            state["account_identity_source"] = str(params.get("source") or "").strip()
+            return True
         if state.get("account_profile_warmup_done"):
             _json_payload("manual_two_city_business_account_profile_warmup_start", {"ok": False, "reason": "already_done"})
             return False
@@ -4673,10 +4612,13 @@ class ManualTwoCityBusinessAccountProfileWarmupStartAction(CustomAction):
         interval = _manual_two_city_smart_scan_interval(state.get("account_profile_smart_scan_interval"))
         result = state.get("result") if isinstance(state.get("result"), dict) else {}
         if mode == MANUAL_TWO_CITY_ACCOUNT_READ_NONE:
+            if not _manual_two_city_recalculate_after_account_profile(allow_default_account=True):
+                _manual_two_city_account_identity_failed(state, "已确认当前 UID，但无法按该账号本地配置规划跑商，已停止。")
+                return False
             state["account_profile_warmup_done"] = True
             _append_user_log(
                 task_entry,
-                "账号配置读取模式为不读取：跳过本轮内置读取，继续使用本地已有配置；若本地缺失则继续使用默认配置。",
+                "账号配置读取模式为不读取：已确认当前 UID，跳过资料扫描，使用该 UID 本地配置；本地缺失时使用默认配置。",
                 run_id=str(state.get("run_id") or ""),
                 event="manual_two_city_account_profile_warmup_skipped_none",
             )
@@ -4685,6 +4627,9 @@ class ManualTwoCityBusinessAccountProfileWarmupStartAction(CustomAction):
         if mode == MANUAL_TWO_CITY_ACCOUNT_READ_SMART:
             scan_status = _manual_two_city_smart_scan_status(state, interval)
             if not scan_status.get("due"):
+                if not _manual_two_city_recalculate_after_account_profile():
+                    _manual_two_city_account_identity_failed(state, "已确认当前 UID，但无法按该账号缓存规划跑商，已停止。")
+                    return False
                 state["account_profile_warmup_pending"] = False
                 state["account_profile_warmup_done"] = True
                 _append_user_log(
@@ -5010,7 +4955,118 @@ def _manual_two_city_route_item_key(item: str) -> str | None:
 def _manual_two_city_route_item_enabled(item: str) -> tuple[bool, str | None]:
     key = _manual_two_city_route_item_key(item)
     state = _manual_two_city_state()
-    return bool(key and _manual_two_city_bool(state.get(key), False)), key
+    unavailable = bool(item and state.get(f"{item}_unavailable"))
+    return bool(key and not unavailable and _manual_two_city_bool(state.get(key), False)), key
+
+
+def _manual_two_city_reset_auto_pickup_state(state: dict[str, Any]) -> None:
+    state["auto_pickup_tap_count"] = 0
+    state["auto_pickup_last_tap_at"] = 0.0
+    state["auto_pickup_next_point_index"] = 0
+    state["auto_pickup_started_logged"] = False
+    state.pop("auto_pickup_progress_checked_at", None)
+    state.pop("auto_pickup_pending_detail", None)
+    state.pop("auto_pickup_yield_monitor_once", None)
+
+
+def _manual_two_city_auto_pickup_gate(state: dict[str, Any], now: float) -> dict[str, Any]:
+    enabled = _manual_two_city_bool(state.get("auto_pickup"), False)
+    if not enabled:
+        reason = "disabled"
+    elif state.get("auto_pickup_yield_monitor_once"):
+        reason = "yield_to_travel_monitor"
+    else:
+        reason = "ready"
+    return {
+        "allowed": reason == "ready",
+        "reason": reason,
+        "enabled": enabled,
+        # Count attempted clicks for diagnostics, never stop pickup after six attempts.
+        "count": _fatigue_int(state.get("auto_pickup_tap_count"), 0),
+    }
+
+
+def _manual_two_city_speed_projectile_count_from_texts(texts: list[str]) -> int | None:
+    for text in texts:
+        normalized = str(text or "").strip().replace("O", "0").replace("o", "0")
+        match = re.fullmatch(r"\D*(\d{1,3})\D*", normalized)
+        if match:
+            return int(match.group(1))
+    return None
+
+
+def _manual_two_city_speed_projectile_status(
+    context: Context,
+    image: Any,
+    probe_prefix: str,
+) -> dict[str, Any]:
+    count: int | None = None
+    count_texts: list[str] = []
+    try:
+        count_name = f"{probe_prefix}Count"
+        count_detail = context.run_recognition(
+            count_name,
+            image,
+            {
+                count_name: {
+                    "recognition": "OCR",
+                    "expected": "",
+                    "roi": ROUTE_SPEED_PROJECTILE_COUNT_ROI,
+                    "action": "DoNothing",
+                }
+            },
+        )
+        count_texts = _ocr_texts_from_detail(count_detail)
+        count = _manual_two_city_speed_projectile_count_from_texts(count_texts)
+    except Exception:
+        pass
+
+    unavailable_hit = False
+    unavailable_texts: list[str] = []
+    try:
+        unavailable_name = f"{probe_prefix}Unavailable"
+        unavailable_detail = context.run_recognition(
+            unavailable_name,
+            image,
+            {
+                unavailable_name: {
+                    "recognition": "OCR",
+                    "expected": ROUTE_SPEED_PROJECTILE_UNAVAILABLE_TEXTS,
+                    "roi": ROUTE_SPEED_PROJECTILE_UNAVAILABLE_ROI,
+                    "action": "DoNothing",
+                }
+            },
+        )
+        unavailable_hit = bool(getattr(unavailable_detail, "hit", False))
+        unavailable_texts = _ocr_texts_from_detail(unavailable_detail)
+    except Exception:
+        pass
+
+    return {
+        "unavailable": count == 0
+        or unavailable_hit
+        or _manual_two_city_texts_contain(unavailable_texts, ROUTE_SPEED_PROJECTILE_UNAVAILABLE_TEXTS),
+        "count": count,
+        "count_texts": count_texts[:20],
+        "unavailable_texts": unavailable_texts[:20],
+    }
+
+
+def _manual_two_city_mark_speed_projectile_unavailable(
+    state: dict[str, Any],
+    status: dict[str, Any],
+) -> None:
+    state["speed_projectile_unavailable"] = True
+    if state.get("speed_projectile_unavailable_logged"):
+        return
+    state["speed_projectile_unavailable_logged"] = True
+    _append_user_log(
+        _manual_two_city_current_task_entry(state),
+        "行车道具：加速弹丸已用完，本轮不再继续点击。",
+        level="warning",
+        event="manual_two_city_speed_projectile_unavailable",
+        data={"status": status, "leg": _manual_two_city_active_leg()},
+    )
 
 
 def _manual_two_city_reco_box(detail: Any, expected: list[str] | None = None) -> tuple[int, int, int, int] | None:
@@ -5125,6 +5181,61 @@ class ManualTwoCityBusinessDailyCheckinPopupRecognition(CustomRecognition):
         )
 
 
+@AgentServer.custom_recognition("manual_two_city_business_auto_pickup_available")
+class ManualTwoCityBusinessAutoPickupAvailableRecognition(CustomRecognition):
+    def analyze(
+        self,
+        context: Context,
+        argv: CustomRecognition.AnalyzeArg,
+    ) -> CustomRecognition.AnalyzeResult:
+        state = _manual_two_city_state()
+        gate = _manual_two_city_auto_pickup_gate(state, time.monotonic())
+        # Abnormal windows skip both the light branch and the full monitor entry.
+        # A legacy True value still requests just one skipped entry.
+        remaining_yields = _fatigue_int(state.get("auto_pickup_yield_monitor_once"), 0)
+        if remaining_yields > 1:
+            state["auto_pickup_yield_monitor_once"] = remaining_yields - 1
+        else:
+            state.pop("auto_pickup_yield_monitor_once", None)
+        if not gate["allowed"]:
+            return CustomRecognition.AnalyzeResult(box=None, detail={"ok": False, **gate})
+        try:
+            ready = is_travel_hud(context, getattr(argv, "image", None))
+        except Exception as exc:
+            return CustomRecognition.AnalyzeResult(
+                box=None, detail={**gate, "ok": False, "reason": "hud_probe_error", "error": str(exc)},
+            )
+        # This box only dispatches a Custom action; it is never a click target.
+        return CustomRecognition.AnalyzeResult(
+            box=(0, 0, 1, 1) if ready else None,
+            detail={**gate, "ok": ready, "reason": "right_side_tapping" if ready else "not_cruising"},
+        )
+
+
+@AgentServer.custom_recognition("manual_two_city_business_pickup_progress_due")
+class ManualTwoCityBusinessPickupProgressDueRecognition(CustomRecognition):
+    def analyze(
+        self,
+        context: Context,
+        argv: CustomRecognition.AnalyzeArg,
+    ) -> CustomRecognition.AnalyzeResult:
+        state = _manual_two_city_state()
+        now = time.monotonic()
+        gate = _manual_two_city_auto_pickup_gate(state, now)
+        if not gate["allowed"]:
+            # Preserve any pending skips for the pickup entries themselves.
+            return CustomRecognition.AnalyzeResult(box=None, detail={"ok": False, **gate})
+        last_checked_at = state.get("auto_pickup_progress_checked_at")
+        if last_checked_at is not None and now - float(last_checked_at) < 10.0:
+            return CustomRecognition.AnalyzeResult(
+                box=None, detail={"ok": False, "reason": "progress_check_interval"},
+            )
+        state["auto_pickup_progress_checked_at"] = now
+        return CustomRecognition.AnalyzeResult(
+            box=(0, 0, 1, 1), detail={"ok": True, "reason": "progress_check_due"},
+        )
+
+
 @AgentServer.custom_recognition("manual_two_city_business_route_item_available")
 class ManualTwoCityBusinessRouteItemAvailableRecognition(CustomRecognition):
     def analyze(
@@ -5188,6 +5299,14 @@ class ManualTwoCityBusinessRouteItemAvailableRecognition(CustomRecognition):
                     "texts": _ocr_texts_from_detail(detail),
                 },
             )
+        if item == "speed_projectile":
+            status = _manual_two_city_speed_projectile_status(context, argv.image, f"{probe_name}Inventory")
+            if status.get("unavailable"):
+                _manual_two_city_mark_speed_projectile_unavailable(_manual_two_city_state(), status)
+                return CustomRecognition.AnalyzeResult(
+                    box=None,
+                    detail={"ok": False, "reason": "unavailable", "item": item, "status": status},
+                )
         return CustomRecognition.AnalyzeResult(
             box=box or fallback_box,
             detail={"ok": True, "item": item, "key": key, "box": list(box), "click_box": list(box or fallback_box)},
@@ -5298,6 +5417,29 @@ class ManualTwoCityBusinessStrengthStopPendingRecognition(CustomRecognition):
                 "phase": state.get("strength_recovery_stop_phase") or state.get("trade_phase"),
                 "status": state.get("strength_recovery_stop_status"),
                 "required": state.get("strength_recovery_stop_required"),
+            },
+        )
+
+
+@AgentServer.custom_recognition("manual_two_city_business_destination_unavailable_replan_ready")
+class ManualTwoCityBusinessDestinationUnavailableReplanReadyRecognition(CustomRecognition):
+    def analyze(
+        self,
+        context: Context,
+        argv: CustomRecognition.AnalyzeArg,
+    ) -> CustomRecognition.AnalyzeResult:
+        state = _manual_two_city_state()
+        if not state.get("destination_unavailable_replan_ready"):
+            return CustomRecognition.AnalyzeResult(
+                box=None,
+                detail={"ok": False, "reason": "replan_not_ready"},
+            )
+        return CustomRecognition.AnalyzeResult(
+            box=(0, 0, 1, 1),
+            detail={
+                "ok": True,
+                "destination_city": state.get("initial_transfer_destination_city")
+                or _manual_two_city_travel_target_city(),
             },
         )
 
@@ -5450,6 +5592,22 @@ class ManualTwoCityBusinessRouteItemUsedAction(CustomAction):
                 )
                 _json_payload("manual_two_city_business_route_item_used", {"ok": False, "item": item, "label": label, "reason": "still_visible"})
                 return False
+        elif item == "speed_projectile":
+            image = _manual_two_city_screencap(context)
+            if image is not None:
+                status = _manual_two_city_speed_projectile_status(
+                    context,
+                    image,
+                    "ManualTwoCityBusinessRouteSpeedProjectileAfterClick",
+                )
+                if status.get("unavailable"):
+                    state = _manual_two_city_state()
+                    _manual_two_city_mark_speed_projectile_unavailable(state, status)
+                    _json_payload(
+                        "manual_two_city_business_route_item_used",
+                        {"ok": True, "item": item, "label": label, "reason": "unavailable", "status": status},
+                    )
+                    return True
         _append_user_log(
             MANUAL_TWO_CITY_TASK_ENTRY,
             f"行车道具：已自动使用{label}。",
@@ -5457,6 +5615,56 @@ class ManualTwoCityBusinessRouteItemUsedAction(CustomAction):
             data={"item": item, "label": label, "leg": _manual_two_city_active_leg()},
         )
         _json_payload("manual_two_city_business_route_item_used", {"ok": True, "item": item, "label": label})
+        return True
+
+
+@AgentServer.custom_action("manual_two_city_business_auto_pickup_used")
+class ManualTwoCityBusinessAutoPickupUsedAction(CustomAction):
+    def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
+        state = _manual_two_city_state()
+        if not _manual_two_city_bool(state.get("auto_pickup"), False):
+            return True
+
+        first_click: dict[str, Any] | None = None
+
+        def record_click(pickup: dict[str, Any]) -> None:
+            nonlocal first_click
+            count = _fatigue_int(state.get("auto_pickup_tap_count"), 0) + 1
+            state["auto_pickup_tap_count"] = count
+            state["auto_pickup_last_tap_at"] = time.monotonic()
+            state["auto_pickup_next_point_index"] = _fatigue_int(pickup.get("next_point_index"), 0)
+            if first_click is None:
+                first_click = pickup
+
+        result: dict[str, Any] = {"reason": "pickup_error"}
+        try:
+            result = run_pickup_window(
+                context.tasker.controller,
+                is_travel_hud=lambda image: is_travel_hud(context, image),
+                should_stop=lambda: bool(context.tasker.stopping),
+                on_click=record_click,
+                start_index=_fatigue_int(state.get("auto_pickup_next_point_index"), 0),
+            )
+            if "next_point_index" in result:
+                state["auto_pickup_next_point_index"] = _fatigue_int(result.get("next_point_index"), 0)
+        except Exception as exc:
+            result = {"ok": False, "reason": "pickup_error", "error": str(exc)}
+        finally:
+            if result.get("reason") in {"duration_elapsed", "frame_limit", "click_limit"}:
+                state.pop("auto_pickup_yield_monitor_once", None)
+            else:
+                # Skip the light branch's pickup entry, then the full monitor's
+                # pickup entry so an error cannot bypass the recovery candidates.
+                state["auto_pickup_yield_monitor_once"] = 2
+        _json_payload("manual_two_city_business_auto_pickup_window", result)
+        if first_click is not None and not state.get("auto_pickup_started_logged"):
+            state["auto_pickup_started_logged"] = True
+            _append_user_log(
+                _manual_two_city_current_task_entry(state),
+                "行车自动拾取：已开始右侧连续点击（固定单点）。",
+                event="manual_two_city_auto_pickup_started",
+                data={"pickup": first_click, "leg": _manual_two_city_active_leg()},
+            )
         return True
 
 
@@ -5817,8 +6025,13 @@ def _manual_two_city_account_profile_read_meta(account: dict[str, Any]) -> dict[
 
 def _manual_two_city_smart_scan_status(state: dict[str, Any], interval: Any) -> dict[str, Any]:
     interval_key = _manual_two_city_smart_scan_interval(interval)
+    confirmed_uid = _safe_account_uid(state.get("account_identity_uid"))
+    if not state.get("account_identity_confirmed") or confirmed_uid == "unknown":
+        return {"due": True, "reason": "account_identity_unconfirmed", "interval": interval_key}
     result = state.get("result") if isinstance(state.get("result"), dict) else {}
     path, account, uid, has_context = _manual_two_city_known_account_context(result)
+    if uid != confirmed_uid:
+        return {"due": True, "reason": "account_identity_mismatch", "interval": interval_key, "uid": uid}
     if result.get("used_default_account_config"):
         return {
             "due": True,
@@ -5835,7 +6048,34 @@ def _manual_two_city_smart_scan_status(state: dict[str, Any], interval: Any) -> 
             "uid": uid,
             "account_config": str(path),
         }
+    account_trade = account.get("trade") if isinstance(account.get("trade"), dict) else {}
+    city_unlock_probe = _city_unlock_probe_map(account_trade.get("city_unlock_probe"))
+    missing_city_unlock_cities = [
+        city
+        for city in CITY_UNLOCK_TARGETS
+        if city not in city_unlock_probe or city_unlock_probe[city].get("status") == "unknown"
+    ]
+    if missing_city_unlock_cities:
+        return {
+            "due": True,
+            "reason": "missing_uid_scoped_city_unlock_probe",
+            "interval": interval_key,
+            "uid": uid,
+            "account_config": str(path),
+            "missing_city_unlock_cities": missing_city_unlock_cities,
+        }
     meta = _manual_two_city_account_profile_read_meta(account)
+    current_fingerprint = _role_catalog_fingerprint()
+    if meta.get("role_catalog_fingerprint") != current_fingerprint:
+        return {
+            "due": True,
+            "reason": "role_catalog_changed",
+            "interval": interval_key,
+            "uid": uid,
+            "account_config": str(path),
+            "role_catalog_fingerprint": current_fingerprint,
+            "previous_role_catalog_fingerprint": meta.get("role_catalog_fingerprint"),
+        }
     last_date = _parse_profile_read_date(
         meta.get("last_smart_scan_date")
         or meta.get("last_smart_scan_at")
@@ -6637,29 +6877,9 @@ def _manual_two_city_resource_used(
             new_limit = max(0, current_limit - actual_count)
             state[limit_key] = new_limit
             state_limit_update = {"key": limit_key, "old_value": current_limit, "new_value": new_limit}
-            pending_values = state.setdefault("pending_medicine_option_values", {})
-            if isinstance(pending_values, dict):
-                pending_values[limit_key] = new_limit
     config_note = _fatigue_config_decrement_note_from_state_update(state_limit_update)
     if not config_note:
         config_note = _fatigue_config_decrement_note(config_update)
-    delayed_config_update: dict[str, Any] | None = None
-    forced_config_rewrite: dict[str, Any] | None = None
-    pending_option_values = state.get("pending_medicine_option_values")
-    if isinstance(pending_option_values, dict) and pending_option_values:
-        forced_config_rewrite = _fatigue_rewrite_option_config_values_with_retry(
-            task_name=task_entry,
-            option_name="ManualTwoCityMedicineLimits",
-            values=pending_option_values,
-        )
-        delayed_config_update = forced_config_rewrite.get("delayed")
-        if not isinstance(delayed_config_update, dict):
-            delayed_config_update = _fatigue_schedule_delayed_option_config_write(
-                task_name=task_entry,
-                option_name="ManualTwoCityMedicineLimits",
-                values=pending_option_values,
-                delays=[3.0, 30.0, 180.0, 600.0],
-            )
     if resource_type == "huashi":
         notice = pending or {}
         cost = notice.get("cost")
@@ -6686,8 +6906,6 @@ def _manual_two_city_resource_used(
             "used": dict(used),
             "pending": pending or {},
             "config_update": config_update,
-            "forced_config_rewrite": forced_config_rewrite,
-            "delayed_config_update": delayed_config_update,
             "state_limit_update": state_limit_update,
         },
     )
@@ -7884,19 +8102,31 @@ def _manual_two_city_configured_locked_goods(city_name: Any) -> list[str]:
 
 def _manual_two_city_load_account_config_for_result(result: dict[str, Any] | None = None) -> tuple[Path, dict[str, Any]]:
     current_result = result if isinstance(result, dict) else {}
+    expected_uid = _safe_account_uid(current_result.get("uid") or _PROFILE_UID)
+    identity_state = _MANUAL_TWO_CITY_STATE or {}
+    if identity_state.get("account_identity_confirmed"):
+        expected_uid = _safe_account_uid(identity_state.get("account_identity_uid"))
     account_path_text = str(current_result.get("account_config") or "").strip()
     if account_path_text:
         account_path = Path(account_path_text)
         if _is_real_account_config_path(account_path):
             try:
                 account = json.loads(account_path.read_text(encoding="utf-8"))
-                if isinstance(account, dict) and account:
+                if (
+                    isinstance(account, dict)
+                    and account
+                    and expected_uid != "unknown"
+                    and _safe_account_uid(account.get("uid")) == expected_uid
+                    and _safe_account_uid(account_path.stem) == expected_uid
+                ):
                     return account_path, _manual_two_city_persist_account_product_status_defaults(account_path, account)
             except (OSError, json.JSONDecodeError):
                 pass
-    uid = _safe_account_uid(current_result.get("uid") or _PROFILE_UID)
+    uid = expected_uid
     path = _account_config_path(uid)
     account = _load_account_config(uid)
+    if account and _safe_account_uid(account.get("uid")) != uid:
+        account = {}
     if account:
         account = _manual_two_city_persist_account_product_status_defaults(path, account)
     return path, account
@@ -7909,6 +8139,90 @@ def _manual_two_city_known_account_context(result: dict[str, Any] | None = None)
     uid = _safe_account_uid(account_uid or current_result.get("uid") or _PROFILE_UID or path.stem)
     has_context = bool(account) and uid != "unknown" and _is_real_account_config_path(path)
     return path, account, uid, has_context
+
+
+def _manual_two_city_update_city_unlock_status(
+    city_name: Any,
+    status: str,
+    *,
+    texts: list[str] | None = None,
+    reason: str,
+) -> dict[str, Any]:
+    city = normalize_city_name(str(city_name or "").strip())
+    normalized_status = str(status or "").strip().lower()
+    if not city or normalized_status not in {"available", "unavailable", "unknown"}:
+        return {"changed": False, "reason": "invalid_city_or_status", "city": city, "status": normalized_status}
+
+    state = _manual_two_city_state()
+    task_entry = _manual_two_city_current_task_entry(state)
+    result = state.get("result") if isinstance(state.get("result"), dict) else {}
+    path, account, uid, has_context = _manual_two_city_known_account_context(result)
+    if not has_context:
+        return {
+            "changed": False,
+            "reason": "missing_account_config",
+            "city": city,
+            "status": normalized_status,
+            "uid": uid,
+            "account_config": str(path),
+        }
+
+    profile = _profile_result_from_account_config(account)
+    probes = _city_unlock_probe_map(profile.get("city_unlock_probe"))
+    previous_probe = copy.deepcopy(probes.get(city) or {})
+    probes[city] = {
+        "status": normalized_status,
+        "texts": [str(text) for text in (texts or []) if str(text).strip()][:40],
+        "observed_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "source": reason,
+    }
+
+    city_lists = {
+        "available": {
+            normalize_city_name(str(item or "").strip())
+            for item in (profile.get("available_cities") or [])
+            if normalize_city_name(str(item or "").strip())
+        },
+        "unavailable": {
+            normalize_city_name(str(item or "").strip())
+            for item in (profile.get("unavailable_cities") or [])
+            if normalize_city_name(str(item or "").strip())
+        },
+        "unknown": {
+            normalize_city_name(str(item or "").strip())
+            for item in (profile.get("unknown_cities") or [])
+            if normalize_city_name(str(item or "").strip())
+        },
+    }
+    for values in city_lists.values():
+        values.discard(city)
+    city_lists[normalized_status].add(city)
+    profile["available_cities"] = sorted(city_lists["available"])
+    profile["unavailable_cities"] = sorted(city_lists["unavailable"])
+    profile["unknown_cities"] = sorted(city_lists["unknown"])
+    profile["city_unlock_probe"] = probes
+    profile["uid"] = uid
+    completed_parts = set(profile.get("completed_parts") or [])
+    completed_parts.add("read_unavailable_cities")
+    profile["completed_parts"] = sorted(completed_parts)
+    account_path = _save_unified_account_profile(profile, task_entry=task_entry)
+
+    result["available_cities"] = list(profile["available_cities"])
+    result["unavailable_cities"] = list(profile["unavailable_cities"])
+    result["unknown_cities"] = list(profile["unknown_cities"])
+    result["city_unlock_probe"] = copy.deepcopy(probes)
+    result["account_config"] = account_path
+    state["result"] = result
+    changed = previous_probe.get("status") != normalized_status or city not in city_lists[normalized_status]
+    return {
+        "changed": changed,
+        "city": city,
+        "status": normalized_status,
+        "uid": uid,
+        "reason": reason,
+        "account_config": account_path,
+        "previous_probe": previous_probe,
+    }
 
 
 def _manual_two_city_update_product_status(
@@ -8244,6 +8558,8 @@ def _manual_two_city_product_scan_plan_options(result: dict[str, Any]) -> RouteP
         _path, account = _manual_two_city_load_account_config_for_result(current_result)
     except Exception:
         account = {}
+    if not account and current_result.get("used_default_account_config"):
+        account = build_default_account_config(str(current_result.get("uid") or ""))
     account_result = _profile_result_from_account_config(account) if isinstance(account, dict) else {}
     merged_result = copy.deepcopy(account_result)
     for key, value in current_result.items():
@@ -8253,6 +8569,7 @@ def _manual_two_city_product_scan_plan_options(result: dict[str, Any]) -> RouteP
         max_goods_num=overrides.get("max_goods_num"),
         prestige_by_city=overrides.get("prestige_by_city"),
         roles=overrides.get("roles"),
+        use_default_roles=False,
         product_unlock_status_by_city=overrides.get("product_unlock_status_by_city"),
         city_tax_rate_by_city=overrides.get("city_tax_rate_by_city"),
         product_buy_lot_by_city=overrides.get("product_buy_lot_by_city"),
@@ -9557,6 +9874,39 @@ def _manual_two_city_format_percent(value: float | int | None) -> str:
     return f"{number:.1f}".rstrip("0").rstrip(".")
 
 
+def _manual_two_city_haggle_book_inventory_from_texts(texts: list[str]) -> int | None:
+    for text in texts:
+        normalized = str(text or "").replace("O", "0").replace("o", "0").replace("／", "/")
+        match = re.search(r"(?<!\d)(\d{1,5})\s*/\s*(\d{1,3})(?!\d)", normalized)
+        if not match:
+            continue
+        available = int(match.group(1))
+        required = int(match.group(2))
+        if required > 0:
+            return available
+    return None
+
+
+def _manual_two_city_haggle_book_budget(
+    state: dict[str, Any],
+    phase: str,
+    *,
+    settled: bool = False,
+) -> dict[str, int]:
+    """Keep each unsettled purchase/sale's book usage across page recovery.
+
+    Only a recognized settlement report releases the corresponding budget.
+    Route recalculation, page re-entry and cleanup flags do not start a trade.
+    """
+    budgets = state.setdefault("haggle_book_budgets", {})
+    if not isinstance(budgets, dict):
+        budgets = {}
+        state["haggle_book_budgets"] = budgets
+    if settled or not isinstance(budgets.get(phase), dict):
+        budgets[phase] = {"used": 0}
+    return budgets[phase]
+
+
 def _manual_two_city_confirm_buy_haggle_book_popup(
     context: Context,
     *,
@@ -9566,7 +9916,8 @@ def _manual_two_city_confirm_buy_haggle_book_popup(
     click_count: int,
     probe_name: str,
     allow_confirm: bool = True,
-) -> bool:
+    book_budget: dict[str, int] | None = None,
+) -> dict[str, Any]:
     popup_hit, _, popup_texts = _manual_two_city_ocr_entries(
         context,
         probe_name,
@@ -9574,10 +9925,19 @@ def _manual_two_city_confirm_buy_haggle_book_popup(
         roi=BUY_HAGGLE_BOOK_POPUP_ROI,
     )
     if not popup_hit:
-        return False
-    if not allow_confirm:
-        raise RuntimeError(f"haggle book limit reached: popup={popup_texts[:12]}")
+        return {"status": "absent", "texts": popup_texts[:20]}
 
+    if not allow_confirm:
+        return {"status": "skipped", "texts": popup_texts[:20]}
+
+    inventory = _manual_two_city_haggle_book_inventory_from_texts(popup_texts)
+    if inventory is not None and inventory <= 0:
+        return {"status": "unavailable", "inventory": inventory, "texts": popup_texts[:20]}
+
+    # Sending the click can consume a book even if the controller or subsequent
+    # verification fails. Keep this reservation until the trade settles.
+    if book_budget is not None:
+        book_budget["used"] = int(book_budget.get("used") or 0) + 1
     confirmed, confirm_texts = _manual_two_city_click_ocr_text(
         context,
         f"{probe_name}Confirm",
@@ -9589,6 +9949,19 @@ def _manual_two_city_confirm_buy_haggle_book_popup(
     if not confirmed:
         raise RuntimeError(f"haggle book confirm not found: popup={popup_texts[:12]}, confirm={confirm_texts[:12]}")
 
+    still_open, _, verify_texts = _manual_two_city_ocr_entries(
+        context,
+        f"{probe_name}VerifyClosed",
+        BUY_HAGGLE_BOOK_POPUP_TEXTS,
+        roi=BUY_HAGGLE_BOOK_POPUP_ROI,
+    )
+    if still_open:
+        return {
+            "status": "confirm_failed",
+            "inventory": inventory,
+            "texts": list(dict.fromkeys(popup_texts[:20] + verify_texts[:20])),
+        }
+
     _append_user_log(
         MANUAL_TWO_CITY_TASK_ENTRY,
         f"议价：检测到重新议价请求书弹窗，已确认使用，继续尝试达到 {target_percent}%。",
@@ -9597,17 +9970,129 @@ def _manual_two_city_confirm_buy_haggle_book_popup(
             "target_percent": target_percent,
             "current_percent": current_percent,
             "click_count": click_count,
+            "book_inventory_before": inventory,
             "popup_texts": popup_texts[:20],
             "leg": leg,
         },
     )
-    return True
+    return {"status": "confirmed", "inventory": inventory, "texts": popup_texts[:20]}
+
+
+def _manual_two_city_cancel_haggle_book_popup(
+    context: Context,
+    probe_name: str,
+) -> tuple[bool, list[str]]:
+    clicked, cancel_texts = _manual_two_city_click_ocr_text(
+        context,
+        f"{probe_name}Cancel",
+        ["取消"],
+        roi=BUY_HAGGLE_BOOK_CANCEL_ROI,
+        fallback=BUY_HAGGLE_BOOK_CANCEL_TARGET,
+        delay=0.8,
+    )
+    if not clicked:
+        return False, cancel_texts
+    still_open, _, verify_texts = _manual_two_city_ocr_entries(
+        context,
+        f"{probe_name}CancelVerify",
+        BUY_HAGGLE_BOOK_POPUP_TEXTS,
+        roi=BUY_HAGGLE_BOOK_POPUP_ROI,
+    )
+    return not still_open, list(dict.fromkeys(cancel_texts[:20] + verify_texts[:20]))
 
 
 def _manual_two_city_click(context: Context, target: tuple[int, int], delay: float = 0.35) -> None:
     context.tasker.controller.post_click(int(target[0]), int(target[1])).wait()
     if delay > 0:
         time.sleep(delay)
+
+
+def _manual_two_city_navigation_observation(
+    context: Context,
+    *,
+    probe_name: str,
+    source_texts: list[str],
+    source_roi: list[int],
+    ready_nodes: list[str],
+    allow_city_template: bool = False,
+) -> dict[str, Any]:
+    # A loading overlay leaves the old menu/HUD readable. Check it before any
+    # destination or source recognition, using one newly captured frame.
+    job = context.tasker.controller.post_screencap().wait()
+    if not job.succeeded:
+        raise RuntimeError("navigation screencap failed")
+    image = job.get()
+    if image is None or tuple(image.shape[:2]) != (720, 1280):
+        raise RuntimeError("navigation requires a fresh 1280x720 frame")
+    loading_name = f"{probe_name}Loading"
+    loading = context.run_recognition(loading_name, image, {
+        loading_name: {
+            "recognition": "OCR", "expected": "^正在",
+            "roi": [200, 560, 880, 150], "action": "DoNothing",
+        },
+    })
+    if loading is None:
+        raise RuntimeError("navigation loading recognition did not run")
+    if getattr(loading, "hit", False):
+        return {"state": "loading", "texts": _ocr_texts_from_detail(loading)[:8]}
+    for node in ready_nodes:
+        ready = context.run_recognition(node, image)
+        if getattr(ready, "hit", False):
+            return {"state": "ready", "node": node}
+
+    source_name = f"{probe_name}Source"
+    source = context.run_recognition(source_name, image, {
+        source_name: {
+            "recognition": "OCR",
+            "expected": [f"^{re.escape(text)}$" for text in source_texts],
+            "roi": source_roi, "action": "DoNothing",
+        },
+    })
+    if getattr(source, "hit", False):
+        for entry in _ocr_entries_from_detail(source):
+            if clean_text(entry.get("text")) not in source_texts:
+                continue
+            point = (int(entry["center_x"]), int(entry["center_y"]))
+            x, y, w, h = source_roi
+            if x <= point[0] < x + w and y <= point[1] < y + h:
+                return {"state": "source", "point": point, "text": entry["text"]}
+    if allow_city_template:
+        fallback = context.run_recognition("ManualTwoCityBusinessOpenCurrentCityFallback", image)
+        if getattr(fallback, "hit", False):
+            return {"state": "source", "point": (1270, 494), "text": "main_map"}
+    return {"state": "unknown"}
+
+
+def _manual_two_city_open_navigation(context: Context, **observation_params: Any) -> dict[str, Any]:
+    def click(point: tuple[int, int]) -> bool:
+        return bool(context.tasker.controller.post_click(*point).wait().succeeded)
+
+    return run_navigation_transition(
+        observe=lambda: _manual_two_city_navigation_observation(context, **observation_params),
+        click=click,
+        should_stop=lambda: bool(context.tasker.stopping),
+    )
+
+
+@AgentServer.custom_action("manual_two_city_business_open_current_city")
+class ManualTwoCityBusinessOpenCurrentCityAction(CustomAction):
+    def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
+        result = _manual_two_city_open_navigation(
+            context,
+            probe_name="ManualTwoCityBusinessEnterCityProbe",
+            source_texts=["访问城市", "访问地区", "进入城市", "当前城市"],
+            source_roi=[1000, 360, 280, 260],
+            ready_nodes=["ManualTwoCityBusinessCurrentCityReady"],
+            allow_city_template=getattr(argv, "node_name", "") == "ManualTwoCityBusinessOpenCurrentCityFallback",
+        )
+        if not result["ok"]:
+            _append_user_log(
+                MANUAL_TWO_CITY_TASK_ENTRY,
+                f"进入当前城市未完成：{result['reason']}（已点击 {result['clicks']} 次），准备恢复。",
+                level="warning", event="manual_two_city_enter_city_failed", data=result,
+            )
+        _json_payload("manual_two_city_business_open_current_city", result)
+        return bool(result["ok"])
 
 
 def _manual_two_city_swipe(
@@ -11190,8 +11675,10 @@ class ManualTwoCityBusinessUseBuyBooksAction(CustomAction):
 @AgentServer.custom_action("manual_two_city_business_apply_buy_haggle")
 class ManualTwoCityBusinessApplyBuyHaggleAction(CustomAction):
     def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
+        state = _manual_two_city_state()
         leg = _manual_two_city_active_leg()
         target_percent = _manual_two_city_buy_bargain_percent(leg)
+        use_haggle_book = _manual_two_city_bool(state.get("use_haggle_book"), False)
         if target_percent <= 0:
             _append_user_log(
                 MANUAL_TWO_CITY_TASK_ENTRY,
@@ -11204,22 +11691,40 @@ class ManualTwoCityBusinessApplyBuyHaggleAction(CustomAction):
 
         try:
             click_count = 0
-            haggle_book_used = False
+            book_budget = _manual_two_city_haggle_book_budget(state, "buy")
+            haggle_books_used = book_budget["used"]
             current_percent: float | None = None
             final_percent: float | None = None
+            stop_reason = ""
             start_time = time.perf_counter()
-            while time.perf_counter() - start_time < 30.0:
-                if _manual_two_city_confirm_buy_haggle_book_popup(
+            while time.perf_counter() - start_time < HAGGLE_ACTION_TIMEOUT_SECONDS:
+                popup = _manual_two_city_confirm_buy_haggle_book_popup(
                     context,
                     leg=leg,
                     target_percent=target_percent,
                     current_percent=current_percent,
                     click_count=click_count,
                     probe_name=f"ManualTwoCityBuyHaggleBookBeforeRead{click_count + 1:03d}",
-                    allow_confirm=not haggle_book_used,
-                ):
-                    haggle_book_used = True
+                    allow_confirm=use_haggle_book and haggle_books_used < HAGGLE_BOOK_MAX_USES_PER_TRADE,
+                    book_budget=book_budget,
+                )
+                if popup.get("status") == "confirmed":
+                    haggle_books_used = max(haggle_books_used + 1, book_budget["used"])
+                    book_budget["used"] = haggle_books_used
                     continue
+                haggle_books_used = book_budget["used"]
+                if popup.get("status") in {"skipped", "unavailable", "confirm_failed"}:
+                    if popup.get("status") == "skipped":
+                        stop_reason = "book_disabled" if not use_haggle_book else "book_limit_reached"
+                    else:
+                        stop_reason = str(popup.get("status") or "haggle_book_unavailable")
+                    closed, close_texts = _manual_two_city_cancel_haggle_book_popup(
+                        context,
+                        f"ManualTwoCityBuyHaggleBookStop{click_count + 1:03d}",
+                    )
+                    if not closed:
+                        raise RuntimeError(f"cannot close haggle book popup: {close_texts[:12]}")
+                    break
 
                 current_percent = _manual_two_city_read_buy_haggle_percent(context)
                 _append_user_log(
@@ -11243,17 +11748,33 @@ class ManualTwoCityBusinessApplyBuyHaggleAction(CustomAction):
                     raise RuntimeError(f"cannot find haggle button: {button_texts[:12]}")
                 click_count += 1
 
-                if _manual_two_city_confirm_buy_haggle_book_popup(
+                popup = _manual_two_city_confirm_buy_haggle_book_popup(
                     context,
                     leg=leg,
                     target_percent=target_percent,
                     current_percent=current_percent,
                     click_count=click_count,
                     probe_name=f"ManualTwoCityBuyHaggleBookAfterClick{click_count:03d}",
-                    allow_confirm=not haggle_book_used,
-                ):
-                    haggle_book_used = True
+                    allow_confirm=use_haggle_book and haggle_books_used < HAGGLE_BOOK_MAX_USES_PER_TRADE,
+                    book_budget=book_budget,
+                )
+                if popup.get("status") == "confirmed":
+                    haggle_books_used = max(haggle_books_used + 1, book_budget["used"])
+                    book_budget["used"] = haggle_books_used
                     continue
+                haggle_books_used = book_budget["used"]
+                if popup.get("status") in {"skipped", "unavailable", "confirm_failed"}:
+                    if popup.get("status") == "skipped":
+                        stop_reason = "book_disabled" if not use_haggle_book else "book_limit_reached"
+                    else:
+                        stop_reason = str(popup.get("status") or "haggle_book_unavailable")
+                    closed, close_texts = _manual_two_city_cancel_haggle_book_popup(
+                        context,
+                        f"ManualTwoCityBuyHaggleBookStop{click_count:03d}",
+                    )
+                    if not closed:
+                        raise RuntimeError(f"cannot close haggle book popup: {close_texts[:12]}")
+                    break
 
                 unavailable_hit, _, unavailable_texts = _manual_two_city_ocr_entries(
                     context,
@@ -11274,15 +11795,16 @@ class ManualTwoCityBusinessApplyBuyHaggleAction(CustomAction):
                             "leg": leg,
                         },
                     )
+                    stop_reason = "attempts_unavailable"
                     break
 
                 time.sleep(0.35)
             else:
-                raise RuntimeError(f"haggle target timeout: current={current_percent}, target={target_percent}")
+                stop_reason = "timeout"
 
             final_percent = _manual_two_city_read_buy_haggle_percent(context)
-            if final_percent is not None and final_percent < target_percent:
-                raise RuntimeError(f"haggle target not reached: current={final_percent}, target={target_percent}")
+            if final_percent is None:
+                final_percent = current_percent
         except Exception as exc:
             error = f"{type(exc).__name__}: {exc}"
             _append_user_log(
@@ -11295,15 +11817,75 @@ class ManualTwoCityBusinessApplyBuyHaggleAction(CustomAction):
             _json_payload("manual_two_city_business_apply_buy_haggle_failed", {"ok": False, "error": error})
             return False
 
+        target_reached = final_percent is not None and final_percent >= target_percent
+        if not target_reached:
+            reason_label = {
+                "book_disabled": "未开启再交涉请求书",
+                "book_limit_reached": "本次请求书额度已用完",
+                "unavailable": "议价书不足",
+                "confirm_failed": "议价书确认未生效",
+                "attempts_unavailable": "议价次数不足",
+                "timeout": "议价耗时较长",
+            }.get(stop_reason, "未达到目标")
+            _append_user_log(
+                MANUAL_TWO_CITY_TASK_ENTRY,
+                (
+                    f"砍价：{reason_label}，当前 {_manual_two_city_format_percent(final_percent)}%（目标 {target_percent}%），"
+                    "将按当前结果继续买入，避免退出交易所后议价效果清零。"
+                ),
+                level="warning",
+                event="manual_two_city_buy_haggle_partial",
+                data={
+                    "target_percent": target_percent,
+                    "final_percent": final_percent,
+                    "click_count": click_count,
+                    "haggle_books_used": haggle_books_used,
+                    "use_haggle_book": use_haggle_book,
+                    "stop_reason": stop_reason,
+                    "leg": leg,
+                },
+            )
+            _json_payload(
+                "manual_two_city_business_apply_buy_haggle",
+                {
+                    "ok": True,
+                    "target_reached": False,
+                    "target_percent": target_percent,
+                    "final_percent": final_percent,
+                    "click_count": click_count,
+                    "haggle_books_used": haggle_books_used,
+                    "use_haggle_book": use_haggle_book,
+                    "stop_reason": stop_reason,
+                    "leg": leg,
+                },
+            )
+            return True
+
         _append_user_log(
             MANUAL_TWO_CITY_TASK_ENTRY,
             f"砍价：已达到 {_manual_two_city_format_percent(final_percent if final_percent is not None else target_percent)}%（目标 {target_percent}%），继续全部买入。",
             event="manual_two_city_buy_haggle_done",
-            data={"target_percent": target_percent, "final_percent": final_percent, "click_count": click_count, "leg": leg},
+            data={
+                "target_percent": target_percent,
+                "final_percent": final_percent,
+                "click_count": click_count,
+                "haggle_books_used": haggle_books_used,
+                "use_haggle_book": use_haggle_book,
+                "leg": leg,
+            },
         )
         _json_payload(
             "manual_two_city_business_apply_buy_haggle",
-            {"ok": True, "target_percent": target_percent, "final_percent": final_percent, "click_count": click_count, "leg": leg},
+            {
+                "ok": True,
+                "target_reached": True,
+                "target_percent": target_percent,
+                "final_percent": final_percent,
+                "click_count": click_count,
+                "haggle_books_used": haggle_books_used,
+                "use_haggle_book": use_haggle_book,
+                "leg": leg,
+            },
         )
         return True
 
@@ -11735,7 +12317,8 @@ class ManualTwoCityBusinessStartupTravelResolveDirectionAction(CustomAction):
             return False
 
         start_city, target_city = _manual_two_city_endpoint_cities()
-        if destination in {start_city, target_city}:
+        if not state.get("account_identity_confirmed") or destination in {start_city, target_city}:
+            identity_pending = not state.get("account_identity_confirmed")
             decision = _manual_two_city_prepare_startup_travel_monitor(
                 destination,
                 choice={
@@ -11744,12 +12327,16 @@ class ManualTwoCityBusinessStartupTravelResolveDirectionAction(CustomAction):
                     "nearest_endpoint": destination,
                     "fatigue": 0,
                     "estimated": False,
-                    "reason": "destination_is_route_endpoint",
+                    "reason": "awaiting_account_identity" if identity_pending else "destination_is_route_endpoint",
                 },
             )
             _append_user_log(
                 MANUAL_TWO_CITY_TASK_ENTRY,
-                f"开局行车决策：目的地 {destination} 已是配置路线城市，继续前往并监听行车状态。",
+                (
+                    f"开局行车决策：先继续前往 {destination}，到站后确认当前账号 UID 再规划跑商。"
+                    if identity_pending
+                    else f"开局行车决策：目的地 {destination} 已是配置路线城市，继续前往并监听行车状态。"
+                ),
                 level="warning",
                 event="manual_two_city_startup_travel_continue_endpoint",
                 data={"destination": destination, "start_city": start_city, "target_city": target_city, "decision": decision},
@@ -11891,6 +12478,7 @@ class ManualTwoCityBusinessStartupTravelStartedAction(CustomAction):
         state["travel_started_at"] = time.monotonic()
         state["travel_last_status"] = state.get("startup_travel_detected_status") or {}
         state["travel_progress_last_log_at"] = 0.0
+        _manual_two_city_reset_auto_pickup_state(state)
         recovering_from_stall = bool(state.pop("travel_recovering_from_stall", False))
         _manual_two_city_reset_travel_stall_state(state, reset_restart_count=not recovering_from_stall)
         state["trade_phase"] = "travel"
@@ -13258,31 +13846,35 @@ class ManualTwoCityBusinessShouldOpenSellAction(CustomAction):
         phase = str(state.get("trade_phase") or "buy").strip().lower()
         leg = _manual_two_city_active_leg()
         open_sell = phase == "sell"
-        target = (960, 410) if open_sell else (960, 323)
-        try:
-            _manual_two_city_click(context, target, 0.2)
-        except Exception as exc:
+        result = _manual_two_city_open_navigation(
+            context,
+            probe_name="ManualTwoCityBusinessTradeMenuProbe",
+            source_texts=["我要卖" if open_sell else "我要买"],
+            source_roi=[700, 260, 530, 220],
+            ready_nodes=["ManualTwoCityBusinessSellPageReady", "ManualTwoCityBusinessBuyPageReady"],
+        )
+        if not result["ok"]:
             _append_user_log(
                 MANUAL_TWO_CITY_TASK_ENTRY,
-                f"交易所：点击{'卖出' if open_sell else '买入'}入口失败：{type(exc).__name__}: {exc}",
+                f"交易所：进入{'卖出' if open_sell else '买入'}页未完成：{result['reason']}（已点击 {result['clicks']} 次），准备恢复。",
                 level="warning",
                 event="manual_two_city_trade_outlet_dispatch_failed",
-                data={"phase": phase, "open_sell": open_sell, "leg": leg, "target": target},
+                data={"phase": phase, "open_sell": open_sell, "leg": leg, **result},
             )
             _json_payload(
                 "manual_two_city_business_should_open_sell",
-                {"ok": False, "phase": phase, "open_sell": open_sell, "leg": leg, "target": target, "error": str(exc)},
+                {"phase": phase, "open_sell": open_sell, "leg": leg, **result},
             )
             return False
         _append_user_log(
             MANUAL_TWO_CITY_TASK_ENTRY,
-            f"交易所：已打开菜单，点击进入{'卖出' if open_sell else '买入'}页。",
+            f"交易所：已确认进入交易页（{'卖出' if open_sell else '买入'}流程，点击 {result['clicks']} 次）。",
             event="manual_two_city_trade_outlet_ready",
-            data={"phase": phase, "open_sell": open_sell, "leg": leg, "target": target},
+            data={"phase": phase, "open_sell": open_sell, "leg": leg, **result},
         )
         _json_payload(
             "manual_two_city_business_should_open_sell",
-            {"ok": True, "phase": phase, "open_sell": open_sell, "leg": leg, "target": target},
+            {"phase": phase, "open_sell": open_sell, "leg": leg, **result},
         )
         return True
 
@@ -15005,6 +15597,7 @@ class ManualTwoCityBusinessBuyGoodsMissingAction(CustomAction):
 class ManualTwoCityBusinessBuyReportReadyAction(CustomAction):
     def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
         state = _manual_two_city_state()
+        _manual_two_city_haggle_book_budget(state, "buy", settled=True)
         leg = _manual_two_city_active_leg()
         if state.get("initial_transfer_pending"):
             source = str(state.get("initial_transfer_source_city") or state.get("current_city") or "").strip()
@@ -15237,6 +15830,7 @@ class ManualTwoCityBusinessApplySellHaggleAction(CustomAction):
     def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
         state = _manual_two_city_state()
         leg = _manual_two_city_active_leg()
+        use_haggle_book = _manual_two_city_bool(state.get("use_haggle_book"), False)
         cleanup = bool(state.get("pre_buy_cleanup"))
         if cleanup:
             target_percent = _manual_two_city_haggle_count(state.get("pre_buy_cleanup_raise_percent"))
@@ -15258,22 +15852,40 @@ class ManualTwoCityBusinessApplySellHaggleAction(CustomAction):
 
         try:
             click_count = 0
-            haggle_book_used = False
+            book_budget = _manual_two_city_haggle_book_budget(state, "sell")
+            haggle_books_used = book_budget["used"]
             current_percent: float | None = None
             final_percent: float | None = None
+            stop_reason = ""
             start_time = time.perf_counter()
-            while time.perf_counter() - start_time < 30.0:
-                if _manual_two_city_confirm_buy_haggle_book_popup(
+            while time.perf_counter() - start_time < HAGGLE_ACTION_TIMEOUT_SECONDS:
+                popup = _manual_two_city_confirm_buy_haggle_book_popup(
                     context,
                     leg=leg,
                     target_percent=target_percent,
                     current_percent=current_percent,
                     click_count=click_count,
                     probe_name=f"ManualTwoCitySellHaggleBookBeforeRead{click_count + 1:03d}",
-                    allow_confirm=not haggle_book_used,
-                ):
-                    haggle_book_used = True
+                    allow_confirm=use_haggle_book and haggle_books_used < HAGGLE_BOOK_MAX_USES_PER_TRADE,
+                    book_budget=book_budget,
+                )
+                if popup.get("status") == "confirmed":
+                    haggle_books_used = max(haggle_books_used + 1, book_budget["used"])
+                    book_budget["used"] = haggle_books_used
                     continue
+                haggle_books_used = book_budget["used"]
+                if popup.get("status") in {"skipped", "unavailable", "confirm_failed"}:
+                    if popup.get("status") == "skipped":
+                        stop_reason = "book_disabled" if not use_haggle_book else "book_limit_reached"
+                    else:
+                        stop_reason = str(popup.get("status") or "haggle_book_unavailable")
+                    closed, close_texts = _manual_two_city_cancel_haggle_book_popup(
+                        context,
+                        f"ManualTwoCitySellHaggleBookStop{click_count + 1:03d}",
+                    )
+                    if not closed:
+                        raise RuntimeError(f"cannot close sell haggle book popup: {close_texts[:12]}")
+                    break
 
                 current_percent = _manual_two_city_read_buy_haggle_percent(context)
                 _append_user_log(
@@ -15297,17 +15909,33 @@ class ManualTwoCityBusinessApplySellHaggleAction(CustomAction):
                     raise RuntimeError(f"cannot find sell haggle button: {button_texts[:12]}")
                 click_count += 1
 
-                if _manual_two_city_confirm_buy_haggle_book_popup(
+                popup = _manual_two_city_confirm_buy_haggle_book_popup(
                     context,
                     leg=leg,
                     target_percent=target_percent,
                     current_percent=current_percent,
                     click_count=click_count,
                     probe_name=f"ManualTwoCitySellHaggleBookAfterClick{click_count:03d}",
-                    allow_confirm=not haggle_book_used,
-                ):
-                    haggle_book_used = True
+                    allow_confirm=use_haggle_book and haggle_books_used < HAGGLE_BOOK_MAX_USES_PER_TRADE,
+                    book_budget=book_budget,
+                )
+                if popup.get("status") == "confirmed":
+                    haggle_books_used = max(haggle_books_used + 1, book_budget["used"])
+                    book_budget["used"] = haggle_books_used
                     continue
+                haggle_books_used = book_budget["used"]
+                if popup.get("status") in {"skipped", "unavailable", "confirm_failed"}:
+                    if popup.get("status") == "skipped":
+                        stop_reason = "book_disabled" if not use_haggle_book else "book_limit_reached"
+                    else:
+                        stop_reason = str(popup.get("status") or "haggle_book_unavailable")
+                    closed, close_texts = _manual_two_city_cancel_haggle_book_popup(
+                        context,
+                        f"ManualTwoCitySellHaggleBookStop{click_count:03d}",
+                    )
+                    if not closed:
+                        raise RuntimeError(f"cannot close sell haggle book popup: {close_texts[:12]}")
+                    break
 
                 unavailable_hit, _, unavailable_texts = _manual_two_city_ocr_entries(
                     context,
@@ -15328,15 +15956,16 @@ class ManualTwoCityBusinessApplySellHaggleAction(CustomAction):
                             "leg": leg,
                         },
                     )
+                    stop_reason = "attempts_unavailable"
                     break
 
                 time.sleep(0.35)
             else:
-                raise RuntimeError(f"sell haggle target timeout: current={current_percent}, target={target_percent}")
+                stop_reason = "timeout"
 
             final_percent = _manual_two_city_read_buy_haggle_percent(context)
-            if final_percent is not None and final_percent < target_percent:
-                raise RuntimeError(f"sell haggle target not reached: current={final_percent}, target={target_percent}")
+            if final_percent is None:
+                final_percent = current_percent
         except Exception as exc:
             error = f"{type(exc).__name__}: {exc}"
             _append_user_log(
@@ -15349,15 +15978,75 @@ class ManualTwoCityBusinessApplySellHaggleAction(CustomAction):
             _json_payload("manual_two_city_business_apply_sell_haggle_failed", {"ok": False, "error": error})
             return False
 
+        target_reached = final_percent is not None and final_percent >= target_percent
+        if not target_reached:
+            reason_label = {
+                "book_disabled": "未开启再交涉请求书",
+                "book_limit_reached": "本次请求书额度已用完",
+                "unavailable": "议价书不足",
+                "confirm_failed": "议价书确认未生效",
+                "attempts_unavailable": "议价次数不足",
+                "timeout": "议价耗时较长",
+            }.get(stop_reason, "未达到目标")
+            _append_user_log(
+                MANUAL_TWO_CITY_TASK_ENTRY,
+                (
+                    f"抬价：{reason_label}，当前 {_manual_two_city_format_percent(final_percent)}%（目标 {target_percent}%），"
+                    "将按当前结果继续卖出，避免退出交易所后议价效果清零。"
+                ),
+                level="warning",
+                event="manual_two_city_sell_haggle_partial",
+                data={
+                    "target_percent": target_percent,
+                    "final_percent": final_percent,
+                    "click_count": click_count,
+                    "haggle_books_used": haggle_books_used,
+                    "use_haggle_book": use_haggle_book,
+                    "stop_reason": stop_reason,
+                    "leg": leg,
+                },
+            )
+            _json_payload(
+                "manual_two_city_business_apply_sell_haggle",
+                {
+                    "ok": True,
+                    "target_reached": False,
+                    "target_percent": target_percent,
+                    "final_percent": final_percent,
+                    "click_count": click_count,
+                    "haggle_books_used": haggle_books_used,
+                    "use_haggle_book": use_haggle_book,
+                    "stop_reason": stop_reason,
+                    "leg": leg,
+                },
+            )
+            return True
+
         _append_user_log(
             MANUAL_TWO_CITY_TASK_ENTRY,
             f"抬价：已达到 {_manual_two_city_format_percent(final_percent if final_percent is not None else target_percent)}%（目标 {target_percent}%），继续全部卖出。",
             event="manual_two_city_sell_haggle_done",
-            data={"target_percent": target_percent, "final_percent": final_percent, "click_count": click_count, "leg": leg},
+            data={
+                "target_percent": target_percent,
+                "final_percent": final_percent,
+                "click_count": click_count,
+                "haggle_books_used": haggle_books_used,
+                "use_haggle_book": use_haggle_book,
+                "leg": leg,
+            },
         )
         _json_payload(
             "manual_two_city_business_apply_sell_haggle",
-            {"ok": True, "target_percent": target_percent, "final_percent": final_percent, "click_count": click_count, "leg": leg},
+            {
+                "ok": True,
+                "target_reached": True,
+                "target_percent": target_percent,
+                "final_percent": final_percent,
+                "click_count": click_count,
+                "haggle_books_used": haggle_books_used,
+                "use_haggle_book": use_haggle_book,
+                "leg": leg,
+            },
         )
         return True
 
@@ -15365,6 +16054,7 @@ class ManualTwoCityBusinessApplySellHaggleAction(CustomAction):
 @AgentServer.custom_action("manual_two_city_business_sell_report_ready")
 class ManualTwoCityBusinessSellReportReadyAction(CustomAction):
     def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
+        _manual_two_city_haggle_book_budget(_manual_two_city_state(), "sell", settled=True)
         leg = _manual_two_city_active_leg()
         _append_user_log(
             MANUAL_TWO_CITY_TASK_ENTRY,
@@ -15658,23 +16348,6 @@ class ManualTwoCityBusinessDoneAction(CustomAction):
             terminal_status == MANUAL_TWO_CITY_TERMINAL_FATIGUE_EXHAUSTED
             and run_mode == MANUAL_TWO_CITY_RUN_MODE_UNTIL_FATIGUE_EXHAUSTED
         )
-        pending_option_values = state.get("pending_medicine_option_values")
-        final_config_write: dict[str, Any] | None = None
-        final_delayed_config_write: dict[str, Any] | None = None
-        if isinstance(pending_option_values, dict) and pending_option_values:
-            final_config_write = _fatigue_rewrite_option_config_values_with_retry(
-                task_name=task_entry,
-                option_name="ManualTwoCityMedicineLimits",
-                values=pending_option_values,
-            )
-            final_delayed_config_write = final_config_write.get("delayed")
-            if not isinstance(final_delayed_config_write, dict):
-                final_delayed_config_write = _fatigue_schedule_delayed_option_config_write(
-                    task_name=task_entry,
-                    option_name="ManualTwoCityMedicineLimits",
-                    values=pending_option_values,
-                    delays=[2.0, 5.0, 10.0],
-                )
         if is_success:
             result_note = terminal_reason or "已按跑商执行方式正常完成"
             level = "info"
@@ -15697,9 +16370,6 @@ class ManualTwoCityBusinessDoneAction(CustomAction):
                 "terminal_status": terminal_status,
                 "terminal_reason": terminal_reason,
                 "success": is_success,
-                "pending_option_values": pending_option_values if isinstance(pending_option_values, dict) else {},
-                "final_config_write": final_config_write,
-                "final_delayed_config_write": final_delayed_config_write,
             },
         )
         _json_payload(
@@ -15712,7 +16382,6 @@ class ManualTwoCityBusinessDoneAction(CustomAction):
                 "run_mode": run_mode,
                 "terminal_status": terminal_status,
                 "terminal_reason": terminal_reason,
-                "pending_option_values": pending_option_values if isinstance(pending_option_values, dict) else {},
             },
         )
         return is_success
@@ -15749,6 +16418,209 @@ class ManualTwoCityBusinessCloseSellPageForNextLegAction(CustomAction):
             data={"leg": leg, "active_leg_index": state.get("active_leg_index")},
         )
         _json_payload("manual_two_city_business_close_sell_page_for_next_leg", {"ok": True, "leg": leg})
+        return True
+
+
+def _manual_two_city_replan_after_unavailable_destination(city_name: Any) -> dict[str, Any]:
+    state = _manual_two_city_state()
+    task_entry = _manual_two_city_current_task_entry(state)
+    city = normalize_city_name(str(city_name or "").strip())
+    state["destination_unavailable_replan_ready"] = False
+    if not city:
+        return {"ok": False, "reason": "missing_destination_city"}
+    if not state.get("auto_route_enabled"):
+        state["terminal_status"] = MANUAL_TWO_CITY_TERMINAL_FAILED
+        state["terminal_reason"] = f"目标城市 {city} 尚未开放，请更换手动跑商城市"
+        return {"ok": False, "reason": "manual_route_city_unavailable", "city": city}
+
+    params = dict(state.get("auto_route_params") or {})
+    excluded = _manual_two_city_collect_city_options(params, "exclude_city_", "exclude_cities")
+    excluded = [normalize_city_name(item) for item in excluded if normalize_city_name(item)]
+    if city not in excluded:
+        excluded.append(city)
+    priority = _manual_two_city_collect_city_options(params, "priority_city_", "priority_cities")
+    priority = [
+        normalize_city_name(item)
+        for item in priority
+        if normalize_city_name(item) and normalize_city_name(item) != city
+    ]
+    params["exclude_cities"] = list(dict.fromkeys(excluded))
+    params["priority_cities"] = list(dict.fromkeys(priority))
+    params["wulinyuan_enabled"] = _trade_wulinyuan_enabled(state)
+    transient_status = state.get("transient_product_status_by_city")
+    if isinstance(transient_status, dict) and transient_status:
+        params["transient_product_status_by_city"] = transient_status
+    params["allow_default_account"] = False
+    current_city = normalize_city_name(
+        str(
+            state.get("current_city")
+            or (state.get("initial_transfer_source_city") if state.get("initial_transfer_in_progress") else "")
+            or _manual_two_city_active_leg().get("buy_city")
+            or ""
+        ).strip()
+    )
+
+    try:
+        new_result = calculate_auto_two_city_trade(**params)
+        state["auto_route_params"] = {
+            key: copy.deepcopy(value)
+            for key, value in params.items()
+            if key not in {"allow_default_account", "transient_product_status_by_city"}
+        }
+        state["result"] = new_result
+        state["manual_start_city"] = new_result.get("start_city")
+        state["manual_target_city"] = new_result.get("target_city")
+        state["start_book"] = new_result.get("start_book", 0)
+        state["target_book"] = new_result.get("target_book", 0)
+        state["start_bargain_percent"] = new_result.get("start_bargain_percent", 0)
+        state["start_raise_percent"] = new_result.get("start_raise_percent", 0)
+        state["target_bargain_percent"] = new_result.get("target_bargain_percent", 0)
+        state["target_raise_percent"] = new_result.get("target_raise_percent", 0)
+        state["manual_params"] = {
+            "start_city": new_result.get("start_city"),
+            "target_city": new_result.get("target_city"),
+            "uid": new_result.get("uid") or params.get("uid"),
+            "start_book": new_result.get("start_book", 0),
+            "target_book": new_result.get("target_book", 0),
+            "start_bargain_percent": new_result.get("start_bargain_percent", 0),
+            "start_raise_percent": new_result.get("start_raise_percent", 0),
+            "target_bargain_percent": new_result.get("target_bargain_percent", 0),
+            "target_raise_percent": new_result.get("target_raise_percent", 0),
+            "wulinyuan_enabled": params.get("wulinyuan_enabled"),
+        }
+
+        start_city, target_city = _manual_two_city_endpoint_cities()
+        if current_city and current_city in {start_city, target_city}:
+            next_leg = _manual_two_city_set_active_leg_by_city(current_city)
+            next_destination = normalize_city_name(str(next_leg.get("sell_city") or "").strip())
+            state["initial_transfer_pending"] = False
+            state["initial_transfer_in_progress"] = False
+            state["initial_transfer_done"] = True
+            state["initial_transfer_needs_recovery"] = False
+            state["trade_phase"] = "buy"
+            transfer = {"city": next_destination, "fatigue": None, "estimated": False, "already_endpoint": True}
+        else:
+            state["active_leg_index"] = 0
+            transfer = _manual_two_city_choose_initial_transfer_destination(current_city)
+            next_destination = normalize_city_name(str(transfer.get("city") or "").strip())
+            if not current_city or not next_destination:
+                raise RuntimeError("重新规划后无法确定当前位置到新路线端点")
+            base_required = _fatigue_int(transfer.get("fatigue"), 0)
+            state["initial_transfer_pending"] = False
+            state["initial_transfer_in_progress"] = True
+            state["initial_transfer_done"] = False
+            state["initial_transfer_source_city"] = current_city
+            state["initial_transfer_destination_city"] = next_destination
+            state["initial_transfer_base_required_fatigue"] = base_required
+            state["initial_transfer_required_fatigue"] = _manual_two_city_required_fatigue_with_buffer(base_required)
+            state["initial_transfer_required_estimated"] = bool(transfer.get("estimated"))
+            state["initial_transfer_needs_recovery"] = False
+            state["trade_phase"] = "transfer"
+
+        state["destination_unavailable_replan_ready"] = bool(next_destination)
+        state["destination_unavailable_detected_city"] = city
+        state["destination_unavailable_next_city"] = next_destination
+        recovery_counts = state.get("recovery_attempt_counts")
+        if isinstance(recovery_counts, dict):
+            recovery_counts["depart"] = 0
+        output_path = save_manual_two_city_result(new_result, task_entry=task_entry)
+        return {
+            "ok": bool(next_destination),
+            "city": city,
+            "current_city": current_city,
+            "next_destination": next_destination,
+            "start_city": start_city,
+            "target_city": target_city,
+            "transfer": transfer,
+            "summary": new_result.get("summary") or {},
+            "output_path": str(output_path),
+        }
+    except Exception as exc:
+        state["destination_unavailable_replan_ready"] = False
+        state["terminal_status"] = MANUAL_TWO_CITY_TERMINAL_FAILED
+        state["terminal_reason"] = f"发现目标城市 {city} 未开放，但重新规划路线失败：{exc}"
+        return {
+            "ok": False,
+            "reason": "replan_failed",
+            "city": city,
+            "error": f"{type(exc).__name__}: {exc}",
+            "traceback": traceback.format_exc(limit=8),
+        }
+
+
+@AgentServer.custom_action("manual_two_city_business_destination_unavailable")
+class ManualTwoCityBusinessDestinationUnavailableAction(CustomAction):
+    def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
+        state = _manual_two_city_state()
+        task_entry = _manual_two_city_current_task_entry(state)
+        texts = _ocr_texts(argv)
+        status = classify_city_unlock_probe(texts)
+        destination_city = normalize_city_name(_manual_two_city_travel_target_city())
+        if status != "unavailable" or not destination_city:
+            _json_payload(
+                "manual_two_city_business_destination_unavailable",
+                {"ok": False, "reason": "unconfirmed", "status": status, "city": destination_city, "texts": texts[:30]},
+            )
+            return False
+
+        account_update = _manual_two_city_update_city_unlock_status(
+            destination_city,
+            "unavailable",
+            texts=texts,
+            reason="runtime_destination_panel",
+        )
+        sync_result: dict[str, Any] = {"updated": False, "reason": "manual_route"}
+        if state.get("auto_route_enabled"):
+            sync_result = _sync_auto_two_city_exclude_cities_from_unavailable(
+                [destination_city],
+                run_id=str(state.get("run_id") or ""),
+            )
+        replan = _manual_two_city_replan_after_unavailable_destination(destination_city)
+        if replan.get("ok"):
+            _append_user_log(
+                task_entry,
+                (
+                    f"发现 {destination_city} 尚未开放，已写回账号配置并从自动路线中排除；"
+                    f"路线已改为 {replan.get('start_city')} <-> {replan.get('target_city')}，"
+                    f"接下来前往 {replan.get('next_destination')}。"
+                ),
+                run_id=str(state.get("run_id") or ""),
+                level="warning",
+                event="manual_two_city_destination_unavailable_replanned",
+                data={
+                    "city": destination_city,
+                    "texts": texts[:30],
+                    "account_update": account_update,
+                    "auto_exclude_sync": sync_result,
+                    "replan": replan,
+                },
+            )
+        else:
+            _append_user_log(
+                task_entry,
+                state.get("terminal_reason") or f"发现目标城市 {destination_city} 尚未开放，已停止。",
+                run_id=str(state.get("run_id") or ""),
+                level="error",
+                event="manual_two_city_destination_unavailable_terminal",
+                data={
+                    "city": destination_city,
+                    "texts": texts[:30],
+                    "account_update": account_update,
+                    "auto_exclude_sync": sync_result,
+                    "replan": replan,
+                },
+            )
+        _json_payload(
+            "manual_two_city_business_destination_unavailable",
+            {
+                "ok": True,
+                "city": destination_city,
+                "texts": texts[:30],
+                "account_update": account_update,
+                "auto_exclude_sync": sync_result,
+                "replan": replan,
+            },
+        )
         return True
 
 
@@ -15839,6 +16711,7 @@ class ManualTwoCityBusinessTravelStartedAction(CustomAction):
         state["travel_started_at"] = time.monotonic()
         state["travel_last_status"] = status
         state["travel_progress_last_log_at"] = 0.0
+        _manual_two_city_reset_auto_pickup_state(state)
         state.pop("travel_recovering_from_stall", None)
         _manual_two_city_reset_travel_stall_state(state, reset_restart_count=True)
         if state.get("initial_transfer_in_progress"):
@@ -15889,6 +16762,50 @@ class ManualTwoCityBusinessDepartFatiguePopupAction(CustomAction):
         return True
 
 
+def _manual_two_city_should_continue_travel(status: dict[str, Any]) -> bool:
+    remaining = status.get("remaining_km")
+    return bool(
+        not status.get("cruising")
+        and str(status.get("destination") or "").strip()
+        and isinstance(remaining, int)
+        and not isinstance(remaining, bool)
+        and remaining > 0
+    )
+
+
+@AgentServer.custom_recognition("manual_two_city_business_travel_continue_available")
+class ManualTwoCityBusinessTravelContinueAvailableRecognition(CustomRecognition):
+    def analyze(
+        self,
+        context: Context,
+        argv: CustomRecognition.AnalyzeArg,
+    ) -> CustomRecognition.AnalyzeResult:
+        image = getattr(argv, "image", None)
+        if image is None:
+            return CustomRecognition.AnalyzeResult(box=None, detail={"ok": False, "reason": "no_image"})
+        try:
+            hit, _entries, texts = _manual_two_city_ocr_entries_from_image(
+                context,
+                "ManualTwoCityBusinessTravelContinueProbe",
+                ["目的地", "剩余行程", "巡航"],
+                image,
+                roi=[460, 16, 380, 145],
+            )
+            status = travel_status_from_texts(texts)
+        except Exception as exc:
+            return CustomRecognition.AnalyzeResult(
+                box=None, detail={"ok": False, "reason": "hud_probe_error", "error": str(exc)},
+            )
+        ready = bool(hit and _manual_two_city_should_continue_travel(status))
+        # Revalidate the current frame immediately before the D-gear click.
+        # The ordinary stopped HUD's "立即返航" button is not a route event.
+        return CustomRecognition.AnalyzeResult(
+            box=(1248, 616, 1, 1) if ready else None,
+            detail={"ok": ready, "reason": "continue_available" if ready else "not_stopped_on_route",
+                    "status": status},
+        )
+
+
 @AgentServer.custom_action("manual_two_city_business_travel_continue_if_needed")
 class ManualTwoCityBusinessTravelContinueIfNeededAction(CustomAction):
     def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
@@ -15899,14 +16816,11 @@ class ManualTwoCityBusinessTravelContinueIfNeededAction(CustomAction):
         state["travel_last_status"] = status
         state["travel_last_status_at"] = time.monotonic()
         _manual_two_city_log_travel_progress(status, leg)
-        should_tap = bool(
-            not status.get("cruising")
-            and (status.get("destination") is not None or status.get("remaining_km") is not None)
-        )
+        should_tap = _manual_two_city_should_continue_travel(status)
         if should_tap:
             _append_user_log(
                 MANUAL_TWO_CITY_TASK_ENTRY,
-                "行车：HUD 未处于巡航，准备点击继续前进。",
+                "行车：检测到列车未在巡航，准备挂 D 挡继续前进。",
                 event="manual_two_city_travel_continue_needed",
                 data={"leg": leg, "status": status, "texts": texts[:20]},
             )

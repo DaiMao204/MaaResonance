@@ -412,7 +412,7 @@ def _planner_options_from_account(
         product_unlock_status_by_city.setdefault(city, {}).update(goods)
 
     exclude_cities = set()
-    for value in planner.get("exclude_cities") or trade.get("unavailable_cities") or []:
+    for value in [*(planner.get("exclude_cities") or []), *(trade.get("unavailable_cities") or [])]:
         exclude_cities.add(normalize_city_name(str(value)))
     exclude_cities.discard(start_city)
     exclude_cities.discard(target_city)
@@ -439,6 +439,7 @@ def _planner_options_from_account(
         max_goods_num=max_goods_num,
         prestige_by_city={normalize_city_name(str(k)): int(v) for k, v in prestige_by_city.items()},
         roles=roles,
+        use_default_roles=False,
         exclude_cities=exclude_cities,
         include_cities={start_city, target_city},
         directed_city_pairs={(start_city, target_city), (target_city, start_city)},
@@ -506,7 +507,7 @@ def _auto_planner_options_from_account(
         product_unlock_status_by_city.setdefault(city, {}).update(goods)
 
     account_exclude_cities = set()
-    for value in planner.get("exclude_cities") or trade.get("unavailable_cities") or []:
+    for value in [*(planner.get("exclude_cities") or []), *(trade.get("unavailable_cities") or [])]:
         city = normalize_city_name(str(value))
         if city:
             account_exclude_cities.add(city)
@@ -519,6 +520,7 @@ def _auto_planner_options_from_account(
         max_restock=max(0, int(max_restock)) if max_restock is not None else None,
         prestige_by_city={normalize_city_name(str(k)): int(v) for k, v in prestige_by_city.items()},
         roles=roles,
+        use_default_roles=False,
         exclude_cities=resolved_exclude_cities,
         auto_haggle=True,
         bargain_percent=20,
@@ -553,6 +555,7 @@ def calculate_auto_two_city_trade(
     wulinyuan_enabled: bool | None = None,
     transient_product_status_by_city: dict[str, dict[str, Any]] | None = None,
     allow_default_account: bool = False,
+    require_uid: bool = False,
 ) -> dict[str, Any]:
     priority_city_set = _city_set(priority_cities)
     exclude_city_set = _city_set(exclude_cities)
@@ -568,7 +571,7 @@ def calculate_auto_two_city_trade(
     if len(priority_city_set) > 2:
         raise ValueError("双城跑商线路最多只能包含 2 个优先城市")
 
-    config_path, account = find_account_config(uid)
+    config_path, account = (None, {}) if require_uid and not str(uid or "").strip() else find_account_config(uid)
     if not account:
         if not allow_default_account:
             raise FileNotFoundError("未找到账号配置，请先运行读取账号配置")
@@ -652,6 +655,7 @@ def calculate_manual_two_city_trade(
     wulinyuan_enabled: bool | None = None,
     transient_product_status_by_city: dict[str, dict[str, Any]] | None = None,
     allow_default_account: bool = False,
+    require_uid: bool = False,
 ) -> dict[str, Any]:
     start_city = normalize_city_name(str(start_city or "").strip())
     target_city = normalize_city_name(str(target_city or "").strip())
@@ -663,7 +667,7 @@ def calculate_manual_two_city_trade(
     if not wulinyuan_enabled and WULINYUAN_CITY_NAME in {start_city, target_city}:
         raise ValueError("跑商任务配置已关闭武林源，请开启后再使用")
 
-    config_path, account = find_account_config(uid)
+    config_path, account = (None, {}) if require_uid and not str(uid or "").strip() else find_account_config(uid)
     if not account:
         if not allow_default_account:
             raise FileNotFoundError("未找到账号配置，请先运行读取账号配置")

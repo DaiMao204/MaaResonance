@@ -47,7 +47,7 @@
             }
         },
         "next": "AccountProfilePrestigeStart",
-        "on_error": "AccountProfilePrestigeStart"
+        "on_error": "AccountProfileReadFailed"
     },
     "AccountProfileCityUnlockProbe001MissingGate": {
         "recognition": {

@@ -106,6 +106,7 @@ AVAILABLE_CITY_TEXTS = (
     "前往目的地",
     "立即出发",
     "访问城市",
+    "访问地区",
     "进入城市",
     "当前站点",
     "当前城市",
@@ -1519,6 +1520,8 @@ def classify_city_unlock_probe(texts: list[str]) -> str:
     if not cleaned:
         return "unknown"
     window = "".join(cleaned)
+    if re.search(r"(?:驭照等级)?\d+级开放", window):
+        return "unavailable"
     if any(keyword in window for keyword in UNAVAILABLE_CITY_TEXTS):
         return "unavailable"
     if re.search(r"路程:?0km", window, re.IGNORECASE):

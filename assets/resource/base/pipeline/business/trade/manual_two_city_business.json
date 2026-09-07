@@ -75,7 +75,7 @@
                 }
             }
         },
-        "next": "ManualTwoCityBusinessSetWulinyuanEnabled"
+        "next": "ManualTwoCityBusinessSetUseHaggleBook"
     },
     "ManualTwoCityBusinessSetOutboundCity": {
         "recognition": {
@@ -136,6 +136,21 @@
                     "target_book": 0,
                     "target_bargain_percent": 0,
                     "target_raise_percent": 0
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessSetUseHaggleBook"
+    },
+    "ManualTwoCityBusinessSetUseHaggleBook": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_config",
+                "custom_action_param": {
+                    "use_haggle_book": false
                 }
             }
         },
@@ -226,6 +241,21 @@
                 "custom_action": "manual_two_city_business_config",
                 "custom_action_param": {
                     "auto_use_speed_projectile": false
+                }
+            }
+        },
+        "next": "ManualTwoCityBusinessSetAutoPickup"
+    },
+    "ManualTwoCityBusinessSetAutoPickup": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_config",
+                "custom_action_param": {
+                    "auto_pickup": false
                 }
             }
         },
@@ -340,9 +370,13 @@
         "action": {
             "type": "DoNothing"
         },
+        "pre_delay": 0,
+        "post_delay": 0,
         "timeout": 8000,
         "next": [
+            "ManualTwoCityBusinessRouteAutoPickupAvailable",
             "ManualTwoCityBusinessCloseDailyCheckInForStartupTravelRecover",
+            "ManualTwoCityBusinessTrainManageScreenRecovery",
             "ManualTwoCityBusinessRouteImpactDrillEnabled",
             "ManualTwoCityBusinessRouteImpactDrillButton",
             "ManualTwoCityBusinessRouteSpeedProjectileEnabled",
@@ -665,8 +699,52 @@
                 }
             }
         },
-        "next": "AccountProfileReadStart",
-        "on_error": "ManualTwoCityBusinessOpenCurrentCityStart"
+        "next": "ManualTwoCityBusinessAccountIdentityDispatch",
+        "on_error": [
+            "ManualTwoCityBusinessAccountIdentityFailedStop",
+            "ManualTwoCityBusinessOpenCurrentCityStart"
+        ]
+    },
+    "ManualTwoCityBusinessAccountIdentityDispatch": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "manual_two_city_business_account_identity_dispatch",
+        "next": "ManualTwoCityBusinessAccountIdentityMainMapReady",
+        "on_error": "AccountProfileReadStart"
+    },
+    "ManualTwoCityBusinessAccountIdentityMainMapReady": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "manual_two_city_business_account_identity_main_map_ready",
+        "next": "ManualTwoCityBusinessAccountIdentityReadStart",
+        "on_error": "StateRecoveryStart"
+    },
+    "ManualTwoCityBusinessAccountIdentityReadStart": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "next": "ManualTwoCityBusinessAccountIdentityRead",
+        "on_error": "ManualTwoCityBusinessAccountIdentityReadFailed"
+    },
+    "ManualTwoCityBusinessAccountIdentityRead": {
+        "recognition": "OCR",
+        "expected": "",
+        "roi": [0, 630, 360, 90],
+        "action": "Custom",
+        "custom_action": "manual_two_city_business_account_identity_read",
+        "next": "ManualTwoCityBusinessAccountProfileWarmupStartFromMainMap",
+        "on_error": "ManualTwoCityBusinessAccountIdentityReadFailed"
+    },
+    "ManualTwoCityBusinessAccountIdentityReadFailed": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "manual_two_city_business_account_identity_read_failed",
+        "next": "RunManualTwoCityBusinessDone"
+    },
+    "ManualTwoCityBusinessAccountIdentityFailedStop": {
+        "recognition": "Custom",
+        "custom_recognition": "manual_two_city_business_account_identity_failed",
+        "action": "DoNothing",
+        "next": "RunManualTwoCityBusinessDone"
     },
     "ManualTwoCityBusinessStartupTravelResolveDirection": {
         "recognition": {
@@ -802,6 +880,7 @@
             "param": {
                 "expected": [
                     "访问城市",
+                    "访问地区",
                     "进入城市",
                     "当前城市"
                 ],
@@ -814,10 +893,14 @@
             }
         },
         "action": {
-            "type": "Click"
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_open_current_city"
+            }
         },
         "post_delay": 1600,
-        "next": "ManualTwoCityBusinessCurrentCityReady"
+        "next": "ManualTwoCityBusinessCurrentCityReady",
+        "on_error": "ManualTwoCityBusinessRecoverToCurrentCity"
     },
     "ManualTwoCityBusinessOpenCurrentCityFallback": {
         "recognition": {
@@ -828,12 +911,9 @@
             }
         },
         "action": {
-            "type": "Click",
+            "type": "Custom",
             "param": {
-                "target": [
-                    1270,
-                    494
-                ]
+                "custom_action": "manual_two_city_business_open_current_city"
             }
         },
         "post_delay": 1600,
@@ -931,8 +1011,11 @@
                 "custom_action": "manual_two_city_business_account_profile_warmup_start"
             }
         },
-        "next": "AccountProfileReadStart",
-        "on_error": "CityTradeOutletOpenStart"
+        "next": "ManualTwoCityBusinessAccountIdentityDispatch",
+        "on_error": [
+            "ManualTwoCityBusinessAccountIdentityFailedStop",
+            "CityTradeOutletOpenStart"
+        ]
     },
     "ManualTwoCityBusinessAccountProfileWarmupFastPathReady": {
         "recognition": {
@@ -3524,11 +3607,70 @@
         },
         "post_delay": 500,
         "next": [
+            "ManualTwoCityBusinessDestinationUnavailable",
             "ManualTwoCityBusinessTapGoDestination",
             "ManualTwoCityBusinessCloseDailyCheckInForTapGoDestination",
             "ManualTwoCityBusinessCloseGenericPopupForTapGoDestination"
         ],
         "on_error": "ManualTwoCityBusinessDepartFailed"
+    },
+    "ManualTwoCityBusinessDestinationUnavailable": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "驭照等级",
+                    "级开放",
+                    "未开放",
+                    "暂未开放",
+                    "未解锁",
+                    "无法前往",
+                    "前往条件",
+                    "尚未开放"
+                ],
+                "roi": [
+                    680,
+                    80,
+                    580,
+                    620
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_destination_unavailable"
+            }
+        },
+        "next": [
+            "ManualTwoCityBusinessDestinationUnavailableCloseAndRetry",
+            "ManualTwoCityBusinessDestinationUnavailableStop"
+        ],
+        "on_error": "ManualTwoCityBusinessTapGoDestination"
+    },
+    "ManualTwoCityBusinessDestinationUnavailableCloseAndRetry": {
+        "recognition": "Custom",
+        "custom_recognition": "manual_two_city_business_destination_unavailable_replan_ready",
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    80,
+                    360
+                ]
+            }
+        },
+        "post_delay": 700,
+        "next": "ManualTwoCityBusinessMoveToDestination"
+    },
+    "ManualTwoCityBusinessDestinationUnavailableStop": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "next": "RunManualTwoCityBusinessDone"
     },
     "ManualTwoCityBusinessCloseDailyCheckInForTapGoDestination": {
         "recognition": {
@@ -3610,9 +3752,58 @@
         },
         "post_delay": 1200,
         "next": [
+            "ManualTwoCityBusinessTapHighLevelDepartDoNotRemind",
             "ManualTwoCityBusinessTapDepartDoNotRemindWeekly",
             "ManualTwoCityBusinessTapDepartNow",
             "ManualTwoCityBusinessTravelStarted"
+        ],
+        "on_error": "ManualTwoCityBusinessDepartFailed"
+    },
+    "ManualTwoCityBusinessTapHighLevelDepartDoNotRemind": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": "目标站点任务难度较高",
+                "roi": [
+                    380,
+                    270,
+                    560,
+                    140
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    585,
+                    585
+                ]
+            }
+        },
+        "post_delay": 300,
+        "next": "ManualTwoCityBusinessTapHighLevelDepartConfirm"
+    },
+    "ManualTwoCityBusinessTapHighLevelDepartConfirm": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": "确认",
+                "roi": [
+                    650,
+                    430,
+                    610,
+                    120
+                ]
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 4000,
+        "next": [
+            "ManualTwoCityBusinessTravelStarted",
+            "ManualTwoCityBusinessDepartFatiguePopup"
         ],
         "on_error": "ManualTwoCityBusinessDepartFailed"
     },
@@ -3743,10 +3934,14 @@
         "action": {
             "type": "DoNothing"
         },
+        "pre_delay": 0,
+        "post_delay": 0,
         "rate_limit": 3000,
         "timeout": 1200000,
         "next": [
+            "ManualTwoCityBusinessRouteAutoPickupAvailable",
             "ManualTwoCityBusinessCloseDailyCheckInForTravelMonitor",
+            "ManualTwoCityBusinessTrainManageScreenRecovery",
             "ManualTwoCityBusinessFightClearTeamPopupCancel",
             "ManualTwoCityBusinessArrivedMainMap",
             "ManualTwoCityBusinessArrivedVisitCity",
@@ -3785,6 +3980,36 @@
         "post_delay": 900,
         "next": "ManualTwoCityBusinessTravelMonitor"
     },
+    "ManualTwoCityBusinessTrainManageScreenRecovery": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "建造车厢",
+                    "列车总览",
+                    "车库容量"
+                ],
+                "roi": [
+                    700,
+                    80,
+                    560,
+                    500
+                ]
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    80,
+                    38
+                ]
+            }
+        },
+        "post_delay": 1000,
+        "next": "ManualTwoCityBusinessTravelMonitor",
+        "on_error": "ManualTwoCityBusinessTravelMonitor"
+    },
     "ManualTwoCityBusinessTravelStallWatchdog": {
         "recognition": {
             "type": "DirectHit"
@@ -3797,7 +4022,10 @@
         },
         "post_delay": 200,
         "next": "ManualTwoCityBusinessTravelStallDispatch",
-        "on_error": "ManualTwoCityBusinessTravelMonitor"
+        "on_error": [
+            "ManualTwoCityBusinessTravelInProgress",
+            "ManualTwoCityBusinessTravelMonitor"
+        ]
     },
     "ManualTwoCityBusinessTravelStallDispatch": {
         "recognition": {
@@ -3875,25 +4103,19 @@
                 "custom_action": "manual_two_city_business_travel_continue_if_needed"
             }
         },
-        "post_delay": 3000,
-        "next": "ManualTwoCityBusinessTapTravelContinue",
+        "pre_delay": 0,
+        "post_delay": 0,
+        "next": [
+            "ManualTwoCityBusinessTapTravelContinue",
+            "ManualTwoCityBusinessTravelMonitor"
+        ],
         "on_error": "ManualTwoCityBusinessTravelMonitor"
     },
     "ManualTwoCityBusinessTapTravelContinue": {
         "recognition": {
-            "type": "OCR",
+            "type": "Custom",
             "param": {
-                "expected": [
-                    "目的地",
-                    "剩余行程",
-                    "巡航"
-                ],
-                "roi": [
-                    460,
-                    16,
-                    380,
-                    145
-                ]
+                "custom_recognition": "manual_two_city_business_travel_continue_available"
             }
         },
         "action": {
@@ -3905,6 +4127,7 @@
                 ]
             }
         },
+        "pre_delay": 0,
         "post_delay": 900,
         "next": "ManualTwoCityBusinessTravelMonitor",
         "on_error": "ManualTwoCityBusinessTravelMonitor"
@@ -3967,7 +4190,8 @@
             "type": "OCR",
             "param": {
                 "expected": [
-                    "访问城市"
+                    "访问城市",
+                    "访问地区"
                 ],
                 "roi": [
                     1030,
@@ -4370,6 +4594,60 @@
         },
         "next": "ManualTwoCityBusinessTravelMonitor"
     },
+    "ManualTwoCityBusinessRouteAutoPickupAvailable": {
+        "recognition": {
+            "type": "Custom",
+            "param": {
+                "custom_recognition": "manual_two_city_business_auto_pickup_available"
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_auto_pickup_used"
+            }
+        },
+        "post_delay": 0,
+        "next": "ManualTwoCityBusinessTravelPickupContinue",
+        "on_error": "ManualTwoCityBusinessTravelMonitor",
+        "pre_delay": 0
+    },
+    "ManualTwoCityBusinessTravelPickupContinue": {
+        "recognition": {
+            "type": "DirectHit"
+        },
+        "action": {
+            "type": "DoNothing"
+        },
+        "pre_delay": 0,
+        "post_delay": 0,
+        "rate_limit": 100,
+        "next": [
+            "ManualTwoCityBusinessRouteSpeedProjectileEnabled",
+            "ManualTwoCityBusinessTravelPickupProgressCheck",
+            "ManualTwoCityBusinessRouteAutoPickupAvailable",
+            "ManualTwoCityBusinessRouteImpactDrillEnabled",
+            "ManualTwoCityBusinessTravelMonitor"
+        ]
+    },
+    "ManualTwoCityBusinessTravelPickupProgressCheck": {
+        "recognition": {
+            "type": "Custom",
+            "param": {
+                "custom_recognition": "manual_two_city_business_pickup_progress_due"
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_travel_stall_watchdog"
+            }
+        },
+        "pre_delay": 0,
+        "post_delay": 0,
+        "next": "ManualTwoCityBusinessTravelStallDispatch",
+        "on_error": "ManualTwoCityBusinessTravelPickupContinue"
+    },
     "ManualTwoCityBusinessRouteLossReport": {
         "recognition": {
             "type": "OCR",
@@ -4507,6 +4785,7 @@
         "timeout": 180000,
         "next": [
             "ManualTwoCityBusinessCloseDailyCheckInForFightMonitor",
+            "ManualTwoCityBusinessTrainManageScreenRecovery",
             "ManualTwoCityBusinessFightClearTeamPopupCancel",
             "ManualTwoCityBusinessFightEndButton",
             "ManualTwoCityBusinessFightStartByOcr",

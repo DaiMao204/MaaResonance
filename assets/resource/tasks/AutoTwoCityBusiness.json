@@ -47,11 +47,12 @@
                     "next": "ManualTwoCityBusinessTradeOutletOpenFailedDispatch"
                 },
                 "AccountProfileReadStart": {
-                    "next": "AccountProfileUidRead"
+                    "next": "AccountProfileUidRead",
+                    "on_error": "ManualTwoCityBusinessAccountIdentityReadFailed"
                 },
                 "AccountProfileUidRead": {
                     "next": "AccountProfilePrestigeStart",
-                    "on_error": "AccountProfilePrestigeStart"
+                    "on_error": "ManualTwoCityBusinessAccountIdentityReadFailed"
                 },
                 "AccountProfilePrestigeStart": {
                     "recognition": {
@@ -85,6 +86,7 @@
                 "AutoTwoCityPriorityCity2",
                 "AutoTwoCityExcludeCities",
                 "AutoTwoCityPlannerParams",
+                "ManualTwoCityUseHaggleBook",
                 "ManualTwoCityWulinyuanEnabled",
                 "AutoTwoCityWulinyuanPriority",
                 "ManualTwoCityRunMode",
@@ -92,6 +94,7 @@
                 "ManualTwoCityAccountProfileSmartInterval",
                 "ManualTwoCityAutoImpactDrill",
                 "ManualTwoCityAutoSpeedProjectile",
+                "ManualTwoCityAutoPickup",
                 "ManualTwoCityAutoDrink",
                 "ManualTwoCityAutoBento",
                 "ManualTwoCityUseMedicine"

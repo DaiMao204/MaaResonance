@@ -545,7 +545,7 @@ def route_tired(
     tired_value = market.tired.get(f"{buy_city}-{sell_city}") or market.tired.get(f"{sell_city}-{buy_city}")
     if tired_value is not None:
         fatigue = int(tired_value)
-        if fatigue and (roles or {}).get("\u6ce2\u514b\u58eb", {}).get("resonance") == 1:
+        if fatigue and (roles or {}).get("\u6ce2\u514b\u58eb", {}).get("resonance", 0) >= 1:
             fatigue -= 1
         return fatigue, False
 
@@ -726,6 +726,20 @@ def get_prestige_buy_more_percent(prestige: dict[str, Any], city: str) -> float:
     return float(prestige.get("extraBuy", 0)) * 100
 
 
+def _resonance_skill_for_level(skill_by_level: dict[str, Any], level: int) -> dict[str, Any]:
+    """Select the latest unlocked cumulative snapshot; tiers are not additive."""
+    selected_level = 0
+    selected_skill: dict[str, Any] = {}
+    for skill_level, skill in skill_by_level.items():
+        if not str(skill_level).isdigit() or not isinstance(skill, dict):
+            continue
+        threshold = int(skill_level)
+        if selected_level < threshold <= level:
+            selected_level = threshold
+            selected_skill = skill
+    return selected_skill
+
+
 def get_resonance_skill_buy_more_percent(
     trade_data: dict[str, Any],
     roles: dict[str, dict[str, int]],
@@ -738,7 +752,7 @@ def get_resonance_skill_buy_more_percent(
         level = player_role.get("resonance", 0)
         if not level:
             continue
-        skill = (role_skills.get(role_name) or {}).get(str(level))
+        skill = _resonance_skill_for_level(role_skills.get(role_name) or {}, level)
         if not skill:
             continue
         buy_more = skill.get("buyMore") or {}
@@ -760,7 +774,7 @@ def get_resonance_skill_buy_more_flat_amount(
         level = player_role.get("resonance", 0)
         if not level:
             continue
-        skill = (role_skills.get(role_name) or {}).get(str(level))
+        skill = _resonance_skill_for_level(role_skills.get(role_name) or {}, level)
         if not skill:
             continue
         buy_more_flat = skill.get("buyMoreFlat") or {}
@@ -779,7 +793,7 @@ def get_resonance_skill_tax_cut_percent(
         level = player_role.get("resonance", 0)
         if not level:
             continue
-        skill = (role_skills.get(role_name) or {}).get(str(level))
+        skill = _resonance_skill_for_level(role_skills.get(role_name) or {}, level)
         if not skill:
             continue
         tax_cut = skill.get("taxCut") or {}

@@ -141,19 +141,15 @@ jobs:
     outputs:
       release_body: ${{ steps.release_notes.outputs.release_body }}
     steps:
+      - uses: actions/checkout@v4
       - name: Generate release notes
         id: release_notes
         shell: bash
         run: |
           {
             echo "release_body<<EOF"
-            echo "## ${{ needs.meta.outputs.tag }} 更新日志"
+            cat docs/zh_cn/changelog/v1.5.0.md
             echo ""
-            echo "#### 修复"
-            echo ""
-            echo "提高了商品可购入数量识别的稳定性"
-            echo ""
-            echo "修复了商品数量连续识别失败时可能导致跑商任务中断的问题"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 

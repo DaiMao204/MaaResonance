@@ -47,11 +47,12 @@
                     "next": "ManualTwoCityBusinessTradeOutletOpenFailedDispatch"
                 },
                 "AccountProfileReadStart": {
-                    "next": "AccountProfileUidRead"
+                    "next": "AccountProfileUidRead",
+                    "on_error": "ManualTwoCityBusinessAccountIdentityReadFailed"
                 },
                 "AccountProfileUidRead": {
                     "next": "AccountProfilePrestigeStart",
-                    "on_error": "AccountProfilePrestigeStart"
+                    "on_error": "ManualTwoCityBusinessAccountIdentityReadFailed"
                 },
                 "AccountProfilePrestigeStart": {
                     "recognition": {
@@ -82,12 +83,14 @@
                 "ManualTwoCityStartParams",
                 "ManualTwoCityTargetCity",
                 "ManualTwoCityTargetParams",
+                "ManualTwoCityUseHaggleBook",
                 "ManualTwoCityWulinyuanEnabled",
                 "ManualTwoCityRunMode",
                 "ManualTwoCityAccountProfileReadMode",
                 "ManualTwoCityAccountProfileSmartInterval",
                 "ManualTwoCityAutoImpactDrill",
                 "ManualTwoCityAutoSpeedProjectile",
+                "ManualTwoCityAutoPickup",
                 "ManualTwoCityAutoDrink",
                 "ManualTwoCityAutoBento",
                 "ManualTwoCityUseMedicine"
@@ -637,6 +640,34 @@
                 }
             }
         },
+        "ManualTwoCityUseHaggleBook": {
+            "type": "switch",
+            "label": "使用再交涉请求书",
+            "description": "开启后，每次买入或卖出最多用1本；关闭后，议价次数用完就直接交易。",
+            "default_case": "No",
+            "cases": [
+                {
+                    "name": "No",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetUseHaggleBook": {
+                            "custom_action_param": {
+                                "use_haggle_book": false
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Yes",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetUseHaggleBook": {
+                            "custom_action_param": {
+                                "use_haggle_book": true
+                            }
+                        }
+                    }
+                }
+            ]
+        },
         "ManualTwoCityWulinyuanEnabled": {
             "type": "switch",
             "label": "启用武林源",
@@ -697,7 +728,7 @@
         "ManualTwoCityAccountProfileReadMode": {
             "type": "select",
             "label": "账号配置读取模式",
-            "description": "智能读取会在本轮第一次回到主界面后读取 UID、货仓容量与城市声望，并只检查未解锁/缺失城市与缺失乘员；全部读取会强制全量读取一次，读取完成后自动改回智能读取；不读取会跳过读取，但仍优先使用本地已有配置，缺失时使用默认配置。",
+            "description": "每轮先确认当前 UID，再使用该账号配置。智能读取会按扫描间隔读取货仓容量与城市声望，并检查未解锁/缺失城市与缺失乘员；该 UID 缺少城市记录时也会扫描。全部读取会强制全量读取一次，完成后自动改回智能读取；不读取只跳过资料扫描，仍确认 UID，并使用该 UID 本地配置，缺失时使用默认配置。",
             "default_case": "smart",
             "cases": [
                 {
@@ -1217,6 +1248,34 @@
                         "ManualTwoCityBusinessSetAutoSpeedProjectile": {
                             "custom_action_param": {
                                 "auto_use_speed_projectile": true
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "ManualTwoCityAutoPickup": {
+            "type": "switch",
+            "label": "自动捡垃圾",
+            "description": "开启后，巡航时会在右侧固定一点连续点击拾取，覆盖范围较小；遇敌、到站或弹窗出现时暂停。",
+            "default_case": "No",
+            "cases": [
+                {
+                    "name": "No",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetAutoPickup": {
+                            "custom_action_param": {
+                                "auto_pickup": false
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Yes",
+                    "pipeline_override": {
+                        "ManualTwoCityBusinessSetAutoPickup": {
+                            "custom_action_param": {
+                                "auto_pickup": true
                             }
                         }
                     }

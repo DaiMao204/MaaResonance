@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 import types
 import unittest
@@ -73,6 +74,711 @@ class TradeRuntimeFixTest(unittest.TestCase):
         self.assertTrue(trade._manual_two_city_product_scan_buy_lot_plausible(40, 13))
         self.assertFalse(trade._manual_two_city_product_scan_buy_lot_plausible(1, 39))
         self.assertFalse(trade._manual_two_city_product_scan_buy_lot_plausible(6, 65))
+
+    def test_haggle_book_popup_respects_confirm_switch(self) -> None:
+        with ExitStack() as stack:
+            ocr = stack.enter_context(
+                patch.object(
+                    trade,
+                    "_manual_two_city_ocr_entries",
+                    return_value=(True, [], ["是否使用再交涉请求书重新议价?", "2/1", "确认"]),
+                )
+            )
+            confirm = stack.enter_context(patch.object(trade, "_manual_two_city_click_ocr_text"))
+
+            result = trade._manual_two_city_confirm_buy_haggle_book_popup(
+                None,
+                leg=self.leg,
+                target_percent=20,
+                current_percent=12.2,
+                click_count=6,
+                probe_name="TradeRuntimeFixBookDisabled",
+                allow_confirm=False,
+            )
+
+        self.assertEqual(result["status"], "skipped")
+        confirm.assert_not_called()
+        ocr.assert_called_once()
+
+    def test_haggle_book_popup_stops_when_inventory_is_empty(self) -> None:
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch.object(
+                    trade,
+                    "_manual_two_city_ocr_entries",
+                    return_value=(True, [], ["是否使用再交涉请求书重新议价?", "0/1", "确认"]),
+                )
+            )
+            confirm = stack.enter_context(patch.object(trade, "_manual_two_city_click_ocr_text"))
+            result = trade._manual_two_city_confirm_buy_haggle_book_popup(
+                None,
+                leg=self.leg,
+                target_percent=20,
+                current_percent=18.3,
+                click_count=10,
+                probe_name="TradeRuntimeFixNoBook",
+            )
+
+        self.assertEqual(result["status"], "unavailable")
+        self.assertEqual(result["inventory"], 0)
+        confirm.assert_not_called()
+
+    def test_buy_and_sell_haggle_use_at_most_one_book_per_trade(self) -> None:
+        cases = [
+            (
+                trade.ManualTwoCityBusinessApplyBuyHaggleAction,
+                "_manual_two_city_buy_bargain_percent",
+                "manual_two_city_business_apply_buy_haggle",
+            ),
+            (
+                trade.ManualTwoCityBusinessApplySellHaggleAction,
+                "_manual_two_city_sell_raise_percent",
+                "manual_two_city_business_apply_sell_haggle",
+            ),
+        ]
+        popup_results = [
+            {"status": "absent"},
+            {"status": "confirmed", "inventory": 130},
+            {"status": "absent"},
+            {"status": "skipped"},
+        ]
+        for action_type, percent_reader, payload_event in cases:
+            with self.subTest(action=action_type.__name__), ExitStack() as stack:
+                stack.enter_context(
+                    patch.object(trade, "_manual_two_city_state", return_value={"use_haggle_book": True})
+                )
+                stack.enter_context(patch.object(trade, "_manual_two_city_active_leg", return_value=self.leg))
+                stack.enter_context(patch.object(trade, percent_reader, return_value=20))
+                popup = stack.enter_context(
+                    patch.object(
+                        trade,
+                        "_manual_two_city_confirm_buy_haggle_book_popup",
+                        side_effect=list(popup_results),
+                    )
+                )
+                percent = stack.enter_context(
+                    patch.object(
+                        trade,
+                        "_manual_two_city_read_buy_haggle_percent",
+                        side_effect=[0.0, 10.0, 12.2],
+                    )
+                )
+                click = stack.enter_context(
+                    patch.object(trade, "_manual_two_city_click_ocr_text", return_value=(True, ["议价"]))
+                )
+                cancel = stack.enter_context(
+                    patch.object(trade, "_manual_two_city_cancel_haggle_book_popup", return_value=(True, ["取消"]))
+                )
+                stack.enter_context(patch.object(trade.time, "perf_counter", return_value=0.0))
+                stack.enter_context(patch.object(trade, "_append_user_log"))
+                payload = stack.enter_context(patch.object(trade, "_json_payload"))
+
+                ok = action_type().run(None, None)
+
+            self.assertTrue(ok)
+            self.assertEqual(popup.call_count, 4)
+            self.assertEqual(
+                [call.kwargs["allow_confirm"] for call in popup.call_args_list],
+                [True, True, False, False],
+            )
+            self.assertEqual(percent.call_count, 3)
+            self.assertEqual(click.call_count, 2)
+            cancel.assert_called_once()
+            self.assertEqual(payload.call_args.args[0], payload_event)
+            self.assertFalse(payload.call_args.args[1]["target_reached"])
+            self.assertEqual(payload.call_args.args[1]["haggle_books_used"], 1)
+            self.assertEqual(payload.call_args.args[1]["stop_reason"], "book_limit_reached")
+
+    def test_buy_and_sell_haggle_disabled_trade_without_using_book(self) -> None:
+        cases = [
+            (trade.ManualTwoCityBusinessApplyBuyHaggleAction, "_manual_two_city_buy_bargain_percent"),
+            (trade.ManualTwoCityBusinessApplySellHaggleAction, "_manual_two_city_sell_raise_percent"),
+        ]
+        for action_type, percent_reader in cases:
+            with self.subTest(action=action_type.__name__), ExitStack() as stack:
+                stack.enter_context(
+                    patch.object(trade, "_manual_two_city_state", return_value={"use_haggle_book": False})
+                )
+                stack.enter_context(patch.object(trade, "_manual_two_city_active_leg", return_value=self.leg))
+                stack.enter_context(patch.object(trade, percent_reader, return_value=20))
+                popup = stack.enter_context(
+                    patch.object(
+                        trade,
+                        "_manual_two_city_confirm_buy_haggle_book_popup",
+                        side_effect=[{"status": "absent"}, {"status": "skipped"}],
+                    )
+                )
+                stack.enter_context(
+                    patch.object(trade, "_manual_two_city_read_buy_haggle_percent", side_effect=[12.2, 12.2])
+                )
+                stack.enter_context(
+                    patch.object(trade, "_manual_two_city_click_ocr_text", return_value=(True, ["议价"]))
+                )
+                cancel = stack.enter_context(
+                    patch.object(trade, "_manual_two_city_cancel_haggle_book_popup", return_value=(True, ["取消"]))
+                )
+                stack.enter_context(patch.object(trade.time, "perf_counter", return_value=0.0))
+                stack.enter_context(patch.object(trade, "_append_user_log"))
+                payload = stack.enter_context(patch.object(trade, "_json_payload"))
+
+                ok = action_type().run(None, None)
+
+            self.assertTrue(ok)
+            self.assertEqual([call.kwargs["allow_confirm"] for call in popup.call_args_list], [False, False])
+            cancel.assert_called_once()
+            self.assertEqual(payload.call_args.args[1]["haggle_books_used"], 0)
+            self.assertEqual(payload.call_args.args[1]["stop_reason"], "book_disabled")
+
+    def test_sell_haggle_book_shortfall_continues_current_trade(self) -> None:
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch.object(trade, "_manual_two_city_state", return_value={"use_haggle_book": True})
+            )
+            stack.enter_context(patch.object(trade, "_manual_two_city_active_leg", return_value=self.leg))
+            stack.enter_context(patch.object(trade, "_manual_two_city_sell_raise_percent", return_value=20))
+            stack.enter_context(
+                patch.object(
+                    trade,
+                    "_manual_two_city_confirm_buy_haggle_book_popup",
+                    return_value={"status": "unavailable", "inventory": 0},
+                )
+            )
+            cancel = stack.enter_context(
+                patch.object(trade, "_manual_two_city_cancel_haggle_book_popup", return_value=(True, ["取消"]))
+            )
+            stack.enter_context(
+                patch.object(trade, "_manual_two_city_read_buy_haggle_percent", return_value=18.3)
+            )
+            stack.enter_context(patch.object(trade.time, "perf_counter", return_value=0.0))
+            stack.enter_context(patch.object(trade, "_append_user_log"))
+            payload = stack.enter_context(patch.object(trade, "_json_payload"))
+
+            ok = trade.ManualTwoCityBusinessApplySellHaggleAction().run(None, None)
+
+        self.assertTrue(ok)
+        cancel.assert_called_once()
+        self.assertEqual(payload.call_args.args[0], "manual_two_city_business_apply_sell_haggle")
+        self.assertFalse(payload.call_args.args[1]["target_reached"])
+        self.assertEqual(payload.call_args.args[1]["stop_reason"], "unavailable")
+
+    def test_haggle_book_switch_is_wired_below_haggle_settings(self) -> None:
+        pipeline_path = ROOT / "assets" / "resource" / "base" / "pipeline" / "business" / "trade" / "manual_two_city_business.json"
+        manual_task_path = ROOT / "assets" / "resource" / "tasks" / "ManualTwoCityBusiness.json"
+        auto_task_path = ROOT / "assets" / "resource" / "tasks" / "AutoTwoCityBusiness.json"
+        interface_path = ROOT / "assets" / "interface.json"
+        pipeline = json.loads(pipeline_path.read_text(encoding="utf-8"))
+        manual_task = json.loads(manual_task_path.read_text(encoding="utf-8"))
+        auto_task = json.loads(auto_task_path.read_text(encoding="utf-8"))
+        interface = json.loads(interface_path.read_text(encoding="utf-8"))
+
+        manual_options = manual_task["task"][0]["option"]
+        auto_options = auto_task["task"][0]["option"]
+        self.assertEqual(
+            manual_options.index("ManualTwoCityUseHaggleBook"),
+            manual_options.index("ManualTwoCityTargetParams") + 1,
+        )
+        self.assertEqual(
+            auto_options.index("ManualTwoCityUseHaggleBook"),
+            auto_options.index("AutoTwoCityPlannerParams") + 1,
+        )
+        option = manual_task["option"]["ManualTwoCityUseHaggleBook"]
+        self.assertEqual(option["label"], "使用再交涉请求书")
+        self.assertEqual(option["default_case"], "No")
+        self.assertEqual(
+            pipeline["AutoTwoCityBusinessSetPlannerParams"]["next"],
+            "ManualTwoCityBusinessSetUseHaggleBook",
+        )
+        self.assertEqual(
+            pipeline["ManualTwoCityBusinessSetReturnParams"]["next"],
+            "ManualTwoCityBusinessSetUseHaggleBook",
+        )
+        self.assertFalse(
+            pipeline["ManualTwoCityBusinessSetUseHaggleBook"]["action"]["param"]["custom_action_param"]["use_haggle_book"]
+        )
+        preset_options = {
+            task["name"]: task["option"]
+            for preset in interface["preset"]
+            for task in preset["task"]
+            if task["name"] in {"ManualTwoCityBusiness", "AutoTwoCityBusiness"}
+        }
+        self.assertEqual(preset_options["ManualTwoCityBusiness"]["ManualTwoCityUseHaggleBook"], "No")
+        self.assertEqual(preset_options["AutoTwoCityBusiness"]["ManualTwoCityUseHaggleBook"], "No")
+
+    def test_auto_pickup_has_no_per_leg_tap_limit_and_yields_to_monitor(self) -> None:
+        state = {"auto_pickup": True, "auto_pickup_tap_count": 100}
+        self.assertTrue(trade._manual_two_city_auto_pickup_gate(state, 100.0)["allowed"])
+        state["auto_pickup_yield_monitor_once"] = True
+        self.assertEqual(
+            trade._manual_two_city_auto_pickup_gate(state, 100.0)["reason"],
+            "yield_to_travel_monitor",
+        )
+        state["auto_pickup"] = False
+        self.assertEqual(trade._manual_two_city_auto_pickup_gate(state, 100.0)["reason"], "disabled")
+
+    def test_auto_pickup_entry_yields_once_without_a_hud_probe(self) -> None:
+        state = {"auto_pickup": True, "auto_pickup_yield_monitor_once": True}
+        with ExitStack() as stack:
+            stack.enter_context(patch.object(trade, "_manual_two_city_state", return_value=state))
+            stack.enter_context(patch.object(trade.CustomRecognition, "AnalyzeResult", types.SimpleNamespace, create=True))
+            hud = stack.enter_context(patch.object(trade, "is_travel_hud", return_value=True))
+            argv = types.SimpleNamespace(image=object())
+            first = trade.ManualTwoCityBusinessAutoPickupAvailableRecognition().analyze(None, argv)
+            hud.assert_not_called()
+            second = trade.ManualTwoCityBusinessAutoPickupAvailableRecognition().analyze(None, argv)
+        self.assertIsNone(first.box)
+        self.assertIsNotNone(second.box)
+        self.assertNotIn("target", second.detail)
+        self.assertNotIn("auto_pickup_pending_detail", state)
+
+    def test_auto_pickup_entry_requires_travel_hud(self) -> None:
+        with ExitStack() as stack:
+            stack.enter_context(patch.object(trade, "_manual_two_city_state", return_value={"auto_pickup": True}))
+            stack.enter_context(patch.object(trade.CustomRecognition, "AnalyzeResult", types.SimpleNamespace, create=True))
+            stack.enter_context(patch.object(trade, "is_travel_hud", return_value=False))
+            result = trade.ManualTwoCityBusinessAutoPickupAvailableRecognition().analyze(
+                None, types.SimpleNamespace(image=object()),
+            )
+        self.assertIsNone(result.box)
+
+    def test_auto_pickup_normal_windows_resume_cursor_without_yield_or_per_click_logs(self) -> None:
+        state = {"auto_pickup": True, "auto_pickup_tap_count": 8, "auto_pickup_next_point_index": 2}
+        context = types.SimpleNamespace(tasker=types.SimpleNamespace(controller=object(), stopping=False))
+        starts = []
+        reasons = iter(("duration_elapsed", "frame_limit", "click_limit"))
+        def window(_controller, **kwargs):
+            self.assertNotIn("find_targets", kwargs)
+            start = kwargs["start_index"]
+            starts.append(start)
+            calls_before = payload.call_count
+            logs_before = log.call_count
+            kwargs["on_click"]({"target": [801, 361], "point_index": start, "next_point_index": start + 1})
+            kwargs["on_click"]({"target": [822, 358], "point_index": start + 1, "next_point_index": start + 2})
+            self.assertEqual(payload.call_count, calls_before)
+            self.assertEqual(log.call_count, logs_before)
+            return {"reason": next(reasons), "tap_count": 2, "next_point_index": start + 2}
+        with ExitStack() as stack:
+            stack.enter_context(patch.object(trade, "_manual_two_city_state", return_value=state))
+            stack.enter_context(patch.object(trade, "_manual_two_city_active_leg", return_value=self.leg))
+            stack.enter_context(patch.object(trade, "run_pickup_window", side_effect=window))
+            log = stack.enter_context(patch.object(trade, "_append_user_log"))
+            payload = stack.enter_context(patch.object(trade, "_json_payload"))
+            for _ in range(3):
+                self.assertTrue(trade.ManualTwoCityBusinessAutoPickupUsedAction().run(context, None))
+                self.assertNotIn("auto_pickup_yield_monitor_once", state)
+        self.assertEqual(starts, [2, 4, 6])
+        self.assertEqual(state["auto_pickup_tap_count"], 14)
+        self.assertEqual(state["auto_pickup_next_point_index"], 8)
+        log.assert_called_once()
+        self.assertIn("右侧连续点击", log.call_args.args[1])
+        self.assertEqual(payload.call_count, 3)
+        self.assertTrue(all(call.args[0] == "manual_two_city_business_auto_pickup_window" for call in payload.call_args_list))
+
+    def test_auto_pickup_non_normal_end_skips_light_and_full_monitor_entries(self) -> None:
+        for reason in ("travel_hud_lost", "stopped", "screencap_failed"):
+            with self.subTest(reason=reason), ExitStack() as stack:
+                state = {"auto_pickup": True, "auto_pickup_next_point_index": 7}
+                context = types.SimpleNamespace(tasker=types.SimpleNamespace(controller=object(), stopping=False))
+                stack.enter_context(patch.object(trade, "_manual_two_city_state", return_value=state))
+                stack.enter_context(patch.object(trade, "run_pickup_window", return_value={
+                    "reason": reason, "next_point_index": 7, "tap_count": 0,
+                }))
+                stack.enter_context(patch.object(trade, "_json_payload"))
+                stack.enter_context(patch.object(trade.CustomRecognition, "AnalyzeResult", types.SimpleNamespace, create=True))
+                hud = stack.enter_context(patch.object(trade, "is_travel_hud", return_value=True))
+                log = stack.enter_context(patch.object(trade, "_append_user_log"))
+                self.assertTrue(trade.ManualTwoCityBusinessAutoPickupUsedAction().run(context, None))
+                self.assertEqual(state["auto_pickup_yield_monitor_once"], 2)
+                argv = types.SimpleNamespace(image=object())
+                # Light branch's pickup candidate misses, then TravelMonitor's
+                # pickup candidate misses, so the recovery candidates can run.
+                self.assertIsNone(trade.ManualTwoCityBusinessAutoPickupAvailableRecognition().analyze(context, argv).box)
+                self.assertEqual(state["auto_pickup_yield_monitor_once"], 1)
+                self.assertIsNone(trade.ManualTwoCityBusinessAutoPickupAvailableRecognition().analyze(context, argv).box)
+                hud.assert_not_called()
+                self.assertNotIn("auto_pickup_yield_monitor_once", state)
+                self.assertIsNotNone(trade.ManualTwoCityBusinessAutoPickupAvailableRecognition().analyze(context, argv).box)
+                hud.assert_called_once()
+                self.assertEqual(state["auto_pickup_next_point_index"], 7)
+                log.assert_not_called()
+
+    def test_auto_pickup_yields_after_error_and_does_not_invent_a_click(self) -> None:
+        state = {"auto_pickup": True, "auto_pickup_tap_count": 4, "auto_pickup_next_point_index": 3,
+                 "auto_pickup_progress_checked_at": 90.0}
+        context = types.SimpleNamespace(tasker=types.SimpleNamespace(controller=object(), stopping=False))
+        with ExitStack() as stack:
+            stack.enter_context(patch.object(trade, "_manual_two_city_state", return_value=state))
+            stack.enter_context(patch.object(trade, "run_pickup_window", side_effect=RuntimeError("capture failed")))
+            stack.enter_context(patch.object(trade, "_json_payload"))
+            self.assertTrue(trade.ManualTwoCityBusinessAutoPickupUsedAction().run(context, None))
+        self.assertEqual(state["auto_pickup_tap_count"], 4)
+        self.assertEqual(state["auto_pickup_yield_monitor_once"], 2)
+        self.assertEqual(state["auto_pickup_next_point_index"], 3)
+        trade._manual_two_city_reset_auto_pickup_state(state)
+        self.assertNotIn("auto_pickup_yield_monitor_once", state)
+        self.assertEqual(state["auto_pickup_tap_count"], 0)
+        self.assertEqual(state["auto_pickup_next_point_index"], 0)
+        self.assertNotIn("auto_pickup_progress_checked_at", state)
+
+    def test_pickup_progress_check_is_due_once_per_ten_seconds(self) -> None:
+        state = {"auto_pickup": True}
+        with ExitStack() as stack:
+            stack.enter_context(patch.object(trade, "_manual_two_city_state", return_value=state))
+            stack.enter_context(patch.object(trade.CustomRecognition, "AnalyzeResult", types.SimpleNamespace, create=True))
+            stack.enter_context(patch.object(trade.time, "monotonic", side_effect=[0.0, 9.999, 10.0]))
+            recognition = trade.ManualTwoCityBusinessPickupProgressDueRecognition()
+            self.assertIsNotNone(recognition.analyze(None, None).box)
+            self.assertEqual(state["auto_pickup_progress_checked_at"], 0.0)
+            self.assertIsNone(recognition.analyze(None, None).box)
+            self.assertEqual(state["auto_pickup_progress_checked_at"], 0.0)
+            self.assertIsNotNone(recognition.analyze(None, None).box)
+            self.assertEqual(state["auto_pickup_progress_checked_at"], 10.0)
+
+    def test_pickup_progress_check_does_not_run_when_disabled_or_consume_error_yield(self) -> None:
+        for state in ({"auto_pickup": False}, {"auto_pickup": True, "auto_pickup_yield_monitor_once": 2}):
+            with self.subTest(state=state), ExitStack() as stack:
+                before = dict(state)
+                stack.enter_context(patch.object(trade, "_manual_two_city_state", return_value=state))
+                stack.enter_context(patch.object(trade.CustomRecognition, "AnalyzeResult", types.SimpleNamespace, create=True))
+                stack.enter_context(patch.object(trade.time, "monotonic", return_value=100.0))
+                result = trade.ManualTwoCityBusinessPickupProgressDueRecognition().analyze(None, None)
+                self.assertIsNone(result.box)
+                self.assertEqual(state, before)
+
+    def test_pickup_progress_check_reuses_stall_threshold_without_duplicate_restart(self) -> None:
+        state = {"auto_pickup": True}
+        with ExitStack() as stack:
+            stack.enter_context(patch.object(trade, "_manual_two_city_state", return_value=state))
+            stack.enter_context(patch.object(trade.CustomRecognition, "AnalyzeResult", types.SimpleNamespace, create=True))
+            clock = stack.enter_context(patch.object(trade.time, "monotonic"))
+            ocr = stack.enter_context(patch.object(trade, "_manual_two_city_ocr_entries", return_value=(False, [], [])))
+            stack.enter_context(patch.object(trade, "travel_status_from_texts", return_value={
+                "remaining_km": 50, "destination": "海角城",
+            }))
+            stack.enter_context(patch.object(trade, "_json_payload"))
+            stack.enter_context(patch.object(trade, "_append_user_log"))
+            recognition = trade.ManualTwoCityBusinessPickupProgressDueRecognition()
+            action = trade.ManualTwoCityBusinessTravelStallWatchdogAction()
+            for now in (100.0, 110.0, 120.0, 130.0, 140.0, 150.0, 160.0, 175.0):
+                clock.return_value = now
+                self.assertIsNotNone(recognition.analyze(None, None).box)
+                self.assertEqual(action.run(None, None), now == 175.0)
+            self.assertEqual(state["travel_stall_hit_count"], 8)
+            self.assertEqual(state["travel_stall_restart_count"], 1)
+            clock.return_value = 175.001
+            self.assertIsNone(recognition.analyze(None, None).box)
+            self.assertEqual(state["travel_stall_restart_count"], 1)
+            self.assertEqual(ocr.call_count, 8)
+
+    def test_speed_projectile_zero_count_is_unavailable(self) -> None:
+        context = types.SimpleNamespace(run_recognition=Mock(side_effect=[object(), types.SimpleNamespace(hit=False)]))
+        with patch.object(trade, "_ocr_texts_from_detail", side_effect=[["0"], []]):
+            status = trade._manual_two_city_speed_projectile_status(
+                context,
+                object(),
+                "TradeRuntimeFixSpeedProjectile",
+            )
+
+        self.assertTrue(status["unavailable"])
+        self.assertEqual(status["count"], 0)
+
+    def test_speed_projectile_unavailable_disables_more_clicks(self) -> None:
+        state = {
+            "auto_use_speed_projectile": True,
+            "speed_projectile_unavailable": False,
+            "speed_projectile_unavailable_logged": False,
+        }
+        with ExitStack() as stack:
+            stack.enter_context(patch.object(trade, "_manual_two_city_state", return_value=state))
+            stack.enter_context(patch.object(trade, "_argv_param", return_value={"item": "speed_projectile"}))
+            stack.enter_context(patch.object(trade, "_manual_two_city_screencap", return_value=object()))
+            stack.enter_context(
+                patch.object(
+                    trade,
+                    "_manual_two_city_speed_projectile_status",
+                    return_value={"unavailable": True, "count": 0},
+                )
+            )
+            stack.enter_context(patch.object(trade, "_manual_two_city_active_leg", return_value=self.leg))
+            stack.enter_context(patch.object(trade, "_append_user_log"))
+            stack.enter_context(patch.object(trade, "_json_payload"))
+
+            ok = trade.ManualTwoCityBusinessRouteItemUsedAction().run(None, None)
+            enabled, key = trade._manual_two_city_route_item_enabled("speed_projectile")
+
+        self.assertTrue(ok)
+        self.assertFalse(enabled)
+        self.assertEqual(key, "auto_use_speed_projectile")
+        self.assertTrue(state["speed_projectile_unavailable"])
+        self.assertTrue(state["speed_projectile_unavailable_logged"])
+
+    def test_auto_pickup_is_wired_into_both_business_tasks(self) -> None:
+        pipeline_path = ROOT / "assets" / "resource" / "base" / "pipeline" / "business" / "trade" / "manual_two_city_business.json"
+        manual_task_path = ROOT / "assets" / "resource" / "tasks" / "ManualTwoCityBusiness.json"
+        auto_task_path = ROOT / "assets" / "resource" / "tasks" / "AutoTwoCityBusiness.json"
+        pipeline = json.loads(pipeline_path.read_text(encoding="utf-8"))
+        manual_task = json.loads(manual_task_path.read_text(encoding="utf-8"))
+        auto_task = json.loads(auto_task_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(
+            pipeline["ManualTwoCityBusinessSetAutoSpeedProjectile"]["next"],
+            "ManualTwoCityBusinessSetAutoPickup",
+        )
+        pickup_node = pipeline["ManualTwoCityBusinessRouteAutoPickupAvailable"]
+        self.assertEqual(
+            pickup_node["recognition"]["param"]["custom_recognition"],
+            "manual_two_city_business_auto_pickup_available",
+        )
+        self.assertEqual(pickup_node["action"]["type"], "Custom")
+        self.assertEqual(pickup_node["action"]["param"]["custom_action"], "manual_two_city_business_auto_pickup_used")
+        self.assertEqual(pickup_node["pre_delay"], 0)
+        self.assertEqual(pickup_node["post_delay"], 0)
+        self.assertEqual(pickup_node["next"], "ManualTwoCityBusinessTravelPickupContinue")
+        self.assertEqual(pickup_node["on_error"], "ManualTwoCityBusinessTravelMonitor")
+        continue_node = pipeline["ManualTwoCityBusinessTravelPickupContinue"]
+        self.assertEqual(continue_node["recognition"]["type"], "DirectHit")
+        self.assertEqual(continue_node["action"]["type"], "DoNothing")
+        self.assertEqual(continue_node["pre_delay"], 0)
+        self.assertEqual(continue_node["post_delay"], 0)
+        self.assertEqual(continue_node["rate_limit"], 100)
+        self.assertEqual(continue_node["next"], [
+            "ManualTwoCityBusinessRouteSpeedProjectileEnabled",
+            "ManualTwoCityBusinessTravelPickupProgressCheck",
+            "ManualTwoCityBusinessRouteAutoPickupAvailable",
+            "ManualTwoCityBusinessRouteImpactDrillEnabled",
+            "ManualTwoCityBusinessTravelMonitor",
+        ])
+        progress_node = pipeline["ManualTwoCityBusinessTravelPickupProgressCheck"]
+        self.assertEqual(progress_node["recognition"]["param"]["custom_recognition"],
+                         "manual_two_city_business_pickup_progress_due")
+        self.assertEqual(progress_node["action"]["param"]["custom_action"],
+                         "manual_two_city_business_travel_stall_watchdog")
+        self.assertEqual(progress_node["pre_delay"], 0)
+        self.assertEqual(progress_node["post_delay"], 0)
+        self.assertEqual(progress_node["next"], "ManualTwoCityBusinessTravelStallDispatch")
+        self.assertEqual(progress_node["on_error"], "ManualTwoCityBusinessTravelPickupContinue")
+        self.assertNotIn("ManualTwoCityBusinessRouteAutoPickupUsed", pipeline)
+        startup_next = pipeline["ManualTwoCityBusinessStartupTravelRecover"]["next"]
+        self.assertEqual(startup_next[0], "ManualTwoCityBusinessRouteAutoPickupAvailable")
+        self.assertLess(
+            startup_next.index("ManualTwoCityBusinessRouteAutoPickupAvailable"),
+            startup_next.index("ManualTwoCityBusinessRouteSpeedProjectileEnabled"),
+        )
+        monitor_next = pipeline["ManualTwoCityBusinessTravelMonitor"]["next"]
+        self.assertEqual(monitor_next[0], "ManualTwoCityBusinessRouteAutoPickupAvailable")
+        self.assertLess(
+            monitor_next.index("ManualTwoCityBusinessRouteAutoPickupAvailable"),
+            monitor_next.index("ManualTwoCityBusinessRouteSpeedProjectileEnabled"),
+        )
+        self.assertLess(
+            monitor_next.index("ManualTwoCityBusinessRouteAutoPickupAvailable"),
+            monitor_next.index("ManualTwoCityBusinessTravelStallWatchdog"),
+        )
+        train_recovery = pipeline["ManualTwoCityBusinessTrainManageScreenRecovery"]
+        self.assertEqual(train_recovery["action"]["param"]["target"], [80, 38])
+        self.assertIn(
+            "ManualTwoCityBusinessTrainManageScreenRecovery",
+            pipeline["ManualTwoCityBusinessFightMonitor"]["next"],
+        )
+        self.assertIn("ManualTwoCityAutoPickup", manual_task["task"][0]["option"])
+        self.assertIn("ManualTwoCityAutoPickup", auto_task["task"][0]["option"])
+        self.assertEqual(manual_task["option"]["ManualTwoCityAutoPickup"]["default_case"], "No")
+
+    def test_high_level_city_departure_dialog_is_handled_in_order(self) -> None:
+        pipeline_path = ROOT / "assets" / "resource" / "base" / "pipeline" / "business" / "trade" / "manual_two_city_business.json"
+        pipeline = json.loads(pipeline_path.read_text(encoding="utf-8"))
+
+        departure_candidates = pipeline["ManualTwoCityBusinessTapGoDestination"]["next"]
+        high_level_node_name = "ManualTwoCityBusinessTapHighLevelDepartDoNotRemind"
+        self.assertLess(
+            departure_candidates.index(high_level_node_name),
+            departure_candidates.index("ManualTwoCityBusinessTapDepartNow"),
+        )
+
+        high_level_node = pipeline[high_level_node_name]
+        self.assertEqual(
+            high_level_node["recognition"]["param"]["expected"],
+            "目标站点任务难度较高",
+        )
+        self.assertEqual(high_level_node["action"]["param"]["target"], [585, 585])
+        self.assertEqual(
+            high_level_node["next"],
+            "ManualTwoCityBusinessTapHighLevelDepartConfirm",
+        )
+
+        confirm_node = pipeline["ManualTwoCityBusinessTapHighLevelDepartConfirm"]
+        self.assertEqual(confirm_node["recognition"]["param"]["expected"], "确认")
+        confirm_roi = confirm_node["recognition"]["param"]["roi"]
+        self.assertGreaterEqual(confirm_roi[0], 640)
+        self.assertLessEqual(confirm_roi[0] + confirm_roi[2], 1280)
+        self.assertEqual(
+            confirm_node["next"],
+            [
+                "ManualTwoCityBusinessTravelStarted",
+                "ManualTwoCityBusinessDepartFatiguePopup",
+            ],
+        )
+
+    def test_visit_region_city_entry_is_recognized_everywhere(self) -> None:
+        pipeline_root = ROOT / "assets" / "resource" / "base" / "pipeline" / "business"
+        trade_pipeline = json.loads(
+            (pipeline_root / "trade" / "manual_two_city_business.json").read_text(encoding="utf-8")
+        )
+        state_recovery = json.loads(
+            (pipeline_root / "common" / "state_recovery.json").read_text(encoding="utf-8")
+        )
+        cargo_profile = json.loads(
+            (pipeline_root / "profile" / "account_profile_cargo.json").read_text(encoding="utf-8")
+        )
+        launch_game = json.loads(
+            (pipeline_root / "common" / "launch_game.json").read_text(encoding="utf-8")
+        )
+
+        expected_lists = [
+            trade_pipeline["ManualTwoCityBusinessOpenCurrentCityByOcr"]["recognition"]["param"]["expected"],
+            trade_pipeline["ManualTwoCityBusinessArrivedMainMap"]["recognition"]["param"]["expected"],
+            state_recovery["StateRecoveryEnterArrivedCity"]["recognition"]["param"]["expected"],
+            cargo_profile["AccountProfileCargoCapacityStart"]["recognition"]["param"]["expected"],
+            launch_game["LaunchGameAlreadyRunningByOcr"]["recognition"]["param"]["expected"],
+        ]
+        for expected in expected_lists:
+            self.assertIn("访问地区", expected)
+
+        city_unlock_pipeline = json.loads(
+            (pipeline_root / "profile" / "account_profile_city_unlock.json").read_text(encoding="utf-8")
+        )
+        panel_nodes = [
+            node
+            for name, node in city_unlock_pipeline.items()
+            if name.endswith("PanelOcr")
+        ]
+        self.assertGreater(len(panel_nodes), 0)
+        for node in panel_nodes:
+            self.assertIn("访问地区", node["recognition"]["param"]["expected"])
+
+    def test_city_unlock_cache_is_loaded_from_current_uid_account(self) -> None:
+        account = {
+            "uid": "8810002570",
+            "trade": {
+                "city_unlock_probe": {
+                    "岚心城": {
+                        "status": "unavailable",
+                        "texts": ["驭照等级60级开放"],
+                    }
+                }
+            },
+        }
+        with ExitStack() as stack:
+            stack.enter_context(patch.object(trade, "_current_profile_uid", return_value="8810002570"))
+            load_account = stack.enter_context(patch.object(trade, "_load_account_config", return_value=account))
+            stack.enter_context(patch.object(trade, "_trade_wulinyuan_disabled", return_value=False))
+
+            state = trade._initial_city_unlock_state_from_saved()
+
+        load_account.assert_called_once_with("8810002570")
+        self.assertEqual(state["city_unlock_probe"]["岚心城"]["status"], "unavailable")
+        self.assertIn("岚心城", state["unavailable_cities"])
+
+    def test_legacy_city_unlock_cache_without_uid_evidence_forces_rescan(self) -> None:
+        account = {
+            "uid": "8810002570",
+            "trade": {
+                "available_cities": list(trade.CITY_UNLOCK_TARGETS),
+                "unavailable_cities": [],
+            },
+            "account_profile_read": {"last_smart_scan_date": "2099-01-01"},
+        }
+        state = {
+            "result": {"uid": "8810002570"},
+            "account_identity_confirmed": True,
+            "account_identity_uid": "8810002570",
+        }
+        with patch.object(
+            trade,
+            "_manual_two_city_known_account_context",
+            return_value=(Path("config/accounts/8810002570.json"), account, "8810002570", True),
+        ):
+            status = trade._manual_two_city_smart_scan_status(state, trade.MANUAL_TWO_CITY_SMART_SCAN_DAILY)
+
+        self.assertTrue(status["due"])
+        self.assertEqual(status["reason"], "missing_uid_scoped_city_unlock_probe")
+        self.assertIn("岚心城", status["missing_city_unlock_cities"])
+
+    def test_locked_city_requirement_is_classified_as_unavailable(self) -> None:
+        self.assertEqual(
+            trade.classify_city_unlock_probe(["岚心城", "声望：0级", "驭照等级60级开放"]),
+            "unavailable",
+        )
+
+    def test_unavailable_destination_is_checked_before_depart_and_replanned(self) -> None:
+        pipeline_path = ROOT / "assets" / "resource" / "base" / "pipeline" / "business" / "trade" / "manual_two_city_business.json"
+        pipeline = json.loads(pipeline_path.read_text(encoding="utf-8"))
+        move_next = pipeline["ManualTwoCityBusinessMoveToDestination"]["next"]
+        self.assertLess(
+            move_next.index("ManualTwoCityBusinessDestinationUnavailable"),
+            move_next.index("ManualTwoCityBusinessTapGoDestination"),
+        )
+        unavailable = pipeline["ManualTwoCityBusinessDestinationUnavailable"]
+        self.assertIn("驭照等级", unavailable["recognition"]["param"]["expected"])
+        self.assertEqual(
+            unavailable["action"]["param"]["custom_action"],
+            "manual_two_city_business_destination_unavailable",
+        )
+
+        state = {
+            "task_entry": trade.AUTO_TWO_CITY_TASK_ENTRY,
+            "auto_route_enabled": True,
+            "auto_route_params": {
+                "uid": "8810002570",
+                "priority_cities": ["岚心城"],
+                "exclude_cities": ["武林源"],
+                "max_restock": 6,
+            },
+            "result": {"uid": "8810002570"},
+            "current_city": "云岫桥基地",
+            "initial_transfer_in_progress": True,
+            "initial_transfer_source_city": "云岫桥基地",
+            "recovery_attempt_counts": {"depart": 2},
+        }
+        new_result = {
+            "uid": "8810002570",
+            "start_city": "修格里城",
+            "target_city": "7号自由港",
+            "start_book": 3,
+            "target_book": 3,
+            "start_bargain_percent": 20,
+            "start_raise_percent": 20,
+            "target_bargain_percent": 20,
+            "target_raise_percent": 20,
+            "summary": {
+                "legs": [
+                    {"buy_city": "修格里城", "sell_city": "7号自由港"},
+                    {"buy_city": "7号自由港", "sell_city": "修格里城"},
+                ]
+            },
+        }
+        with ExitStack() as stack:
+            stack.enter_context(patch.object(trade, "_manual_two_city_state", return_value=state))
+            calculate = stack.enter_context(
+                patch.object(trade, "calculate_auto_two_city_trade", return_value=new_result)
+            )
+            stack.enter_context(
+                patch.object(
+                    trade,
+                    "_manual_two_city_choose_initial_transfer_destination",
+                    return_value={"city": "修格里城", "fatigue": 40, "estimated": False},
+                )
+            )
+            stack.enter_context(patch.object(trade, "save_manual_two_city_result", return_value=Path("result.json")))
+
+            replan = trade._manual_two_city_replan_after_unavailable_destination("岚心城")
+
+        self.assertTrue(replan["ok"])
+        calculate_params = calculate.call_args.kwargs
+        self.assertIn("岚心城", calculate_params["exclude_cities"])
+        self.assertNotIn("岚心城", calculate_params["priority_cities"])
+        self.assertEqual(state["initial_transfer_destination_city"], "修格里城")
+        self.assertTrue(state["destination_unavailable_replan_ready"])
+        self.assertEqual(state["recovery_attempt_counts"]["depart"], 0)
 
     def test_truncated_product_lot_retries_enhanced_ocr(self) -> None:
         digit_rois = [[578, 222, 56, 25], [572, 204, 74, 35]]

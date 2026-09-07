@@ -2,7 +2,38 @@
   "schema_version": 1,
   "source": {
     "project": "resonance-columba-bot",
-    "data_dir": "src/data"
+    "data_dir": "src/data",
+    "role_life_skills": {
+      "updated_at": "2026-09-07",
+      "source": "decoded game BinaryConfig Factory JSON",
+      "source_hashes": {
+        "BookFactory.json": "6d74289de3ccd5c42e3bae0391a4f8780717fd5b5ae984d08f8b9678562183c6",
+        "UnitFactory.json": "6aa9933a3fa46ca5c2f1883370bd5f83abc0ef46aa78a35cce240bf96d879f96",
+        "HomeSkillFactory.json": "ab93361eeeb3b0e57cbcfdce16270ac9dd9942ae4033c0cb8c0399f6a82fe098",
+        "HomeGoodsFactory.json": "adeb41cb91f819f138d2ff98b861dfa469702f765757db5bb819da2c027b29fd",
+        "HomeStationFactory.json": "7bf30c5cf8f0b9636d8b59beb6a108b9053764d31ec014d1bbac2b8f3e6cdb67"
+      },
+      "tier_semantics": "cumulative snapshots at trade-effect changes",
+      "source_conflicts": [
+        {
+          "role": "婕丝&西蒙",
+          "skill_id": 83900294,
+          "city_id": 83000010,
+          "source_city": "阿妮塔发射中心",
+          "applied_city": "贡露城",
+          "description": "贡露城税率%s%%",
+          "resolution": "User-requested temporary override: use the city in this skill's description."
+        }
+      ],
+      "unmapped_goods_tags": [
+        {
+          "role": "卡塔斯·业火",
+          "skill_id": 83900275,
+          "tag_id": 12601999,
+          "description": "乐器类交易品可买入数量+%s%%"
+        }
+      ]
+    }
   },
   "cities": [
     "修格里城",
@@ -8766,14 +8797,14 @@
       "1": {
         "buyMore": {
           "city": {
-            "阿妮塔发射中心": 20
+            "阿妮塔发射中心": 20.0
           }
         }
       },
       "4": {
         "buyMore": {
           "city": {
-            "阿妮塔发射中心": 20
+            "阿妮塔发射中心": 20.0
           }
         },
         "taxCut": {
@@ -8785,7 +8816,7 @@
       "5": {
         "buyMore": {
           "city": {
-            "阿妮塔发射中心": 29.995
+            "阿妮塔发射中心": 30.0
           }
         },
         "taxCut": {
@@ -8929,14 +8960,14 @@
       "1": {
         "buyMore": {
           "city": {
-            "武林源": 20
+            "武林源": 20.0
           }
         }
       },
       "4": {
         "buyMore": {
           "city": {
-            "武林源": 20
+            "武林源": 20.0
           }
         },
         "taxCut": {
@@ -8948,12 +8979,128 @@
       "5": {
         "buyMore": {
           "city": {
-            "武林源": 29.995
+            "武林源": 30.0
           }
         },
         "taxCut": {
           "city": {
             "武林源": -0.005
+          }
+        }
+      }
+    },
+    "多萝西·瑰晨": {
+      "4": {
+        "buyMore": {
+          "product": {
+            "弹丸加速装置": 20.0
+          }
+        }
+      }
+    },
+    "伊洛娜·暮光": {
+      "4": {
+        "buyMore": {
+          "product": {
+            "塑胶炸药": 20.0,
+            "子弹": 20.0,
+            "弹丸加速装置": 20.0,
+            "形态共振瞄准器": 20.0,
+            "炮弹": 20.0,
+            "碳钢匕首": 20.0,
+            "精钢伐木斧": 20.0,
+            "负片炮弹": 20.0,
+            "阿妮塔202军用无人机": 20.0,
+            "飞弹": 20.0
+          }
+        }
+      }
+    },
+    "爱弥儿": {
+      "4": {
+        "buyMore": {
+          "product": {
+            "人工晶花": 20.0,
+            "刀具": 20.0,
+            "城堡摆件": 20.0,
+            "学会纪念品": 20.0,
+            "宝石工艺品": 20.0,
+            "折扇": 20.0,
+            "拼装模型": 20.0,
+            "桦石发财树": 20.0,
+            "毛绒玩具": 20.0,
+            "水晶工艺品": 20.0,
+            "游乐城主题配饰": 20.0,
+            "游乐城纪念徽章": 20.0,
+            "火箭拼装玩具": 20.0,
+            "火车玩具": 20.0,
+            "羽纸扇": 20.0,
+            "航天纪念品": 20.0,
+            "金制列车工艺品": 20.0,
+            "金属工艺品": 20.0,
+            "银制列车工艺品": 20.0,
+            "限定公仔": 20.0,
+            "黑胡桃木座钟": 20.0
+          }
+        }
+      },
+      "5": {
+        "buyMore": {
+          "product": {
+            "人工晶花": 30.0,
+            "刀具": 30.0,
+            "城堡摆件": 30.0,
+            "学会纪念品": 30.0,
+            "宝石工艺品": 30.0,
+            "折扇": 30.0,
+            "拼装模型": 30.0,
+            "桦石发财树": 30.0,
+            "毛绒玩具": 30.0,
+            "水晶工艺品": 30.0,
+            "游乐城主题配饰": 30.0,
+            "游乐城纪念徽章": 30.0,
+            "火箭拼装玩具": 30.0,
+            "火车玩具": 30.0,
+            "羽纸扇": 30.0,
+            "航天纪念品": 30.0,
+            "金制列车工艺品": 30.0,
+            "金属工艺品": 30.0,
+            "银制列车工艺品": 30.0,
+            "限定公仔": 30.0,
+            "黑胡桃木座钟": 30.0
+          }
+        }
+      }
+    },
+    "婕丝&西蒙": {
+      "1": {
+        "buyMore": {
+          "city": {
+            "贡露城": 20.0
+          }
+        }
+      },
+      "4": {
+        "buyMore": {
+          "city": {
+            "贡露城": 20.0
+          }
+        },
+        "taxCut": {
+          "city": {
+            "贡露城": -0.005
+          }
+        }
+      },
+      "5": {
+        "buyMore": {
+          "city": {
+            "贡露城": 30.0
+          }
+        },
+        "taxCut": {
+          "city": {
+            "贡露城": -0.005
           }
         }
       }
@@ -9132,6 +9279,21 @@
       "resonance": 5
     },
     "蓝鹊儿": {
+      "resonance": 5
+    },
+    "美琪": {
+      "resonance": 5
+    },
+    "多萝西·瑰晨": {
+      "resonance": 5
+    },
+    "伊洛娜·暮光": {
+      "resonance": 5
+    },
+    "爱弥儿": {
+      "resonance": 5
+    },
+    "婕丝&西蒙": {
       "resonance": 5
     }
   },
@@ -9341,6 +9503,21 @@
         "resonance": 5
       },
       "蓝鹊儿": {
+        "resonance": 5
+      },
+      "美琪": {
+        "resonance": 5
+      },
+      "多萝西·瑰晨": {
+        "resonance": 5
+      },
+      "伊洛娜·暮光": {
+        "resonance": 5
+      },
+      "爱弥儿": {
+        "resonance": 5
+      },
+      "婕丝&西蒙": {
         "resonance": 5
       }
     },
@@ -9617,6 +9794,21 @@
         "resonance": 5
       },
       "蓝鹊儿": {
+        "resonance": 5
+      },
+      "美琪": {
+        "resonance": 5
+      },
+      "多萝西·瑰晨": {
+        "resonance": 5
+      },
+      "伊洛娜·暮光": {
+        "resonance": 5
+      },
+      "爱弥儿": {
+        "resonance": 5
+      },
+      "婕丝&西蒙": {
         "resonance": 5
       }
     },

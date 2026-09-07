@@ -3,7 +3,11 @@
     "project": "resonance",
     "data": "BookFactory.json id=80900001 + UnitFactory.json quality",
     "source_ref": "game BinaryConfig data",
-    "updated_at": "2026-05-31"
+    "updated_at": "2026-09-07",
+    "source_hashes": {
+      "BookFactory.json": "6d74289de3ccd5c42e3bae0391a4f8780717fd5b5ae984d08f8b9678562183c6",
+      "UnitFactory.json": "6aa9933a3fa46ca5c2f1883370bd5f83abc0ef46aa78a35cce240bf96d879f96"
+    }
   },
   "roles": [
     "波克士",
@@ -99,7 +103,12 @@
     "夏娜",
     "露比",
     "迪妮莎",
-    "蓝鹊儿"
+    "蓝鹊儿",
+    "美琪",
+    "多萝西·瑰晨",
+    "伊洛娜·暮光",
+    "爱弥儿",
+    "婕丝&西蒙"
   ],
   "quality_by_role": {
     "波克士": "twoStar",
@@ -195,7 +204,12 @@
     "夏娜": "FiveStar",
     "露比": "FiveStar",
     "迪妮莎": "FiveStar",
-    "蓝鹊儿": "FiveStar"
+    "蓝鹊儿": "FiveStar",
+    "美琪": "FiveStar",
+    "多萝西·瑰晨": "FiveStar",
+    "伊洛娜·暮光": "FiveStar",
+    "爱弥儿": "FiveStar",
+    "婕丝&西蒙": "FiveStar"
   },
   "rarity_by_role": {
     "波克士": "N",
@@ -291,7 +305,12 @@
     "夏娜": "SSR",
     "露比": "SSR",
     "迪妮莎": "SSR",
-    "蓝鹊儿": "SSR"
+    "蓝鹊儿": "SSR",
+    "美琪": "SSR",
+    "多萝西·瑰晨": "SSR",
+    "伊洛娜·暮光": "SSR",
+    "爱弥儿": "SSR",
+    "婕丝&西蒙": "SSR"
   },
   "resonance_max_by_role": {
     "波克士": 4,
@@ -387,6 +406,11 @@
     "夏娜": 5,
     "露比": 5,
     "迪妮莎": 5,
-    "蓝鹊儿": 5
+    "蓝鹊儿": 5,
+    "美琪": 5,
+    "多萝西·瑰晨": 5,
+    "伊洛娜·暮光": 5,
+    "爱弥儿": 5,
+    "婕丝&西蒙": 5
   }
 }
