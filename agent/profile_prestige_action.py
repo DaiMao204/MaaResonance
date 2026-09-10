@@ -11357,9 +11357,21 @@ class ManualTwoCityBusinessCurrentCityReadyAction(CustomAction):
         current_city = _manual_two_city_detect_current_city(texts, legs)
         state = _manual_two_city_state()
         state.pop("buy_selection_verified_cargo_load", None)
+        leg = _manual_two_city_active_leg()
+        phase = str(state.get("trade_phase") or "").strip().lower()
+        pre_buy_cleanup = bool(state.get("pre_buy_cleanup"))
+        # Returning to the destination must not advance an unfinished sale.
+        # AfterSell owns leg/round advancement; cleanup sales belong to the buy leg.
+        preserved_sell_leg = bool(
+            current_city
+            and phase == "sell"
+            and not pre_buy_cleanup
+            and current_city == normalize_city_name(str(leg.get("sell_city") or "").strip())
+        )
         if current_city:
             state["current_city"] = current_city
-        leg = _manual_two_city_set_active_leg_by_city(current_city) if current_city else _manual_two_city_active_leg()
+            if not preserved_sell_leg:
+                leg = _manual_two_city_set_active_leg_by_city(current_city)
         if current_city:
             message = (
                 f"当前位置识别（{source}）：{current_city}，"
@@ -11378,6 +11390,10 @@ class ManualTwoCityBusinessCurrentCityReadyAction(CustomAction):
                 "source": source,
                 "current_city": current_city,
                 "active_leg_index": _manual_two_city_state().get("active_leg_index"),
+                "trade_phase": phase,
+                "pre_buy_cleanup": pre_buy_cleanup,
+                "preserved_sell_leg": preserved_sell_leg,
+                "completed_rounds": state.get("completed_rounds", 0),
                 "leg": leg,
                 "texts": texts[:40],
             },

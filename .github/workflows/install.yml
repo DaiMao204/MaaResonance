@@ -148,7 +148,7 @@ jobs:
         run: |
           {
             echo "release_body<<EOF"
-            cat docs/zh_cn/changelog/v1.5.0.md
+            cat docs/zh_cn/changelog/v1.5.1.md
             echo ""
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
