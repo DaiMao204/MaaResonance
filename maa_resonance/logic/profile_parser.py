@@ -150,17 +150,26 @@ def clean_text(text: str) -> str:
 
 def parse_account_uid(texts: list[str]) -> str | None:
     """Parse account UID from OCR texts around the main-map UID area."""
-    joined = "".join(clean_text(text) for text in texts if str(text).strip())
-    for pattern in (
-        r"UID[:：]?(\d{4,})",
-        r"U1D[:：]?(\d{4,})",
-        r"ID[:：]?(\d{4,})",
-    ):
-        match = re.search(pattern, joined, re.I)
-        if match:
-            return match.group(1)
-    digits = re.findall(r"\d{6,}", joined)
-    return digits[0] if digits else None
+    cleaned_texts = [clean_text(text) for text in texts if str(text).strip()]
+    # Low-resolution UID labels in main-map captures also read UHD/VID/WID/HID.
+    label = r"(?<![A-Z0-9])(?:U[I1H]D|[VWH]ID|ID):?"
+    # OCR boxes can arrive in x order: the level above the UID may follow it.
+    # Joining those boxes turns e.g. UID:8822020153 + 079 into another account.
+    candidates: set[str] = set()
+    for index, text in enumerate(cleaned_texts):
+        candidates.update(re.findall(label + r"(\d{4,})", text, re.I))
+        if re.fullmatch(label, text, re.I) and index + 1 < len(cleaned_texts):
+            value = cleaned_texts[index + 1]
+            if re.fullmatch(r"\d{4,}", value):
+                candidates.add(value)
+    if candidates:
+        return next(iter(candidates)) if len(candidates) == 1 else None
+    if any(re.search(label, text, re.I) for text in cleaned_texts):
+        return None
+    # A missing label is acceptable only for one complete numeric OCR box;
+    # never extract an asset amount from text or guess between distinct numbers.
+    digits = {text for text in cleaned_texts if re.fullmatch(r"\d{6,}", text)}
+    return next(iter(digits)) if len(digits) == 1 else None
 
 
 def parse_cargo_capacity(texts: list[str]) -> int | None:

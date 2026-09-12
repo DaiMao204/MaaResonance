@@ -87,6 +87,31 @@ class AccountIdentityRegressionTest(unittest.TestCase):
         self.assertFalse(trade._record_profile_uid([])["ok"])
         self.save_profile.assert_not_called()
 
+    def test_main_map_ocr_binds_and_saves_uid_without_adjacent_level(self) -> None:
+        entries = [
+            {"box": [124, 705, 69, 10], "text": "UID:8822020153"},
+            {"box": [150, 686, 21, 10], "text": "079"},
+            {"box": [202, 681, 124, 20], "text": "资产14604739"},
+        ]
+        argv = types.SimpleNamespace(reco_detail={"all": entries, "filtered": entries, "best": entries[0]})
+        with patch.object(trade, "_load_account_config", return_value=self.account("8822020153")) as load:
+            self.assertTrue(trade.ManualTwoCityBusinessAccountIdentityReadAction().run(None, argv))
+        load.assert_called_once_with("8822020153")
+        self.assertEqual(self.state["account_identity_uid"], "8822020153")
+        self.assertEqual(self.state["manual_params"]["uid"], "8822020153")
+        self.assertEqual(self.state["auto_route_params"]["uid"], "8822020153")
+        self.assertTrue(trade.ProfileUidReadAction().run(None, argv))
+        self.save_profile.assert_called_once()
+        self.assertEqual(self.save_profile.call_args.args[0]["uid"], "8822020153")
+
+    def test_ambiguous_uid_stops_before_loading_or_writing_account(self) -> None:
+        with patch.object(trade, "_load_account_config") as load:
+            self.assertFalse(trade._manual_two_city_confirm_account_identity(["UID:11111111", "UID:22222222"]))
+        load.assert_not_called()
+        self.assertTrue(self.state["account_identity_failed"])
+        self.assertEqual(self.state["terminal_status"], trade.MANUAL_TWO_CITY_TERMINAL_FAILED)
+        self.save_profile.assert_not_called()
+
     def test_profile_uid_reread_must_match_the_confirmed_account(self) -> None:
         for texts in (["UID:33333333"], []):
             with self.subTest(texts=texts):

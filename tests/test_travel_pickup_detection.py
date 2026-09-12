@@ -52,6 +52,40 @@ class TravelPickupDetectionTest(unittest.TestCase):
                 context = types.SimpleNamespace(run_recognition=Mock(return_value=match(box)))
                 self.assertFalse(pickup.is_travel_hud(context, image))
 
+    def test_1080p_glyph_variant_uses_its_own_brightness_samples(self):
+        image = np.zeros((720, 1280, 3), dtype=np.uint8)
+        points = pickup._HUD_1080_WHITE_POINTS
+        image[114 + points[:, 1], 618 + points[:, 0]] = 240
+        context = types.SimpleNamespace(run_recognition=Mock(side_effect=[
+            match([618, 114, 81, 20], score=0.865, hit=False),
+            match([618, 114, 81, 20]),
+        ]))
+        self.assertTrue(pickup.is_travel_hud(context, image))
+        variant_call = context.run_recognition.call_args
+        node = variant_call.args[2]["TravelPickupCruiseHud1080Template"]
+        self.assertEqual(node["template"], ["business/travel_pickup/cruise_hud_text_1080.png"])
+        self.assertEqual(node["threshold"], [0.88])
+
+    def test_1080p_variant_does_not_bypass_dimmed_overlay_guard(self):
+        image = np.zeros((720, 1280, 3), dtype=np.uint8)
+        points = pickup._HUD_1080_WHITE_POINTS
+        image[114 + points[:, 1], 618 + points[:, 0]] = 240
+        for factor in (0.65, 0.85):
+            with self.subTest(factor=factor):
+                context = types.SimpleNamespace(run_recognition=Mock(side_effect=[
+                    match([618, 114, 81, 20], score=0.865, hit=False),
+                    match([618, 114, 81, 20]),
+                ]))
+                self.assertFalse(pickup.is_travel_hud(context, (image * factor).astype(np.uint8)))
+
+    def test_legacy_hud_success_does_not_run_fallback(self):
+        context = types.SimpleNamespace(run_recognition=Mock(return_value=match([622, 112, 81, 20])))
+        image = np.zeros((720, 1280, 3), dtype=np.uint8)
+        points = pickup._HUD_WHITE_POINTS
+        image[105 + points[:, 1], 562 + points[:, 0]] = 240
+        self.assertTrue(pickup.is_travel_hud(context, image))
+        context.run_recognition.assert_called_once()
+
     def test_blue_beams_and_train_light_alone_are_not_pickup_icons(self):
         image = np.zeros((720, 1280, 3), dtype=np.uint8)
         image[180:500, 700:705] = [240, 130, 50]

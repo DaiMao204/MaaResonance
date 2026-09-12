@@ -728,7 +728,7 @@
     "ManualTwoCityBusinessAccountIdentityRead": {
         "recognition": "OCR",
         "expected": "",
-        "roi": [0, 630, 360, 90],
+        "roi": [0, 700, 360, 20],
         "action": "Custom",
         "custom_action": "manual_two_city_business_account_identity_read",
         "next": "ManualTwoCityBusinessAccountProfileWarmupStartFromMainMap",

@@ -33,6 +33,19 @@ _HUD_WHITE_POINTS = np.array([
     (51, 21), (31, 22), (32, 23), (34, 23), (48, 23), (50, 23),
     (33, 24), (49, 24),
 ], dtype=np.intp)
+# White pixels from the 1920x1080 feedback frame after Maa's 720p resize,
+# relative to its 81x20 text crop. Its glyph raster differs from the older
+# reference, so that reference's full-HUD samples cannot be reused here.
+_HUD_1080_WHITE_POINTS = np.array([
+    (7, 3), (43, 4), (49, 4), (56, 4), (3, 5), (56, 5), (68, 5),
+    (24, 6), (25, 6), (26, 6), (27, 6), (28, 6), (3, 8), (11, 8),
+    (18, 8), (32, 8), (33, 8), (54, 8), (18, 9), (48, 9), (51, 9),
+    (54, 9), (25, 10), (54, 10), (68, 10), (3, 11), (37, 11),
+    (40, 11), (54, 11), (3, 12), (17, 13), (18, 13), (28, 13),
+    (3, 14), (28, 14), (32, 14), (3, 15), (23, 15), (37, 15),
+    (38, 15), (39, 15), (40, 15), (41, 15), (42, 15), (43, 15),
+    (58, 15),
+], dtype=np.intp)
 
 
 def _frame(image: Any) -> np.ndarray | None:
@@ -80,28 +93,43 @@ def _match(context: Any, image: np.ndarray, name: str, templates: list[str],
     return _accepted_match(detail, minimum)
 
 
+def _bright_hud_match(frame: np.ndarray, match: tuple[list[int], float] | None,
+                      white_points: np.ndarray, *, offset: tuple[int, int] = (0, 0),
+                      reference_size: tuple[int, int] = (81, 20)) -> bool:
+    if match is None:
+        return False
+    (x, y, width, height), _ = match
+    _, _, expected_width, expected_height = _HUD_TEXT_BOX
+    if (width, height) != (expected_width, expected_height):
+        return False
+    left, top, roi_width, roi_height = _HUD_ROI
+    if x < left or y < top or x + width > left + roi_width or y + height > top + roi_height:
+        return False
+    x, y = x - offset[0], y - offset[1]
+    if x < 0 or y < 0 or x + reference_size[0] > 1280 or y + reference_size[1] > 720:
+        return False
+    values = frame[y + white_points[:, 1], x + white_points[:, 0]].min(axis=1)
+    return bool(np.mean(values >= 210) >= 0.85 and np.median(values) >= 225)
+
+
 def is_travel_hud(context: Any, image: Any) -> bool:
     """Confirm the unmasked cruise HUD without OCR or controller operations."""
     frame = _frame(image)
     if frame is None:
         return False
-    # The cruise pill is translucent: passing scenery (especially bright signs)
-    # changes its background. Match only the stable text, at the same threshold.
+    # The cruise pill is translucent: match only stable text, then separately
+    # reject dimmed overlays using the samples belonging to that reference.
     match = _match(context, frame, "TravelPickupCruiseHudTemplate",
                    [_PREFIX + "cruise_hud_text.png"], _HUD_ROI, 0.88)
-    if match is None:
-        return False
-    (x, y, width, height), _ = match
-    offset_x, offset_y, expected_width, expected_height = _HUD_TEXT_BOX
-    if (width, height) != (expected_width, expected_height):
-        return False
-    # Preserve the existing full-HUD white samples and absolute thresholds.
-    # Sampling only the text would change the brightness distribution.
-    x, y = x - offset_x, y - offset_y
-    if x < 0 or y < 0 or x + 162 > 1280 or y + 33 > 720:
-        return False
-    values = frame[y + _HUD_WHITE_POINTS[:, 1], x + _HUD_WHITE_POINTS[:, 0]].min(axis=1)
-    return bool(np.mean(values >= 210) >= 0.85 and np.median(values) >= 225)
+    if _bright_hud_match(frame, match, _HUD_WHITE_POINTS,
+                         offset=_HUD_TEXT_BOX[:2], reference_size=(162, 33)):
+        return True
+    # The 1080p feedback capture retains a different glyph raster after the
+    # controller resizes it to 1280x720. Keep the confidence/brightness
+    # thresholds and the older reference; fall back to this measured variant.
+    match = _match(context, frame, "TravelPickupCruiseHud1080Template",
+                   [_PREFIX + "cruise_hud_text_1080.png"], _HUD_ROI, 0.88)
+    return _bright_hud_match(frame, match, _HUD_1080_WHITE_POINTS)
 
 
 def _blue_components(image: np.ndarray) -> list[list[int]]:
