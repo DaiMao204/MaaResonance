@@ -7242,6 +7242,49 @@ def _manual_two_city_clear_top_all_buy_selection(
     return False, list(dict.fromkeys(seen_texts))
 
 
+def _manual_two_city_clear_top_all_sell_selection(
+    context: Context,
+    probe_prefix: str,
+    *,
+    attempts: int = 4,
+) -> tuple[bool, list[str]]:
+    """Confirm an empty sell cart before the pipeline selects all goods."""
+    seen_texts: list[str] = []
+    sell_all_texts = ["全部卖出", "全部出售"]
+    roi_x, roi_y, roi_w, roi_h = SELL_CART_SELECTED_ROI
+    for attempt in range(max(1, attempts) + 1):
+        _hit, entries, texts = _manual_two_city_ocr_entries(
+            context,
+            f"{probe_prefix}{attempt + 1:03d}",
+            ["全部取消", *sell_all_texts],
+            roi=SELL_CART_SELECTED_ROI,
+        )
+        seen_texts.extend(texts)
+        cancel_entries = [
+            entry for entry in entries if _manual_two_city_entry_matches(entry, ["全部取消"])
+        ]
+        cancel_visible = bool(cancel_entries) or _manual_two_city_texts_contain(texts, ["全部取消"])
+        if not cancel_visible and _manual_two_city_texts_contain(texts, sell_all_texts):
+            return True, list(dict.fromkeys(seen_texts))
+        if attempt >= max(1, attempts):
+            break
+        target = None
+        for entry in cancel_entries:
+            try:
+                x = int(float(entry.get("center_x") or 0))
+                y = int(float(entry.get("center_y") or 0))
+            except (TypeError, ValueError, OverflowError):
+                continue
+            if roi_x <= x < roi_x + roi_w and roi_y <= y < roi_y + roi_h:
+                target = (x, y)
+                break
+        if target is not None:
+            _manual_two_city_click(context, target, 0.55)
+        else:
+            time.sleep(0.35)
+    return False, list(dict.fromkeys(seen_texts))
+
+
 def _manual_two_city_available_lots_for_leg(leg: dict[str, Any] | None) -> tuple[dict[str, int], dict[str, Any]]:
     if not isinstance(leg, dict):
         return {}, {"reason": "invalid_leg"}
@@ -15824,6 +15867,31 @@ class ManualTwoCityBusinessSellPageReadyAction(CustomAction):
     def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
         texts = _ocr_texts(argv)
         leg = _manual_two_city_active_leg()
+        cleared, clear_texts = _manual_two_city_clear_top_all_sell_selection(
+            context,
+            "ManualTwoCitySellPageReadyClearStaleSelection",
+        )
+        if not cleared:
+            _append_user_log(
+                MANUAL_TWO_CITY_TASK_ENTRY,
+                "卖出页恢复：未能确认已有选货已清空，准备重新进入卖出页后再全选。",
+                level="error",
+                event="manual_two_city_sell_page_stale_selection_clear_failed",
+                data={"leg": leg, "texts": clear_texts[:20]},
+            )
+            _json_payload(
+                "manual_two_city_business_sell_page_ready",
+                {"ok": False, "reason": "stale_selection_clear_failed", "texts": clear_texts[:20]},
+            )
+            return False
+        if _manual_two_city_texts_contain(clear_texts, ["全部取消"]):
+            _append_user_log(
+                MANUAL_TWO_CITY_TASK_ENTRY,
+                "卖出页恢复：已清空已有选货，准备重新全选货仓商品。",
+                level="warning",
+                event="manual_two_city_sell_page_stale_selection_cleared",
+                data={"leg": leg, "texts": clear_texts[:20]},
+            )
         _append_user_log(
             MANUAL_TWO_CITY_TASK_ENTRY,
             (
