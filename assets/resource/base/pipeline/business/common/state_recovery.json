@@ -38,6 +38,7 @@
             "StateRecoveryCloseCityPageByOcr",
             "StateRecoveryCloseCityPageByTemplate",
             "StateRecoveryCloseRouteMap",
+            "StateRecoveryCloseTaskCenter",
             "StateRecoveryCloseMissionPanel",
             "StateRecoveryCloseBrochurePanel",
             "StateRecoveryTapHomeFixed001"
@@ -83,6 +84,7 @@
             "StateRecoveryCloseCityPageByOcr",
             "StateRecoveryCloseCityPageByTemplate",
             "StateRecoveryCloseRouteMap",
+            "StateRecoveryCloseTaskCenter",
             "StateRecoveryCloseMissionPanel",
             "StateRecoveryCloseBrochurePanel",
             "StateRecoveryTapHomeFixedAfterRestart001"
@@ -811,6 +813,37 @@
         "post_delay": 900,
         "next": "StateRecoveryObserveAfterStep001"
     },
+    "StateRecoveryCloseTaskCenter": {
+        "max_hit": 2,
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "^每日活跃$",
+                    "^导航手册$",
+                    "^行动汇总$",
+                    "^拼单单$"
+                ],
+                "roi": [
+                    300,
+                    0,
+                    890,
+                    100
+                ]
+            }
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "state_recovery_safe_navigation",
+                "custom_action_param": {
+                    "kind": "back"
+                }
+            }
+        },
+        "post_delay": 900,
+        "next": "StateRecoveryObserveAfterStep001"
+    },
     "StateRecoveryCloseMissionPanel": {
         "recognition": {
             "type": "OCR",
@@ -908,6 +941,7 @@
             "StateRecoveryCloseCityPageByOcr",
             "StateRecoveryCloseCityPageByTemplate",
             "StateRecoveryCloseRouteMap",
+            "StateRecoveryCloseTaskCenter",
             "StateRecoveryCloseMissionPanel",
             "StateRecoveryCloseBrochurePanel",
             "StateRecoveryTapBackFixed002"
@@ -953,6 +987,7 @@
             "StateRecoveryCloseCityPageByOcr",
             "StateRecoveryCloseCityPageByTemplate",
             "StateRecoveryCloseRouteMap",
+            "StateRecoveryCloseTaskCenter",
             "StateRecoveryCloseMissionPanel",
             "StateRecoveryCloseBrochurePanel",
             "StateRecoveryTapHomeFixed003"
@@ -998,6 +1033,7 @@
             "StateRecoveryCloseCityPageByOcr",
             "StateRecoveryCloseCityPageByTemplate",
             "StateRecoveryCloseRouteMap",
+            "StateRecoveryCloseTaskCenter",
             "StateRecoveryCloseMissionPanel",
             "StateRecoveryCloseBrochurePanel",
             "StateRecoveryTapBackFixed004"
@@ -1041,6 +1077,7 @@
             "StateRecoveryCloseCityPageByOcr",
             "StateRecoveryCloseCityPageByTemplate",
             "StateRecoveryCloseRouteMap",
+            "StateRecoveryCloseTaskCenter",
             "StateRecoveryCloseMissionPanel",
             "StateRecoveryCloseBrochurePanel"
         ],
@@ -1085,6 +1122,7 @@
             "StateRecoveryCloseCityPageByOcr",
             "StateRecoveryCloseCityPageByTemplate",
             "StateRecoveryCloseRouteMap",
+            "StateRecoveryCloseTaskCenter",
             "StateRecoveryCloseMissionPanel",
             "StateRecoveryCloseBrochurePanel",
             "StateRecoveryTapBackFixedAfterRestart002"
@@ -1130,6 +1168,7 @@
             "StateRecoveryCloseCityPageByOcr",
             "StateRecoveryCloseCityPageByTemplate",
             "StateRecoveryCloseRouteMap",
+            "StateRecoveryCloseTaskCenter",
             "StateRecoveryCloseMissionPanel",
             "StateRecoveryCloseBrochurePanel",
             "StateRecoveryTapHomeFixedAfterRestart003"
@@ -1151,7 +1190,13 @@
             }
         },
         "action": {
-            "type": "Click"
+            "type": "Custom",
+            "param": {
+                "custom_action": "state_recovery_safe_navigation",
+                "custom_action_param": {
+                    "kind": "home"
+                }
+            }
         },
         "post_delay": 900,
         "next": "StateRecoveryObserveAfterStep001"
@@ -1171,7 +1216,13 @@
             }
         },
         "action": {
-            "type": "Click"
+            "type": "Custom",
+            "param": {
+                "custom_action": "state_recovery_safe_navigation",
+                "custom_action_param": {
+                    "kind": "home"
+                }
+            }
         },
         "post_delay": 900,
         "next": "StateRecoveryObserveAfterStep002"
@@ -1191,7 +1242,13 @@
             }
         },
         "action": {
-            "type": "Click"
+            "type": "Custom",
+            "param": {
+                "custom_action": "state_recovery_safe_navigation",
+                "custom_action_param": {
+                    "kind": "home"
+                }
+            }
         },
         "post_delay": 900,
         "next": "StateRecoveryObserveAfterStep003"
@@ -1211,7 +1268,13 @@
             }
         },
         "action": {
-            "type": "Click"
+            "type": "Custom",
+            "param": {
+                "custom_action": "state_recovery_safe_navigation",
+                "custom_action_param": {
+                    "kind": "home"
+                }
+            }
         },
         "post_delay": 900,
         "next": "StateRecoveryObserveFinal"
@@ -1231,7 +1294,13 @@
             }
         },
         "action": {
-            "type": "Click"
+            "type": "Custom",
+            "param": {
+                "custom_action": "state_recovery_safe_navigation",
+                "custom_action_param": {
+                    "kind": "back"
+                }
+            }
         },
         "post_delay": 900,
         "next": "StateRecoveryObserveAfterStep001"
@@ -1251,7 +1320,13 @@
             }
         },
         "action": {
-            "type": "Click"
+            "type": "Custom",
+            "param": {
+                "custom_action": "state_recovery_safe_navigation",
+                "custom_action_param": {
+                    "kind": "back"
+                }
+            }
         },
         "post_delay": 900,
         "next": "StateRecoveryObserveAfterStep002"
@@ -1271,7 +1346,13 @@
             }
         },
         "action": {
-            "type": "Click"
+            "type": "Custom",
+            "param": {
+                "custom_action": "state_recovery_safe_navigation",
+                "custom_action_param": {
+                    "kind": "back"
+                }
+            }
         },
         "post_delay": 900,
         "next": "StateRecoveryObserveAfterStep003"
@@ -1291,7 +1372,13 @@
             }
         },
         "action": {
-            "type": "Click"
+            "type": "Custom",
+            "param": {
+                "custom_action": "state_recovery_safe_navigation",
+                "custom_action_param": {
+                    "kind": "back"
+                }
+            }
         },
         "post_delay": 900,
         "next": "StateRecoveryObserveFinal"
@@ -1311,7 +1398,13 @@
             }
         },
         "action": {
-            "type": "Click"
+            "type": "Custom",
+            "param": {
+                "custom_action": "state_recovery_safe_navigation",
+                "custom_action_param": {
+                    "kind": "home"
+                }
+            }
         },
         "post_delay": 900,
         "next": "StateRecoveryPostRestartObserveAfterStep001"
@@ -1331,7 +1424,13 @@
             }
         },
         "action": {
-            "type": "Click"
+            "type": "Custom",
+            "param": {
+                "custom_action": "state_recovery_safe_navigation",
+                "custom_action_param": {
+                    "kind": "home"
+                }
+            }
         },
         "post_delay": 900,
         "next": "StateRecoveryPostRestartObserveAfterStep002"
@@ -1351,7 +1450,13 @@
             }
         },
         "action": {
-            "type": "Click"
+            "type": "Custom",
+            "param": {
+                "custom_action": "state_recovery_safe_navigation",
+                "custom_action_param": {
+                    "kind": "home"
+                }
+            }
         },
         "post_delay": 900,
         "next": "StateRecoveryFailed"
@@ -1371,7 +1476,13 @@
             }
         },
         "action": {
-            "type": "Click"
+            "type": "Custom",
+            "param": {
+                "custom_action": "state_recovery_safe_navigation",
+                "custom_action_param": {
+                    "kind": "back"
+                }
+            }
         },
         "post_delay": 900,
         "next": "StateRecoveryPostRestartObserveAfterStep001"
@@ -1391,7 +1502,13 @@
             }
         },
         "action": {
-            "type": "Click"
+            "type": "Custom",
+            "param": {
+                "custom_action": "state_recovery_safe_navigation",
+                "custom_action_param": {
+                    "kind": "back"
+                }
+            }
         },
         "post_delay": 900,
         "next": "StateRecoveryPostRestartObserveAfterStep002"
@@ -1411,7 +1528,13 @@
             }
         },
         "action": {
-            "type": "Click"
+            "type": "Custom",
+            "param": {
+                "custom_action": "state_recovery_safe_navigation",
+                "custom_action_param": {
+                    "kind": "back"
+                }
+            }
         },
         "post_delay": 900,
         "next": "StateRecoveryFailed"
@@ -1421,12 +1544,12 @@
             "type": "DirectHit"
         },
         "action": {
-            "type": "Click",
+            "type": "Custom",
             "param": {
-                "target": [
-                    198,
-                    36
-                ]
+                "custom_action": "state_recovery_safe_navigation",
+                "custom_action_param": {
+                    "kind": "home"
+                }
             }
         },
         "post_delay": 900,
@@ -1437,12 +1560,12 @@
             "type": "DirectHit"
         },
         "action": {
-            "type": "Click",
+            "type": "Custom",
             "param": {
-                "target": [
-                    83,
-                    36
-                ]
+                "custom_action": "state_recovery_safe_navigation",
+                "custom_action_param": {
+                    "kind": "back"
+                }
             }
         },
         "post_delay": 900,
@@ -1453,12 +1576,12 @@
             "type": "DirectHit"
         },
         "action": {
-            "type": "Click",
+            "type": "Custom",
             "param": {
-                "target": [
-                    198,
-                    36
-                ]
+                "custom_action": "state_recovery_safe_navigation",
+                "custom_action_param": {
+                    "kind": "home"
+                }
             }
         },
         "post_delay": 900,
@@ -1469,12 +1592,12 @@
             "type": "DirectHit"
         },
         "action": {
-            "type": "Click",
+            "type": "Custom",
             "param": {
-                "target": [
-                    83,
-                    36
-                ]
+                "custom_action": "state_recovery_safe_navigation",
+                "custom_action_param": {
+                    "kind": "back"
+                }
             }
         },
         "post_delay": 900,
@@ -1485,12 +1608,12 @@
             "type": "DirectHit"
         },
         "action": {
-            "type": "Click",
+            "type": "Custom",
             "param": {
-                "target": [
-                    198,
-                    36
-                ]
+                "custom_action": "state_recovery_safe_navigation",
+                "custom_action_param": {
+                    "kind": "home"
+                }
             }
         },
         "post_delay": 900,
@@ -1501,12 +1624,12 @@
             "type": "DirectHit"
         },
         "action": {
-            "type": "Click",
+            "type": "Custom",
             "param": {
-                "target": [
-                    83,
-                    36
-                ]
+                "custom_action": "state_recovery_safe_navigation",
+                "custom_action_param": {
+                    "kind": "back"
+                }
             }
         },
         "post_delay": 900,
@@ -1517,12 +1640,12 @@
             "type": "DirectHit"
         },
         "action": {
-            "type": "Click",
+            "type": "Custom",
             "param": {
-                "target": [
-                    198,
-                    36
-                ]
+                "custom_action": "state_recovery_safe_navigation",
+                "custom_action_param": {
+                    "kind": "home"
+                }
             }
         },
         "post_delay": 900,

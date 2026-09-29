@@ -4539,6 +4539,7 @@ def _manual_two_city_confirm_account_identity(texts: list[str]) -> bool:
     state["account_identity_confirmed"] = True
     state["account_identity_failed"] = False
     state["account_identity_pending"] = False
+    state.pop("account_identity_main_map_recoveries", None)
     for key in ("manual_params", "auto_route_params"):
         params = state.get(key)
         if isinstance(params, dict):
@@ -4570,7 +4571,42 @@ class ManualTwoCityBusinessAccountIdentityDispatchAction(CustomAction):
 @AgentServer.custom_action("manual_two_city_business_account_identity_main_map_ready")
 class ManualTwoCityBusinessAccountIdentityMainMapReadyAction(CustomAction):
     def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
-        return _manual_two_city_state().get("account_identity_source") == "main_map"
+        state = _manual_two_city_state()
+        reason = "page_changed"
+        try:
+            # A successful recovery may describe a frame captured several
+            # seconds ago. Confirm the page again before authorizing UID OCR.
+            for index in range(2):
+                if context.tasker.stopping:
+                    return False
+                frame = _state_recovery_navigation_frame(context)
+                if context.tasker.stopping:
+                    return False
+                reason = str(frame.get("reason") or "unknown")
+                if not frame["ok"] or reason != "main_map":
+                    break
+                if time.monotonic() - frame["captured_at"] > 1.5:
+                    reason = "stale_frame"
+                    break
+                if index == 1:
+                    return True
+                time.sleep(0.3)
+        except Exception as exc:
+            reason = f"{type(exc).__name__}: {exc}"
+        recoveries = int(state.get("account_identity_main_map_recoveries") or 0)
+        if recoveries >= 2:
+            _manual_two_city_account_identity_failed(
+                state, "读取账号前未能稳定回到游戏主界面，恢复 2 次后仍未确认，已停止跑商。"
+            )
+            return False
+        state["account_identity_main_map_recoveries"] = recoveries + 1
+        _append_user_log(
+            _manual_two_city_current_task_entry(state),
+            f"读取账号前页面尚未回到主界面，准备重新恢复（{recoveries + 1}/2）。",
+            level="warning", event="manual_two_city_account_identity_page_recovery",
+            data={"reason": reason, "attempt": recoveries + 1},
+        )
+        return False
 
 
 @AgentServer.custom_action("manual_two_city_business_account_identity_read")
@@ -9805,7 +9841,23 @@ def _manual_two_city_buy_book_shortfall(
         used = max(0, int(usage.get("used") or 0))
     except (TypeError, ValueError):
         return {}
-    return usage if usage.get("attempted") and requested > used else {}
+    return usage if (usage.get("attempted") and usage.get("inventory_shortfall")
+                     and not usage.get("error") and requested > used) else {}
+
+
+def _manual_two_city_book_popup_counts_from_texts(texts: list[str]) -> dict[str, int | None]:
+    counts: dict[str, int | None] = {"owned": None, "selected": None, "limit": None}
+    for text in texts:
+        normalized = clean_text(text).replace("O", "0").replace("o", "0").replace("／", "/")
+        owned = re.fullmatch(r"拥有[:：]?(\d{1,6})", normalized)
+        if owned:
+            counts["owned"] = int(owned.group(1))
+        quantity = re.fullmatch(r"(\d{1,2})/(\d{1,6})", normalized)
+        if quantity:
+            selected, limit = map(int, quantity.groups())
+            if 1 <= selected <= min(limit, BUY_BOOK_MAX_PER_BATCH):
+                counts["selected"], counts["limit"] = selected, limit
+    return counts
 
 
 def _manual_two_city_book_inventory_from_entries(entries: list[dict[str, Any]]) -> int | None:
@@ -10048,6 +10100,111 @@ def _manual_two_city_click(context: Context, target: tuple[int, int], delay: flo
     context.tasker.controller.post_click(int(target[0]), int(target[1])).wait()
     if delay > 0:
         time.sleep(delay)
+
+
+def _state_recovery_frame_recognition(context: Context, image: Any, name: str, **node: Any) -> Any:
+    detail = context.run_recognition(name, image, {name: {**node, "action": "DoNothing"}})
+    if detail is None:
+        raise RuntimeError(f"{name} recognition did not run")
+    return detail
+
+
+def _state_recovery_navigation_frame(context: Context) -> dict[str, Any]:
+    """Capture and classify a fresh recovery frame without sending input."""
+    job = context.tasker.controller.post_screencap().wait()
+    if not job.succeeded:
+        return {"ok": False, "reason": "screencap_failed"}
+    image = job.get()
+    captured_at = time.monotonic()
+    if image is None or tuple(image.shape[:2]) != (720, 1280):
+        return {"ok": False, "reason": "invalid_image"}
+    result = {"ok": True, "image": image, "captured_at": captured_at, "reason": "other"}
+    loading = _state_recovery_frame_recognition(
+        context, image, "StateRecoveryNavigationLoadingProbe", recognition="OCR",
+        expected="^正在", roi=[200, 560, 880, 150],
+    )
+    if getattr(loading, "hit", False):
+        return {**result, "reason": "loading"}
+    main_map = _state_recovery_frame_recognition(
+        context, image, "StateRecoveryNavigationMainMapTemplateProbe", recognition="TemplateMatch",
+        template="main_map.png", roi=[1100, 610, 180, 110], threshold=0.95,
+    )
+    if getattr(main_map, "hit", False):
+        return {**result, "reason": "main_map"}
+    main_map_ocr = _state_recovery_frame_recognition(
+        context, image, "StateRecoveryNavigationMainMapOcrProbe", recognition="OCR",
+        expected=["^整备列车$", "^客运管理$", "^START ?ENGINE$"],
+        roi=[900, 620, 380, 100],
+    )
+    if getattr(main_map_ocr, "hit", False):
+        return {**result, "reason": "main_map"}
+    return result
+
+
+def _state_recovery_safe_navigation(context: Context, kind: str) -> dict[str, Any]:
+    """Recheck the current frame before a recovery home/back press.
+
+    Recovery's candidate list can spend seconds in OCR before selecting a
+    button. Neither that old match nor an unconditional fallback authorizes
+    input; even fallback nodes must find the button again on this fresh frame.
+    """
+    result: dict[str, Any] = {"ok": True, "clicked": False, "kind": kind}
+
+    def finish(reason: str, *, ok: bool = True) -> dict[str, Any]:
+        return {**result, "ok": ok, "reason": reason}
+
+    if kind not in ("home", "back"):
+        return finish("invalid_kind", ok=False)
+    try:
+        if context.tasker.stopping:
+            return finish("stopped")
+        frame = _state_recovery_navigation_frame(context)
+        if not frame["ok"] or frame["reason"] != "other":
+            return finish(frame["reason"], ok=frame["ok"])
+        image = frame["image"]
+
+        roi = [154, 9, 89, 58] if kind == "home" else [0, 0, 170, 80]
+        button = _state_recovery_frame_recognition(
+            context, image, f"StateRecoveryNavigation{kind.title()}Probe", recognition="TemplateMatch",
+            template="go_home.png" if kind == "home" else "page_back.png",
+            roi=roi, threshold=0.9,
+        )
+        if not getattr(button, "hit", False):
+            return finish("button_absent")
+        best = getattr(button, "best_result", None)
+        box = best.get("box") if isinstance(best, dict) else getattr(best, "box", None)
+        if not isinstance(box, (list, tuple)) or len(box) != 4:
+            return finish("invalid_button_box", ok=False)
+        values = [float(value) for value in box]
+        if any(not math.isfinite(value) or not value.is_integer() for value in values):
+            return finish("invalid_button_box", ok=False)
+        x, y, width, height = [int(value) for value in values]
+        left, top, roi_width, roi_height = roi
+        if (width <= 0 or height <= 0 or x < left or y < top
+                or x + width > left + roi_width or y + height > top + roi_height):
+            return finish("invalid_button_box", ok=False)
+        result["frame_age_ms"] = (time.monotonic() - frame["captured_at"]) * 1000
+        if result["frame_age_ms"] > 1500:
+            return finish("stale_frame")
+        if context.tasker.stopping:
+            return finish("stopped")
+        point = [x + width // 2, y + height // 2]
+        result["point"] = point
+        if not context.tasker.controller.post_click(*point).wait().succeeded:
+            return finish("click_failed", ok=False)
+        result["clicked"] = True
+        return finish("clicked")
+    except Exception as exc:
+        result["error"] = f"{type(exc).__name__}: {exc}"
+        return finish("navigation_error", ok=False)
+
+
+@AgentServer.custom_action("state_recovery_safe_navigation")
+class StateRecoverySafeNavigationAction(CustomAction):
+    def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
+        result = _state_recovery_safe_navigation(context, str(_argv_param(argv).get("kind") or ""))
+        _json_payload("state_recovery_safe_navigation", result)
+        return bool(result["ok"])
 
 
 def _manual_two_city_navigation_observation(
@@ -11537,6 +11694,16 @@ class ManualTwoCityBusinessUseBuyBooksAction(CustomAction):
                     {"ok": False, "reason": "retry_overlay_close_failed", "usage": previous_usage},
                 )
                 return False
+            if previous_usage.get("error"):
+                _append_user_log(
+                    MANUAL_TWO_CITY_TASK_ENTRY,
+                    "进货书：上次用书数量未能完整确认，停止本路段重试，避免重复消耗或误记库存。",
+                    level="error", event="manual_two_city_buy_books_retry_unconfirmed",
+                    data={"marker": marker, "usage": previous_usage},
+                )
+                return False
+            if _manual_two_city_buy_book_shortfall(state, leg):
+                state["buy_selection_skip_restock_quick_buy"] = True
             _append_user_log(
                 MANUAL_TWO_CITY_TASK_ENTRY,
                 (
@@ -11561,6 +11728,8 @@ class ManualTwoCityBusinessUseBuyBooksAction(CustomAction):
             "requested_batches": list(batches),
             "used_batches": [],
             "inventory_samples": [],
+            "inventory_shortfall": False,
+            "popup_samples": [],
         }
         usage_by_leg[marker] = usage
         state["buy_books_current_usage"] = usage
@@ -11596,8 +11765,8 @@ class ManualTwoCityBusinessUseBuyBooksAction(CustomAction):
 
                 inventory = _manual_two_city_book_inventory_from_entries(menu_entries)
                 usage["inventory_samples"].append(inventory)
-                actual_batch = min(batch, inventory) if inventory is not None else batch
-                if actual_batch <= 0:
+                if inventory == 0:
+                    usage["inventory_shortfall"] = True
                     closed, close_texts = _manual_two_city_close_buy_book_menu(
                         context,
                         f"ManualTwoCityBookUnavailableClose{batch_index:03d}",
@@ -11608,7 +11777,7 @@ class ManualTwoCityBusinessUseBuyBooksAction(CustomAction):
                         MANUAL_TWO_CITY_TASK_ENTRY,
                         (
                             f"进货书：第 {batch_index} 批计划使用 {batch} 本，但当前库存为 0，"
-                            "本路段将按实际可购库存继续选货。"
+                            "本路段将改用右上角全部买入，按实际库存补货。"
                         ),
                         level="warning",
                         event="manual_two_city_buy_book_unavailable",
@@ -11634,9 +11803,34 @@ class ManualTwoCityBusinessUseBuyBooksAction(CustomAction):
                 if not popup_hit:
                     raise RuntimeError(f"buy book popup did not open: {popup_texts[:12]}")
 
-                for _ in range(max(0, actual_batch - 1)):
+                # The menu can miss the small inventory digit. The confirmation
+                # dialog is authoritative: a 1/1 selector cannot consume 3 books.
+                counts = _manual_two_city_book_popup_counts_from_texts(popup_texts)
+                usage["popup_samples"].append(dict(counts))
+                if counts["selected"] is None or counts["limit"] is None:
+                    raise RuntimeError(f"cannot read buy book popup quantity: {popup_texts[:12]}")
+                available = [value for value in (inventory, counts["owned"], counts["limit"]) if value is not None]
+                actual_batch = min(batch, *available)
+                remaining_requested = int(usage["requested"]) - int(usage["used"])
+                if any(value is not None and value < remaining_requested for value in (inventory, counts["owned"])):
+                    usage["inventory_shortfall"] = True
+                if counts["limit"] < batch:
+                    usage["inventory_shortfall"] = True
+                if actual_batch < counts["selected"]:
+                    raise RuntimeError(f"buy book popup quantity exceeds available batch: {counts}")
+                for _ in range(actual_batch - counts["selected"]):
                     _manual_two_city_click(context, BUY_BOOK_INCREMENT_TARGET, 0.35)
 
+                _, _, quantity_texts = _manual_two_city_ocr_entries(
+                    context,
+                    f"ManualTwoCityBookQuantityBeforeConfirm{batch_index:03d}",
+                    BUY_BOOK_POPUP_TEXTS,
+                    roi=BUY_BOOK_POPUP_ROI,
+                )
+                confirmed_counts = _manual_two_city_book_popup_counts_from_texts(quantity_texts)
+                usage["popup_samples"].append(dict(confirmed_counts))
+                if confirmed_counts["selected"] != actual_batch:
+                    raise RuntimeError(f"buy book quantity not confirmed: expected={actual_batch}, counts={confirmed_counts}")
                 confirmed, confirm_texts = _manual_two_city_click_ocr_text(
                     context,
                     f"ManualTwoCityConfirmBook{batch_index:03d}",
@@ -11695,7 +11889,7 @@ class ManualTwoCityBusinessUseBuyBooksAction(CustomAction):
                 MANUAL_TWO_CITY_TASK_ENTRY,
                 (
                     f"进货书使用异常：{error}。"
-                    + ("已关闭道具弹窗，将按实际库存继续选货。" if closed else "道具弹窗未能关闭，停止本次操作。")
+                    + ("已关闭道具弹窗，停止本次操作以避免误记用书数量。" if closed else "道具弹窗未能关闭，停止本次操作。")
                 ),
                 level="warning" if closed else "error",
                 event="manual_two_city_buy_books_failed",
@@ -11708,17 +11902,19 @@ class ManualTwoCityBusinessUseBuyBooksAction(CustomAction):
                     "traceback": traceback.format_exc(limit=6),
                 },
             )
-            if not closed:
-                _json_payload("manual_two_city_business_use_buy_books_failed", {"ok": False, "error": error})
-                return False
+            _json_payload("manual_two_city_business_use_buy_books_failed", {"ok": False, "error": error})
+            return False
 
         used_total = int(usage.get("used") or 0)
         requested_total = int(usage.get("requested") or 0)
+        book_shortfall = bool(_manual_two_city_buy_book_shortfall(state, leg))
+        if book_shortfall:
+            state["buy_selection_skip_restock_quick_buy"] = True
         _append_user_log(
             MANUAL_TWO_CITY_TASK_ENTRY,
             (
-                f"进货书：实际使用 {used_total}/{requested_total} 本，继续选择计划商品。"
-                + (" 进货书不足，本段将按实际可购库存执行。" if used_total < requested_total else "")
+                f"进货书：实际使用 {used_total}/{requested_total} 本。"
+                + (" 进货书不足，本段改用右上角全部买入，按实际库存补货。" if book_shortfall else "继续选择计划商品。")
             ),
             level="warning" if used_total < requested_total else "info",
             event="manual_two_city_buy_books_done",
@@ -14670,6 +14866,25 @@ class ManualTwoCityBusinessQuickBuySelectionAction(CustomAction):
             "ManualTwoCityQuickBuySelectionCargoBefore",
         )
         if state.get("buy_selection_skip_restock_quick_buy"):
+            # Recovery/restart can leave only part of the cart selected. The top
+            # button then cancels, so normalize it before selecting all stock.
+            cleared, clear_texts = _manual_two_city_clear_top_all_buy_selection(
+                context, "ManualTwoCitySkipRestockQuickBuyClearSelection",
+            )
+            _manual_two_city_clear_buy_selection_state(state)
+            if not cleared:
+                state["buy_selection_quick_cancel_failed"] = {"reason": "skip_restock_clear_unconfirmed"}
+                _append_user_log(
+                    MANUAL_TWO_CITY_TASK_ENTRY,
+                    "买入页全部买入：未能确认清空已有选择，转入恢复后重试。",
+                    level="error", event="manual_two_city_skip_restock_quick_buy_clear_failed",
+                    data={"leg": leg, "texts": clear_texts[:20]},
+                )
+                return False
+            state.pop("buy_selection_quick_cancel_failed", None)
+            cargo_load, cargo_texts = _manual_two_city_probe_buy_page_cargo_load(
+                context, "ManualTwoCitySkipRestockQuickBuyCargoCleared",
+            )
             before_used = 0
             before_capacity = 0
             if isinstance(cargo_load, dict):
@@ -14705,6 +14920,7 @@ class ManualTwoCityBusinessQuickBuySelectionAction(CustomAction):
             if not selected:
                 state["selected_buy_goods"] = []
                 state["selected_buy_goods_actual_load"] = {}
+                state["buy_selection_quick_cancel_failed"] = {"reason": "skip_restock_selection_unconfirmed"}
                 _append_user_log(
                     MANUAL_TWO_CITY_TASK_ENTRY,
                     (

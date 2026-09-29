@@ -717,7 +717,10 @@
         "action": "Custom",
         "custom_action": "manual_two_city_business_account_identity_main_map_ready",
         "next": "ManualTwoCityBusinessAccountIdentityReadStart",
-        "on_error": "StateRecoveryStart"
+        "on_error": [
+            "ManualTwoCityBusinessAccountIdentityFailedStop",
+            "StateRecoveryStart"
+        ]
     },
     "ManualTwoCityBusinessAccountIdentityReadStart": {
         "recognition": "DirectHit",

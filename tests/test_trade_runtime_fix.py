@@ -1082,7 +1082,8 @@ class TradeRuntimeFixTest(unittest.TestCase):
             if expected == trade.BUY_BOOK_MENU_TEXTS:
                 return True, book_entries, ["进货采买书", "2"]
             if expected == trade.BUY_BOOK_POPUP_TEXTS:
-                return True, [], ["是否使用", "确认"]
+                quantity = "2/2" if "QuantityBeforeConfirm" in _name else "1/2"
+                return True, [], ["是否使用", "确认", "拥有：2", quantity]
             if expected == trade.BUY_PAGE_READY_TEXTS:
                 return True, [], ["全部买入"]
             return False, [], []
