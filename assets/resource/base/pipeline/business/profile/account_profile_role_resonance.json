@@ -2,7 +2,7 @@
     "AccountProfileRoleResonanceStart":  {
                                              "recognition":  "TemplateMatch",
                                              "template":  "main_map.png",
-                                             "threshold":  0.96,
+                                             "threshold":  0.88,
                                              "action":  "Click",
                                              "target":  [
                                                             1225,
@@ -16,6 +16,32 @@
                                                               "StateRecoveryStart"
                                                           ]
                                          },
+    "AccountProfileRoleResonanceStartByOcr":  {
+                                                  "recognition":  "OCR",
+                                                  "expected":  [
+                                                                   "^整备列车$",
+                                                                   "^客运管理$",
+                                                                   "^START\\s*ENGINE$"
+                                                               ],
+                                                  "roi":  [
+                                                              900,
+                                                              620,
+                                                              380,
+                                                              100
+                                                          ],
+                                                  "action":  "Click",
+                                                  "target":  [
+                                                                 1225,
+                                                                 58
+                                                             ],
+                                                  "post_delay":  600,
+                                                  "next":  [
+                                                               "AccountProfileRoleResonanceWarehouseReady"
+                                                           ],
+                                                  "on_error":  [
+                                                                   "StateRecoveryStart"
+                                                               ]
+                                              },
     "AccountProfileRoleResonanceWarehouseReady":  {
                                                       "recognition":  "OCR",
                                                       "expected":  [
@@ -1625,7 +1651,7 @@
     "AccountProfileRoleResonanceMainMapReady":  {
                                                     "recognition":  "TemplateMatch",
                                                     "template":  "main_map.png",
-                                                    "threshold":  0.96,
+                                                    "threshold":  0.88,
                                                     "timeout":  1000,
                                                     "action":  "DoNothing",
                                                     "next":  [
