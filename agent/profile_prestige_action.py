@@ -93,6 +93,7 @@ CARGO_TASK_ENTRY = "ReadAccountCargoCapacity"
 ACCOUNT_PROFILE_TASK_ENTRY = "ReadAccountProfile"
 LAUNCH_GAME_TASK_ENTRY = "LaunchGame"
 MANUAL_TWO_CITY_TASK_ENTRY = "ManualTwoCityBusiness"
+IMPACT_DRILL_BUTTON_LABELS = ["撞击脱离", "撞击脫离", "撞击脱離", "撞击脫離", "撞击准备"]
 AUTO_TWO_CITY_TASK_ENTRY = "AutoTwoCityBusiness"
 AUTO_TWO_CITY_EXCLUDE_OPTION = "AutoTwoCityExcludeCities"
 TRADE_WULINYUAN_DEFAULT_ENABLED = WULINYUAN_TRADE_ENABLED
@@ -4449,6 +4450,42 @@ def _manual_two_city_recalculate_after_account_profile(*, allow_default_account:
         return False
 
 
+@AgentServer.custom_action("pc_manual_business_check_frame")
+class PcManualBusinessCheckFrameAction(CustomAction):
+    def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
+        max_captures = 4
+        try:
+            for capture in range(1, max_captures + 1):
+                if context.tasker.stopping:
+                    return False
+                job = context.tasker.controller.post_screencap().wait()
+                image = job.get() if job.succeeded else None
+                if image is None:
+                    reason = "未能获取游戏窗口截图"
+                    break
+                height, width = image.shape[:2]
+                if (width, height) != (1280, 720):
+                    reason = f"控制器输出的截图为 {width}×{height}"
+                    break
+                if image.any():
+                    return True
+                if capture < max_captures:
+                    time.sleep(0.5)
+            else:
+                reason = f"连续 {max_captures} 次收到纯黑截图，请恢复游戏到前台并保持窗口可见"
+        except Exception as exc:
+            reason = f"读取游戏窗口截图失败（{exc}）"
+
+        _append_user_log(
+            MANUAL_TWO_CITY_TASK_ENTRY,
+            f"PC 手动跑商已停止，{reason}。请确认已连接雷索纳斯游戏窗口，将游戏客户区设为 "
+            "16:9（例如 1280×720 或 1920×1080），控制器缩放后的截图应为 1280×720。",
+            level="error",
+            event="pc_manual_business_check_frame_failed",
+        )
+        return False
+
+
 @AgentServer.custom_action("manual_two_city_business_config")
 class ManualTwoCityBusinessConfigAction(CustomAction):
     def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
@@ -4947,7 +4984,7 @@ class ManualTwoCityBusinessStageAction(CustomAction):
             and _manual_two_city_bool(state.get("auto_use_impact_drill"), False)
         ):
             texts = _ocr_texts(argv)
-            if _texts_contain_any(texts, ["撞击脱离", "撞击准备", "疲劳度+0"]) or (
+            if _texts_contain_any(texts, [*IMPACT_DRILL_BUTTON_LABELS, "疲劳度+0"]) or (
                 _texts_contain_any(texts, ["请选择", "应对方式"])
                 and not _texts_contain_any(texts, ["敌方等级", "护卫队迎击"])
             ):
@@ -5292,7 +5329,7 @@ class ManualTwoCityBusinessRouteItemAvailableRecognition(CustomRecognition):
         expected: list[str] | None = None
         fallback_box: tuple[int, int, int, int] | None = None
         if item == "impact_drill":
-            expected = ["撞击脱离", "撞击准备"]
+            expected = IMPACT_DRILL_BUTTON_LABELS
             fallback_box = (820, 250, 460, 300)
             node: dict[str, Any] = {
                 "recognition": "OCR",
@@ -5586,7 +5623,7 @@ def _manual_two_city_route_item_still_visible(context: Context, item: str) -> bo
     if item == "impact_drill":
         node = {
             "recognition": "OCR",
-            "expected": ["撞击脱离", "撞击准备"],
+            "expected": IMPACT_DRILL_BUTTON_LABELS,
             "roi": [820, 250, 460, 300],
             "action": "DoNothing",
         }
@@ -10292,6 +10329,31 @@ class ManualTwoCityBusinessOpenCurrentCityAction(CustomAction):
                 level="warning", event="manual_two_city_enter_city_failed", data=result,
             )
         _json_payload("manual_two_city_business_open_current_city", result)
+        return bool(result["ok"])
+
+
+@AgentServer.custom_action("pc_manual_business_enter_arrived_city")
+class PcManualBusinessEnterArrivedCityAction(CustomAction):
+    def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
+        result = _manual_two_city_open_navigation(
+            context,
+            probe_name="PcManualBusinessArrivedCityProbe",
+            # The PC button's right arrow can join the OCR box as an arrow or comma.
+            source_texts=[
+                text + suffix
+                for text in ("访问城市", "访问地区")
+                for suffix in ("", "→", "，", ",")
+            ],
+            source_roi=[1030, 450, 245, 105],
+            ready_nodes=["ManualTwoCityBusinessDestinationCityReady"],
+        )
+        if not result["ok"]:
+            _append_user_log(
+                MANUAL_TWO_CITY_TASK_ENTRY,
+                f"PC 到站进城失败：{result['reason']}，已点击 {result['clicks']} 次。",
+                level="error", event="pc_manual_business_enter_arrived_city_failed", data=result,
+            )
+        _json_payload("pc_manual_business_enter_arrived_city", result)
         return bool(result["ok"])
 
 

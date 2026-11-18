@@ -378,9 +378,9 @@
             "ManualTwoCityBusinessCloseDailyCheckInForStartupTravelRecover",
             "ManualTwoCityBusinessTrainManageScreenRecovery",
             "ManualTwoCityBusinessRouteImpactDrillEnabled",
-            "ManualTwoCityBusinessRouteImpactDrillButton",
             "ManualTwoCityBusinessRouteSpeedProjectileEnabled",
             "ManualTwoCityBusinessRouteEventAttack",
+            "ManualTwoCityBusinessWaitImpactDrillWindow",
             "ManualTwoCityBusinessRouteEventPanelReady",
             "ManualTwoCityBusinessRouteEventContinue",
             "ManualTwoCityBusinessFightClearTeamPopupCancel",
@@ -3950,9 +3950,9 @@
             "ManualTwoCityBusinessArrivedVisitCity",
             "ManualTwoCityBusinessArrivedVisitCityByStatus",
             "ManualTwoCityBusinessRouteImpactDrillEnabled",
-            "ManualTwoCityBusinessRouteImpactDrillButton",
             "ManualTwoCityBusinessRouteSpeedProjectileEnabled",
             "ManualTwoCityBusinessRouteEventAttack",
+            "ManualTwoCityBusinessWaitImpactDrillWindow",
             "ManualTwoCityBusinessRouteEventPanelReady",
             "ManualTwoCityBusinessRouteEventContinue",
             "ManualTwoCityBusinessRouteLossReport",
@@ -4509,12 +4509,12 @@
         "next": "ManualTwoCityBusinessRouteImpactDrillUsed",
         "on_error": "ManualTwoCityBusinessTravelMonitor"
     },
-    "ManualTwoCityBusinessRouteImpactDrillButton": {
+    "ManualTwoCityBusinessWaitImpactDrillWindow": {
         "recognition": {
             "type": "OCR",
             "param": {
                 "expected": [
-                    "撞击脱离",
+                    "撞击[脱脫][离離]",
                     "撞击准备"
                 ],
                 "roi": [
@@ -4525,12 +4525,45 @@
                 ]
             }
         },
-        "action": {
-            "type": "Click"
+        "action": "DoNothing",
+        "focus": {
+            "Node.Action.Starting": "等待撞击准备阶段结束或护卫队迎击开放。"
         },
-        "post_delay": 1200,
-        "next": "ManualTwoCityBusinessRouteImpactDrillUsed",
+        "timeout": 30000,
+        "rate_limit": 700,
+        "next": [
+            "ManualTwoCityBusinessRouteEventAttack",
+            "ManualTwoCityBusinessImpactDrillWindowClosed"
+        ],
+        "on_error": "ManualTwoCityBusinessImpactDrillWindowTimedOut"
+    },
+    "ManualTwoCityBusinessImpactDrillWindowClosed": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": ["撞击[脱脫][离離]", "撞击准备"],
+                "roi": [820, 250, 460, 300]
+            }
+        },
+        "inverse": true,
+        "action": "DoNothing",
+        "next": "ManualTwoCityBusinessTravelMonitor",
         "on_error": "ManualTwoCityBusinessTravelMonitor"
+    },
+    "ManualTwoCityBusinessImpactDrillWindowTimedOut": {
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_stage",
+                "custom_action_param": {
+                    "stage": "行车事件等待超时",
+                    "detail": "撞击选项持续显示，未能进入护卫队迎击。请手动处理当前事件后重新运行。",
+                    "terminal_status": "failed",
+                    "level": "error"
+                }
+            }
+        },
+        "next": "RunManualTwoCityBusinessDone"
     },
     "ManualTwoCityBusinessRouteImpactDrillUsed": {
         "recognition": {

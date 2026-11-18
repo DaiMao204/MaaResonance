@@ -583,6 +583,76 @@ class TradeRuntimeFixTest(unittest.TestCase):
         self.assertIn("ManualTwoCityAutoPickup", auto_task["task"][0]["option"])
         self.assertEqual(manual_task["option"]["ManualTwoCityAutoPickup"]["default_case"], "No")
 
+    def test_impact_drill_click_requires_enabled_option_and_detected_button(self) -> None:
+        button = (1092, 381, 102, 37)
+        argv = types.SimpleNamespace(
+            custom_recognition_param={"item": "impact_drill"}, image=object(), node_name="Drill",
+        )
+        for enabled, visible, expected in ((False, True, None), (True, True, button), (True, False, None)):
+            context = Mock()
+            context.run_recognition.return_value = types.SimpleNamespace(hit=visible, box=button)
+            with (
+                self.subTest(enabled=enabled, visible=visible),
+                patch.object(trade, "_manual_two_city_state", return_value={"auto_use_impact_drill": enabled}),
+                patch.object(trade.CustomRecognition, "AnalyzeResult", types.SimpleNamespace, create=True),
+            ):
+                result = trade.ManualTwoCityBusinessRouteItemAvailableRecognition().analyze(context, argv)
+                self.assertEqual(result.box, expected)
+                self.assertEqual(context.run_recognition.call_count, int(enabled))
+
+    def test_disabled_impact_drill_waits_without_advancing_the_train(self) -> None:
+        pipeline_path = ROOT / "assets/resource/base/pipeline/business/trade/manual_two_city_business.json"
+        pipeline = json.loads(pipeline_path.read_text(encoding="utf-8"))
+        drill = "ManualTwoCityBusinessRouteImpactDrillEnabled"
+        used = "ManualTwoCityBusinessRouteImpactDrillUsed"
+        fight = "ManualTwoCityBusinessRouteEventAttack"
+        wait = "ManualTwoCityBusinessWaitImpactDrillWindow"
+        closed = "ManualTwoCityBusinessImpactDrillWindowClosed"
+        timeout = "ManualTwoCityBusinessImpactDrillWindowTimedOut"
+        self.assertEqual(pipeline[drill]["action"]["type"], "Click")
+        self.assertEqual(pipeline[drill]["custom_recognition_param"]["item"], "impact_drill")
+        self.assertEqual([name for name, node in pipeline.items() if node.get("next") == used], [drill])
+        for entry in ("ManualTwoCityBusinessStartupTravelRecover", "ManualTwoCityBusinessTravelMonitor"):
+            candidates = pipeline[entry]["next"]
+            self.assertLess(candidates.index(drill), candidates.index(fight))
+            self.assertLess(candidates.index(fight), candidates.index(wait))
+            self.assertLess(candidates.index(wait), candidates.index("ManualTwoCityBusinessRouteEventPanelReady"))
+        self.assertEqual(pipeline[wait]["action"], "DoNothing")
+        self.assertEqual(pipeline[wait]["next"], [fight, closed])
+        self.assertEqual(pipeline[wait]["timeout"], 30000)
+        self.assertEqual(pipeline[wait]["on_error"], timeout)
+        self.assertEqual(pipeline[closed]["recognition"], pipeline[wait]["recognition"])
+        self.assertTrue(pipeline[closed]["inverse"])
+        self.assertEqual(pipeline[closed]["action"], "DoNothing")
+        self.assertEqual(pipeline[closed]["next"], "ManualTwoCityBusinessTravelMonitor")
+        failure = pipeline[timeout]["action"]["param"]["custom_action_param"]
+        self.assertEqual(failure["terminal_status"], "failed")
+
+    def test_drill_probe_and_post_click_check_use_the_same_ocr_spellings(self) -> None:
+        argv = types.SimpleNamespace(
+            custom_recognition_param={"item": "impact_drill"}, image=object(), node_name="Drill",
+        )
+        button = (1087, 377, 108, 41)
+        for label in ("撞击脱离", "撞击脫离", "撞击脱離", "撞击脫離", "撞击准备", "疲劳度+0"):
+            def recognize(name, image, override):
+                accepted = label in override[name]["expected"]
+                return types.SimpleNamespace(hit=accepted, box=None, all_results=[
+                    {"text": "暂不可用", "box": [968, 250, 91, 36]},
+                    {"text": label, "box": button},
+                ])
+
+            context = types.SimpleNamespace(run_recognition=recognize)
+            with (
+                self.subTest(label=label),
+                patch.object(trade, "_manual_two_city_state", return_value={"auto_use_impact_drill": True}),
+                patch.object(trade, "_manual_two_city_screencap", return_value=argv.image),
+                patch.object(trade.CustomRecognition, "AnalyzeResult", types.SimpleNamespace, create=True),
+            ):
+                expected = label != "疲劳度+0"
+                result = trade.ManualTwoCityBusinessRouteItemAvailableRecognition().analyze(context, argv)
+                self.assertEqual(result.box, button if expected else None)
+                self.assertEqual(trade._manual_two_city_route_item_still_visible(context, "impact_drill"), expected)
+
     def test_high_level_city_departure_dialog_is_handled_in_order(self) -> None:
         pipeline_path = ROOT / "assets" / "resource" / "base" / "pipeline" / "business" / "trade" / "manual_two_city_business.json"
         pipeline = json.loads(pipeline_path.read_text(encoding="utf-8"))

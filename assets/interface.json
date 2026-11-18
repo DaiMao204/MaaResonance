@@ -8,7 +8,7 @@
     "license": "AGPL-3.0-only",
     "welcome": "当前处于公开测试阶段，主要测试功能稳定性。遇到异常请附带 MXU 日志、任务配置和出错界面截图反馈。",
     "github": "https://github.com/DaiMao204/MaaResonance",
-    "version": "v1.5.4",
+    "version": "v2.0.0-beta.1",
     "mirrorchyan_rid": "MaaResonance",
     "mirrorchyan_multiplatform": true,
     "controller": [
@@ -17,6 +17,22 @@
             "label": "安卓模拟器",
             "type": "Adb",
             "display_short_side": 720
+        },
+        {
+            "name": "Win32",
+            "label": "PC 客户端（前台）",
+            "type": "Win32",
+            "display_short_side": 720,
+            "win32": {
+                "class_regex": "^UnityWndClass$",
+                "window_regex": "^雷索纳斯$",
+                "screencap": "FramePool",
+                "mouse": "Seize",
+                "keyboard": "Seize"
+            },
+            "attach_resource_path": [
+                "./resource/pc"
+            ]
         }
     ],
     "resource": [
@@ -27,7 +43,8 @@
                 "./resource/base"
             ],
             "controller": [
-                "ADB"
+                "ADB",
+                "Win32"
             ]
         }
     ],
@@ -59,7 +76,7 @@
         {
             "name": "auto-business",
             "label": "自动跑商",
-            "description": "启动游戏后自动规划并执行双城跑商。",
+            "description": "在安卓模拟器中启动游戏，自动规划并执行双城跑商。",
             "task": [
                 {
                     "name": "LaunchGame",
@@ -93,7 +110,7 @@
         {
             "name": "manual-business",
             "label": "手动跑商",
-            "description": "按指定起点和目标城市执行双城跑商。",
+            "description": "在安卓模拟器中启动游戏，按指定起点和目标城市执行双城跑商。",
             "task": [
                 {
                     "name": "LaunchGame",
@@ -124,6 +141,41 @@
                         "ManualTwoCityAutoPickup": "No",
                         "ManualTwoCityAutoDrink": "Yes",
                         "ManualTwoCityAutoBento": "Yes",
+                        "ManualTwoCityUseMedicine": "No"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "pc-manual-business",
+            "label": "PC 手动跑商（一轮）",
+            "description": "从已打开的国服 PC 客户端执行一轮往返，去程和回程均使用 0 本进货书。",
+            "task": [
+                {
+                    "name": "ManualTwoCityBusiness",
+                    "enabled": true,
+                    "option": {
+                        "ManualTwoCityStartCity": "修格里城",
+                        "ManualTwoCityStartParams": {
+                            "start_book": "0",
+                            "start_bargain_percent": "0",
+                            "start_raise_percent": "0"
+                        },
+                        "ManualTwoCityTargetCity": "7号自由港",
+                        "ManualTwoCityTargetParams": {
+                            "target_book": "0",
+                            "target_bargain_percent": "0",
+                            "target_raise_percent": "0"
+                        },
+                        "ManualTwoCityRunMode": "one_round",
+                        "ManualTwoCityAccountProfileReadMode": "none",
+                        "ManualTwoCityUseHaggleBook": "No",
+                        "ManualTwoCityWulinyuanEnabled": "No",
+                        "ManualTwoCityAutoImpactDrill": "No",
+                        "ManualTwoCityAutoSpeedProjectile": "No",
+                        "ManualTwoCityAutoPickup": "No",
+                        "ManualTwoCityAutoDrink": "No",
+                        "ManualTwoCityAutoBento": "No",
                         "ManualTwoCityUseMedicine": "No"
                     }
                 }

@@ -6,6 +6,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
+import numpy as np
+
 from tests.test_trade_runtime_fix import trade
 from maa_resonance.logic.navigation_runtime import run_navigation_transition
 
@@ -75,6 +77,92 @@ class NavigationAgentTest(unittest.TestCase):
         for loading_image in self.images[:2]:
             self.assertEqual([c.args[0] for c in calls if c.args[1] is loading_image], ["NavigationTestLoading"])
         self.assertEqual(self.controller.post_screencap.call_count, 4)
+
+    def test_pc_arrival_retries_the_visible_visit_button_and_requires_the_city_page(self):
+        def recognize(name, image, override=None):
+            if name.endswith("Loading"):
+                return types.SimpleNamespace(hit=image.page == "loading")
+            if name == "ManualTwoCityBusinessDestinationCityReady":
+                return types.SimpleNamespace(hit=image.page == "city")
+            self.assertIn("^访问城市，$", override[name]["expected"])
+            self.assertIn("^访问城市→$", override[name]["expected"])
+            self.assertEqual(override[name]["roi"], [1030, 450, 245, 105])
+            return types.SimpleNamespace(hit=True, all_results=[
+                {"text": image.page, "box": [1150, 477, 80, 24]},
+            ])
+
+        def runtime(**kwargs):
+            return run_navigation_transition(**kwargs, clock=lambda: self.now, sleep=self.sleep)
+
+        self.context.run_recognition.side_effect = recognize
+        for pages, success, clicks in (
+            (["city"], True, 0),
+            (["访问城市，"] * 4 + ["访问城市→"] * 6 + ["loading", "city"], True, 2),
+            (["访问地区"], False, 3),
+            (["当前城市"], False, 0),
+        ):
+            with (
+                self.subTest(pages=pages),
+                patch.object(trade, "run_navigation_transition", side_effect=runtime),
+                patch.object(trade, "_append_user_log"),
+                patch.object(trade, "_json_payload"),
+            ):
+                self.now = 0
+                self.frames(pages)
+                self.controller.post_click.reset_mock()
+                self.assertEqual(trade.PcManualBusinessEnterArrivedCityAction().run(self.context, None), success)
+                self.assertEqual(self.controller.post_click.call_count, clicks)
+                for call in self.controller.post_click.call_args_list:
+                    self.assertEqual(call.args, (1190, 489))
+
+    def test_pc_manual_entry_requires_a_fresh_normalized_frame(self):
+        correct = np.ones((720, 1280, 3), dtype=np.uint8)
+        wide = types.SimpleNamespace(shape=(720, 1600, 3))
+        self.controller.cached_image = correct
+        for succeeded, image, expected, reason in (
+            (True, correct, True, ""),
+            (True, wide, False, "1600×720"),
+            (True, None, False, "未能获取"),
+            (False, correct, False, "未能获取"),
+        ):
+            with self.subTest(succeeded=succeeded, image=image), patch.object(trade, "_append_user_log") as log:
+                capture = self.controller.post_screencap.return_value.wait.return_value
+                capture.succeeded = succeeded
+                capture.get.return_value = image
+                self.assertEqual(trade.PcManualBusinessCheckFrameAction().run(self.context, None), expected)
+                if expected:
+                    log.assert_not_called()
+                else:
+                    message = log.call_args.args[1]
+                    self.assertIn(reason, message)
+                    self.assertIn("16:9", message)
+                    self.assertEqual(log.call_args.kwargs["level"], "error")
+        self.controller.post_click.assert_not_called()
+
+    def test_pc_manual_entry_retries_only_pure_black_frames(self):
+        black = np.zeros((720, 1280, 3), dtype=np.uint8)
+        dark = black.copy()
+        dark[2, 5, 1] = 1
+        self.controller.cached_image = dark
+        for frames, expected in (((dark,), True), ((black, black, dark), True), ((black,) * 4, False)):
+            with (
+                self.subTest(captures=len(frames)),
+                patch.object(trade.time, "sleep") as sleep,
+                patch.object(trade, "_append_user_log") as log,
+            ):
+                self.controller.post_screencap.reset_mock()
+                capture = self.controller.post_screencap.return_value.wait.return_value
+                capture.succeeded = True
+                capture.get.side_effect = frames
+                self.assertEqual(trade.PcManualBusinessCheckFrameAction().run(self.context, None), expected)
+                self.assertEqual(self.controller.post_screencap.call_count, len(frames))
+                self.assertEqual([call.args for call in sleep.call_args_list], [(0.5,)] * (len(frames) - 1))
+                if expected:
+                    log.assert_not_called()
+                else:
+                    self.assertIn("纯黑截图", log.call_args.args[1])
+                    self.assertIn("前台", log.call_args.args[1])
+        self.controller.post_click.assert_not_called()
 
     def test_screencap_failure_does_not_use_cached_image(self):
         job = Mock(succeeded=False)

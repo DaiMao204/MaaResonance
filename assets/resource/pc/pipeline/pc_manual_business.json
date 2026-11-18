@@ -1,0 +1,93 @@
+{
+    "RunManualTwoCityBusiness": {
+        "next": "PcManualBusinessCheckFrame"
+    },
+    "PcManualBusinessCheckFrame": {
+        "focus": {
+            "Node.Action.Failed": "未获得可用的 1280×720 游戏画面。请恢复游戏到前台并保持可见，确认客户区宽高比为 16:9，再重新连接。"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "pc_manual_business_check_frame"
+            }
+        },
+        "next": "ManualTwoCityBusinessSetOutboundCity"
+    },
+    "ManualTwoCityBusinessArrivedVisitCity": {
+        "next": ["ManualTwoCityBusinessDestinationCityReady", "ManualTwoCityBusinessArrivedMainMap"],
+        "on_error": "PcManualBusinessArrivalFailed"
+    },
+    "ManualTwoCityBusinessArrivedVisitCityByStatus": {
+        "next": ["ManualTwoCityBusinessDestinationCityReady", "ManualTwoCityBusinessArrivedMainMap"],
+        "on_error": "PcManualBusinessArrivalFailed"
+    },
+    "ManualTwoCityBusinessArrivedMainMap": {
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "pc_manual_business_enter_arrived_city"
+            }
+        },
+        "post_delay": 0,
+        "on_error": "PcManualBusinessArrivalFailed"
+    },
+    "PcManualBusinessArrivalFailed": {
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_stage",
+                "custom_action_param": {
+                    "stage": "PC 到站进城失败",
+                    "detail": "未确认已进入目的地城市。请检查游戏画面后再继续。",
+                    "terminal_status": "failed",
+                    "level": "error"
+                }
+            }
+        },
+        "next": "RunManualTwoCityBusinessDone"
+    },
+    "LaunchGameStartApp": {
+        "action": "DoNothing",
+        "post_delay": 0,
+        "next": "LaunchGameFailed"
+    },
+    "StateRecoveryRestartGameOnce": {
+        "action": "DoNothing",
+        "post_delay": 0,
+        "next": "PcManualBusinessRecoveryFailed"
+    },
+    "StateRecoveryStartGameOnce": {
+        "action": "DoNothing",
+        "post_delay": 0,
+        "next": "PcManualBusinessRecoveryFailed"
+    },
+    "ManualTwoCityBusinessTravelStuckRestartStopApp": {
+        "action": "DoNothing",
+        "post_delay": 0,
+        "next": "PcManualBusinessRecoveryFailed"
+    },
+    "ManualTwoCityBusinessTravelStuckRestartStartApp": {
+        "action": "DoNothing",
+        "post_delay": 0,
+        "next": "PcManualBusinessRecoveryFailed"
+    },
+    "PcManualBusinessRecoveryFailed": {
+        "focus": {
+            "Node.Action.Starting": "PC 手动跑商已停止。请手动将游戏返回可操作界面后重试。"
+        },
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_stage",
+                "custom_action_param": {
+                    "stage": "PC 手动跑商已停止",
+                    "detail": "当前画面或行车状态未能恢复。请手动将游戏返回可操作界面后重试。",
+                    "terminal_status": "failed",
+                    "level": "error"
+                }
+            }
+        },
+        "next": "RunManualTwoCityBusinessDone"
+    }
+}

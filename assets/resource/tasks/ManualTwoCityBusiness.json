@@ -11,7 +11,8 @@
                 "official"
             ],
             "controller": [
-                "ADB"
+                "ADB",
+                "Win32"
             ],
             "pipeline_override": {
                 "StateRecoveryComplete": {
@@ -1201,7 +1202,7 @@
         "ManualTwoCityAutoImpactDrill": {
             "type": "switch",
             "label": "自动使用撞击钻头",
-            "description": "开启后，行车途中识别到“撞击脱离”时会自动使用撞击钻头。",
+            "description": "开启后会点击“撞击脱离”使用撞击钻头。关闭后会等待撞击准备阶段结束，开放“护卫队迎击”时按正常战斗流程处理。",
             "default_case": "No",
             "cases": [
                 {
