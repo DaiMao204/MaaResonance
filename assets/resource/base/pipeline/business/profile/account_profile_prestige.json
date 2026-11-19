@@ -4,7 +4,37 @@
             "type": "TemplateMatch",
             "param": {
                 "template": "main_map.png",
-                "threshold": 0.96
+                "threshold": 0.88
+            }
+        },
+        "action": {
+            "type": "Click",
+            "param": {
+                "target": [
+                    155,
+                    675
+                ]
+            }
+        },
+        "post_delay": 600,
+        "next": "AccountProfilePrestigePanelReady",
+        "on_error": "StateRecoveryStart"
+    },
+    "AccountProfilePrestigeStartByOcr": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": [
+                    "^整备列车$",
+                    "^客运管理$",
+                    "^START\\s*ENGINE$"
+                ],
+                "roi": [
+                    900,
+                    620,
+                    380,
+                    100
+                ]
             }
         },
         "action": {
@@ -272,7 +302,7 @@
             "type": "TemplateMatch",
             "param": {
                 "template": "main_map.png",
-                "threshold": 0.96
+                "threshold": 0.88
             }
         },
         "action": {

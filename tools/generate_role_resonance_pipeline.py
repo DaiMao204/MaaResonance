@@ -94,7 +94,18 @@ def generate_pipeline() -> dict[str, Any]:
     pipeline["AccountProfileRoleResonanceStart"] = node(
         "TemplateMatch",
         "Click",
-        recognition_param={"template": "main_map.png", "threshold": 0.96},
+        recognition_param={"template": "main_map.png", "threshold": 0.88},
+        action_param={"target": CREW_WAREHOUSE_ENTRY_TARGET},
+        post_delay=600,
+        next_node="AccountProfileRoleResonanceWarehouseReady",
+    )
+    pipeline["AccountProfileRoleResonanceStartByOcr"] = node(
+        "OCR",
+        "Click",
+        recognition_param={
+            "expected": ["^整备列车$", "^客运管理$", "^START\\s*ENGINE$"],
+            "roi": [900, 620, 380, 100],
+        },
         action_param={"target": CREW_WAREHOUSE_ENTRY_TARGET},
         post_delay=600,
         next_node="AccountProfileRoleResonanceWarehouseReady",
@@ -220,7 +231,7 @@ def generate_pipeline() -> dict[str, Any]:
     pipeline["AccountProfileRoleResonanceMainMapReady"] = node(
         "TemplateMatch",
         "DoNothing",
-        recognition_param={"template": "main_map.png", "threshold": 0.96},
+        recognition_param={"template": "main_map.png", "threshold": 0.88},
         next_node="AccountProfileRoleResonanceDone",
         on_error="AccountProfileRoleResonanceDone",
     )

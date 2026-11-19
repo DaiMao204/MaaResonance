@@ -10127,7 +10127,7 @@ def _state_recovery_navigation_frame(context: Context) -> dict[str, Any]:
         return {**result, "reason": "loading"}
     main_map = _state_recovery_frame_recognition(
         context, image, "StateRecoveryNavigationMainMapTemplateProbe", recognition="TemplateMatch",
-        template="main_map.png", roi=[1100, 610, 180, 110], threshold=0.95,
+        template="main_map.png", roi=[1100, 610, 180, 110], threshold=0.88,
     )
     if getattr(main_map, "hit", False):
         return {**result, "reason": "main_map"}
