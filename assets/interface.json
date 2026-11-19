@@ -33,6 +33,40 @@
             "attach_resource_path": [
                 "./resource/pc"
             ]
+        },
+        {
+            "name": "Win32BackgroundWindowPos",
+            "label": "PC 客户端（后台-移窗不抢鼠标）",
+            "description": "不移动物理鼠标，点击或滑动时会短暂平移后台游戏窗口对齐光标（游戏窗口可被遮挡但不可最小化）。",
+            "type": "Win32",
+            "display_short_side": 720,
+            "win32": {
+                "class_regex": "^UnityWndClass$",
+                "window_regex": "^雷索纳斯$",
+                "screencap": "FramePool",
+                "mouse": "PostMessageWithWindowPos",
+                "keyboard": "PostMessage"
+            },
+            "attach_resource_path": [
+                "./resource/pc"
+            ]
+        },
+        {
+            "name": "Win32BackgroundCursorPos",
+            "label": "PC 客户端（后台-移光标）",
+            "description": "游戏窗口保持原位不动，点击或滑动瞬间短暂借用并复位物理鼠标（游戏窗口可被遮挡但不可最小化）。",
+            "type": "Win32",
+            "display_short_side": 720,
+            "win32": {
+                "class_regex": "^UnityWndClass$",
+                "window_regex": "^雷索纳斯$",
+                "screencap": "FramePool",
+                "mouse": "PostMessageWithCursorPos",
+                "keyboard": "PostMessage"
+            },
+            "attach_resource_path": [
+                "./resource/pc"
+            ]
         }
     ],
     "resource": [
@@ -44,7 +78,9 @@
             ],
             "controller": [
                 "ADB",
-                "Win32"
+                "Win32",
+                "Win32BackgroundWindowPos",
+                "Win32BackgroundCursorPos"
             ]
         }
     ],
