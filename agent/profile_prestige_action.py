@@ -7034,10 +7034,23 @@ def _manual_two_city_strength_enough(status: dict[str, int] | None, required: in
     return bool(status and required > 0 and int(status.get("remaining") or 0) >= required)
 
 
+def _manual_two_city_cargo_candidate_key(
+    item: dict[str, Any],
+    expected_capacity: int | None = None,
+) -> tuple[int, int, int, int]:
+    priority = int(item.get("priority", 0))
+    capacity = int(item.get("capacity", 0))
+    used = int(item.get("used", 0))
+    valid_expected = expected_capacity is not None and 100 <= expected_capacity <= 9999
+    capacity_match = 1 if (valid_expected and capacity == expected_capacity) else 0
+    return (priority, capacity_match, capacity, used)
+
+
 def _manual_two_city_parse_buy_page_cargo_load(
     entries: list[dict[str, Any]],
     *,
     roi: list[int] | None = None,
+    expected_capacity: int | None = None,
 ) -> dict[str, Any] | None:
     candidates: list[dict[str, Any]] = []
     roi_x, roi_y, roi_w, roi_h = roi or BUY_PAGE_CARGO_LOAD_ROI
@@ -7133,7 +7146,7 @@ def _manual_two_city_parse_buy_page_cargo_load(
             for match in re.finditer(r"(\d{1,5})\s*/\s*[^\d]{0,3}(\d{1,5})\+?", candidate_text):
                 used = int(match.group(1))
                 capacity = int(match.group(2))
-                add_candidate(used, capacity, raw_text, candidate_text, entry)
+                add_candidate(used, capacity, raw_text, candidate_text, entry, priority=3)
             digits = re.sub(r"\D+", "", candidate_text)
             if len(digits) < 4 or "%" in candidate_text:
                 continue
@@ -7144,7 +7157,7 @@ def _manual_two_city_parse_buy_page_cargo_load(
                         continue
                     used_with_separator = digits[:-capacity_width]
                     capacity_text = digits[-capacity_width:]
-                    if not used_with_separator.endswith("1"):
+                    if capacity_text.startswith("0") or not used_with_separator.endswith("1"):
                         continue
                     used_text = used_with_separator[:-1]
                     if not used_text:
@@ -7157,6 +7170,47 @@ def _manual_two_city_parse_buy_page_cargo_load(
                         entry,
                         priority=1,
                     )
+            if not raw_has_separator and "+" in candidate_text and "%" not in candidate_text:
+                for match in re.finditer(r"(\d{1,5})\s*\+\s*(\d{4,9})", candidate_text):
+                    base_text = match.group(1)
+                    tail_digits = match.group(2)
+                    matched_sep_one = False
+                    for capacity_width in (4, 3):
+                        if len(tail_digits) <= capacity_width + 1:
+                            continue
+                        selected_with_separator = tail_digits[:-capacity_width]
+                        capacity_text = tail_digits[-capacity_width:]
+                        if capacity_text.startswith("0") or not selected_with_separator.endswith("1"):
+                            continue
+                        selected_text = selected_with_separator[:-1]
+                        if not selected_text:
+                            continue
+                        add_candidate(
+                            int(base_text) + int(selected_text),
+                            int(capacity_text),
+                            raw_text,
+                            f"{base_text}+{selected_text}/{capacity_text}",
+                            entry,
+                            priority=2,
+                        )
+                        matched_sep_one = True
+                    if (
+                        not matched_sep_one
+                        and expected_capacity is not None
+                        and 100 <= expected_capacity <= 9999
+                    ):
+                        cap_str = str(expected_capacity)
+                        if len(tail_digits) > len(cap_str) and tail_digits.endswith(cap_str):
+                            selected_text = tail_digits[:-len(cap_str)]
+                            if selected_text:
+                                add_candidate(
+                                    int(base_text) + int(selected_text),
+                                    expected_capacity,
+                                    raw_text,
+                                    f"{base_text}+{selected_text}/{cap_str}",
+                                    entry,
+                                    priority=1,
+                                )
             if digits.startswith("0") and "+" not in candidate_text:
                 for start in (1, 2):
                     capacity_text = digits[start:]
@@ -7165,11 +7219,12 @@ def _manual_two_city_parse_buy_page_cargo_load(
                     capacity = int(capacity_text)
                     if 100 <= capacity <= 9999:
                         add_candidate(0, capacity, raw_text, f"0/{capacity_text}", entry, priority=1)
-            for split in range(1, len(digits)):
-                used = int(digits[:split])
-                capacity = int(digits[split:])
-                if 100 <= capacity <= 9999:
-                    add_candidate(used, capacity, raw_text, f"{digits[:split]}/{digits[split:]}", entry, priority=-1)
+            if "+" not in candidate_text:
+                for split in range(1, len(digits)):
+                    used = int(digits[:split])
+                    capacity = int(digits[split:])
+                    if 100 <= capacity <= 9999:
+                        add_candidate(used, capacity, raw_text, f"{digits[:split]}/{digits[split:]}", entry, priority=-1)
 
     if used_fragments and capacity_fragments:
         used = max(item[0] for item in used_fragments)
@@ -7192,7 +7247,7 @@ def _manual_two_city_parse_buy_page_cargo_load(
             )
     if not candidates:
         return None
-    return max(candidates, key=lambda item: (item.get("priority", 0), item["capacity"], item["used"]))
+    return max(candidates, key=lambda item: _manual_two_city_cargo_candidate_key(item, expected_capacity))
 
 
 def _manual_two_city_read_buy_page_tax_rate(context: Context, name: str) -> tuple[float | None, list[str]]:
@@ -7709,6 +7764,8 @@ def _manual_two_city_selected_buy_actual_loads(state: dict[str, Any]) -> dict[st
 def _manual_two_city_probe_buy_page_cargo_load(
     context: Context,
     name: str,
+    *,
+    expected_capacity: int | None = None,
 ) -> tuple[dict[str, Any] | None, list[str]]:
     all_texts: list[str] = []
     candidates: list[dict[str, Any]] = []
@@ -7720,14 +7777,18 @@ def _manual_two_city_probe_buy_page_cargo_load(
             roi=roi,
         )
         all_texts.extend(texts)
-        cargo_load = _manual_two_city_parse_buy_page_cargo_load(entries, roi=roi)
+        cargo_load = _manual_two_city_parse_buy_page_cargo_load(
+            entries,
+            roi=roi,
+            expected_capacity=expected_capacity,
+        )
         if cargo_load is not None:
             cargo_load = dict(cargo_load)
             cargo_load["probe_index"] = index
             candidates.append(cargo_load)
     if not candidates:
         return None, all_texts
-    return max(candidates, key=lambda item: (item.get("priority", 0), item.get("capacity", 0), item.get("used", 0))), all_texts
+    return max(candidates, key=lambda item: _manual_two_city_cargo_candidate_key(item, expected_capacity)), all_texts
 
 
 def _manual_two_city_probe_buy_page_cargo_load_with_retry(
@@ -7749,6 +7810,7 @@ def _manual_two_city_probe_buy_page_cargo_load_with_retry(
         cargo_load, texts = _manual_two_city_probe_buy_page_cargo_load(
             context,
             f"{name}{attempt + 1:03d}",
+            expected_capacity=expected_capacity or None,
         )
         all_texts.extend(texts)
         if not isinstance(cargo_load, dict):
@@ -15291,12 +15353,28 @@ class ManualTwoCityBusinessSelectBuyGoodsAction(CustomAction):
         planned_loads = _manual_two_city_planned_goods_loads(leg)
         planned_index = {good: index for index, good in enumerate(planned_goods)}
         restore_index = {good: len(planned_goods) + index for index, good in enumerate(locked_config_goods)}
+        last_known_capacity: int | None = None
+        last_cargo_state = state.get("buy_selection_last_cargo_load")
+        if isinstance(last_cargo_state, dict):
+            try:
+                parsed_last_cap = int(last_cargo_state.get("capacity") or 0)
+            except (TypeError, ValueError):
+                parsed_last_cap = 0
+            if 100 <= parsed_last_cap <= 9999:
+                last_known_capacity = parsed_last_cap
         cargo_load, cargo_texts = _manual_two_city_probe_buy_page_cargo_load(
             context,
             f"ManualTwoCityBuySelectionCargoBeforePage{page_index:03d}",
+            expected_capacity=last_known_capacity,
         )
         if cargo_load is not None:
             state["buy_selection_last_cargo_load"] = cargo_load
+            try:
+                parsed_cap = int(cargo_load.get("capacity") or 0)
+            except (TypeError, ValueError):
+                parsed_cap = 0
+            if 100 <= parsed_cap <= 9999:
+                last_known_capacity = parsed_cap
         cargo_full = _manual_two_city_cargo_load_full(cargo_load)
         if cargo_full:
             state["buy_selection_full_cargo"] = True
@@ -15385,11 +15463,19 @@ class ManualTwoCityBusinessSelectBuyGoodsAction(CustomAction):
                     and remaining_capacity < expected_load
                 )
                 before_used = None
+                before_capacity = None
                 if cargo_load is not None:
                     try:
                         before_used = int(cargo_load.get("used") or 0)
                     except (TypeError, ValueError):
                         before_used = None
+                    try:
+                        parsed_before_cap = int(cargo_load.get("capacity") or 0)
+                    except (TypeError, ValueError):
+                        parsed_before_cap = 0
+                    if 100 <= parsed_before_cap <= 9999:
+                        before_capacity = parsed_before_cap
+                        last_known_capacity = parsed_before_cap
                 context.tasker.controller.post_click(x, y).wait()
                 time.sleep(0.35)
                 is_locked, lock_texts = _manual_two_city_product_locked_after_click(
@@ -15421,15 +15507,33 @@ class ManualTwoCityBusinessSelectBuyGoodsAction(CustomAction):
                 after_cargo, after_cargo_texts = _manual_two_city_probe_buy_page_cargo_load(
                     context,
                     f"ManualTwoCityBuySelectionCargoAfter{page_index:03d}_{len(clicked) + len(no_delta) + 1:03d}",
+                    expected_capacity=before_capacity or last_known_capacity,
                 )
                 if after_cargo is not None:
                     state["buy_selection_last_cargo_load"] = after_cargo
+                after_capacity = None
+                if isinstance(after_cargo, dict):
+                    try:
+                        parsed_after_cap = int(after_cargo.get("capacity") or 0)
+                    except (TypeError, ValueError):
+                        parsed_after_cap = 0
+                    if 100 <= parsed_after_cap <= 9999:
+                        after_capacity = parsed_after_cap
                 cargo_delta = None
                 if before_used is not None and after_cargo is not None:
-                    try:
-                        cargo_delta = int(after_cargo.get("used") or 0) - before_used
-                    except (TypeError, ValueError):
+                    if (
+                        before_capacity is not None
+                        and after_capacity is not None
+                        and before_capacity != after_capacity
+                    ):
                         cargo_delta = None
+                    else:
+                        try:
+                            cargo_delta = int(after_cargo.get("used") or 0) - before_used
+                        except (TypeError, ValueError):
+                            cargo_delta = None
+                        if after_capacity is not None and last_known_capacity is None:
+                            last_known_capacity = after_capacity
                 if cargo_delta is not None and cargo_delta <= 0:
                     no_delta.append(good)
                     cumulative_no_delta.add(good)

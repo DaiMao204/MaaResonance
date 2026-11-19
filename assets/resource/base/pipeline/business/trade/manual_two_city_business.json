@@ -1064,6 +1064,29 @@
             "type": "Click"
         },
         "post_delay": 1200,
+        "next": [
+            "ManualTwoCityBusinessBuyPageReady",
+            "ManualTwoCityBusinessOpenBuyPageRetry"
+        ],
+        "on_error": "ManualTwoCityBusinessRecoverToBuyPage"
+    },
+    "ManualTwoCityBusinessOpenBuyPageRetry": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": "我要买",
+                "roi": [
+                    700,
+                    280,
+                    520,
+                    100
+                ]
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 1200,
         "next": "ManualTwoCityBusinessBuyPageReady",
         "on_error": "ManualTwoCityBusinessRecoverToBuyPage"
     },
@@ -1114,6 +1137,29 @@
         "on_error": "ManualTwoCityBusinessOpenCurrentCityStart"
     },
     "ManualTwoCityBusinessOpenSellPage": {
+        "recognition": {
+            "type": "OCR",
+            "param": {
+                "expected": "我要卖",
+                "roi": [
+                    700,
+                    360,
+                    520,
+                    110
+                ]
+            }
+        },
+        "action": {
+            "type": "Click"
+        },
+        "post_delay": 1200,
+        "next": [
+            "ManualTwoCityBusinessSellPageReady",
+            "ManualTwoCityBusinessOpenSellPageRetry"
+        ],
+        "on_error": "ManualTwoCityBusinessRecoverToSellPage"
+    },
+    "ManualTwoCityBusinessOpenSellPageRetry": {
         "recognition": {
             "type": "OCR",
             "param": {
