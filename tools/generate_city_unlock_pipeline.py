@@ -270,7 +270,7 @@ def generate_pipeline() -> dict[str, Any]:
         on_error="AccountProfileCityUnlockDone",
     )
     pipeline["AccountProfileCityUnlockMainMapReady"] = node(
-        reco("TemplateMatch", {"template": "main_map.png", "threshold": 0.96}),
+        reco("TemplateMatch", {"template": "main_map.png", "threshold": 0.88}),
         action("DoNothing"),
         next_node="AccountProfileCityUnlockDone",
         on_error="AccountProfileCityUnlockDone",

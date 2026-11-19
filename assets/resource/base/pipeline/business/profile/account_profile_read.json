@@ -6,7 +6,10 @@
         "action": {
             "type": "DoNothing"
         },
-        "next": "AccountProfilePrestigeStart"
+        "next": [
+            "AccountProfilePrestigeStart",
+            "AccountProfilePrestigeStartByOcr"
+        ]
     },
     "AccountProfileReadDone": {
         "recognition": {
@@ -46,7 +49,10 @@
                 "custom_action": "profile_uid_read"
             }
         },
-        "next": "AccountProfilePrestigeStart",
+        "next": [
+            "AccountProfilePrestigeStart",
+            "AccountProfilePrestigeStartByOcr"
+        ],
         "on_error": "AccountProfileReadFailed"
     },
     "AccountProfileCityUnlockProbe001MissingGate": {

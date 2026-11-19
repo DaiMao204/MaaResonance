@@ -910,7 +910,7 @@
             "type": "TemplateMatch",
             "param": {
                 "template": "main_map.png",
-                "threshold": 0.95
+                "threshold": 0.88
             }
         },
         "action": {

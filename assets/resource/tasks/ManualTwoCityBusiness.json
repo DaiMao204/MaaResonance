@@ -52,7 +52,10 @@
                     "on_error": "ManualTwoCityBusinessAccountIdentityReadFailed"
                 },
                 "AccountProfileUidRead": {
-                    "next": "AccountProfilePrestigeStart",
+                    "next": [
+                        "AccountProfilePrestigeStart",
+                        "AccountProfilePrestigeStartByOcr"
+                    ],
                     "on_error": "ManualTwoCityBusinessAccountIdentityReadFailed"
                 },
                 "AccountProfilePrestigeStart": {
@@ -60,7 +63,7 @@
                         "type": "TemplateMatch",
                         "param": {
                             "template": "main_map.png",
-                            "threshold": 0.95
+                            "threshold": 0.88
                         }
                     }
                 },
@@ -68,12 +71,15 @@
                     "next": "AccountProfileCityUnlockStart"
                 },
                 "AccountProfileCityUnlockDone": {
-                    "next": "AccountProfileRoleResonanceStart"
+                    "next": [
+                        "AccountProfileRoleResonanceStart",
+                        "AccountProfileRoleResonanceStartByOcr"
+                    ]
                 },
                 "AccountProfileRoleResonanceStart": {
                     "recognition": "TemplateMatch",
                     "template": "main_map.png",
-                    "threshold": 0.95
+                    "threshold": 0.88
                 },
                 "AccountProfileRoleResonanceDone": {
                     "next": "ManualTwoCityBusinessAccountProfileWarmupDone"
