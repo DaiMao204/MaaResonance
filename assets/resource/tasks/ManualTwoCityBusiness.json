@@ -12,7 +12,9 @@
             ],
             "controller": [
                 "ADB",
-                "Win32"
+                "Win32",
+                "Win32BackgroundWindowPos",
+                "Win32BackgroundCursorPos"
             ],
             "pipeline_override": {
                 "StateRecoveryComplete": {

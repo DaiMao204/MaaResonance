@@ -15,8 +15,11 @@ class PcTradeInterfaceTest(unittest.TestCase):
         interface = read_json(ASSETS / "interface.json")
         tasks = [task for path in interface["import"] for task in read_json(ASSETS / path)["task"]]
         manual, auto, launch = "ManualTwoCityBusiness", "AutoTwoCityBusiness", "LaunchGame"
-        available = {ctrl: {t["name"] for t in tasks if ctrl in t["controller"]} for ctrl in ("ADB", "Win32")}
-        self.assertEqual(available["Win32"], {manual})
+        pc_controllers = ("Win32", "Win32BackgroundWindowPos", "Win32BackgroundCursorPos")
+        available = {ctrl: {t["name"] for t in tasks if ctrl in t["controller"]} for ctrl in ("ADB", *pc_controllers)}
+        for ctrl in pc_controllers:
+            with self.subTest(controller=ctrl):
+                self.assertEqual(available[ctrl], {manual})
         self.assertTrue({manual, auto, launch} <= available["ADB"])
 
         presets = {p["name"]: [t for t in p["task"] if t["enabled"]] for p in interface["preset"]}
@@ -35,10 +38,23 @@ class PcTradeInterfaceTest(unittest.TestCase):
         interface = read_json(ASSETS / "interface.json")
         controllers = {entry["name"]: entry for entry in interface["controller"]}
         official = next(resource for resource in interface["resource"] if resource["name"] == "official")
-        self.assertEqual(set(official["controller"]), {"ADB", "Win32"})
+        expected_pc_modes = {
+            "Win32": ("Seize", "Seize"),
+            "Win32BackgroundWindowPos": ("PostMessageWithWindowPos", "PostMessage"),
+            "Win32BackgroundCursorPos": ("PostMessageWithCursorPos", "PostMessage"),
+        }
+        self.assertEqual(set(official["controller"]), {"ADB", *expected_pc_modes.keys()})
         self.assertEqual(official["path"], ["./resource/base"])
         self.assertFalse(controllers["ADB"].get("attach_resource_path"))
-        self.assertEqual(controllers["Win32"]["attach_resource_path"], ["./resource/pc"])
+        for ctrl_name, (mouse_mode, keyboard_mode) in expected_pc_modes.items():
+            with self.subTest(controller=ctrl_name):
+                ctrl_cfg = controllers[ctrl_name]
+                self.assertEqual(ctrl_cfg["type"], "Win32")
+                self.assertEqual(ctrl_cfg["display_short_side"], 720)
+                self.assertEqual(ctrl_cfg["attach_resource_path"], ["./resource/pc"])
+                self.assertEqual(ctrl_cfg["win32"]["screencap"], "FramePool")
+                self.assertEqual(ctrl_cfg["win32"]["mouse"], mouse_mode)
+                self.assertEqual(ctrl_cfg["win32"]["keyboard"], keyboard_mode)
         base = {}
         for path in (ASSETS / official["path"][0] / "pipeline").rglob("*.json"):
             base.update(read_json(path))
