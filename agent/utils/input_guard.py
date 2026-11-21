@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 import ctypes
-from ctypes import wintypes
 import sys
 import threading
 import time
@@ -27,6 +26,8 @@ _CONTROLLER_LOCK = threading.RLock()
 _LAST_CONTROLLER_INFO: dict[str, Any] | None = None
 
 if sys.platform == "win32":
+    from ctypes import wintypes
+
     _DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = ctypes.c_void_p(-4)
 
     class _POINT(ctypes.Structure):
@@ -400,7 +401,7 @@ def run_guarded_click(
     if _is_stopping(context):
         return False
 
-    is_win32_bg = sys.platform == "win32" and is_win32_bg_controller_info(info)
+    is_win32_bg = is_win32_bg_controller_info(info)
 
     use_duration = 0
     if duration_ms is not None and int(duration_ms) > 0:
@@ -461,8 +462,7 @@ def run_controller_click_guarded(
     info = get_effective_controller_info(context)
 
     if (
-        sys.platform == "win32"
-        and is_win32_bg_controller_info(info)
+        is_win32_bg_controller_info(info)
         and callable(getattr(context, "run_action", None))
     ):
         return run_guarded_click(

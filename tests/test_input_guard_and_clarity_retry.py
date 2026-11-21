@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-import json
 import ctypes
+import json
+import sys
 from types import SimpleNamespace
 import unittest
 from unittest.mock import Mock, patch
@@ -411,6 +412,7 @@ class InputGuardAndClarityRetryTest(unittest.TestCase):
         self.assertIsNone(logical_point_to_client_point(100, 100, 0, 1080))
         self.assertIsNone(logical_point_to_client_point(100, 100, 1920, 0))
 
+    @unittest.skipUnless(sys.platform == "win32", "Win32 cursor pinning requires Windows")
     def test_pin_cursor_for_win32_click_pin_hover_settle_and_restore(self) -> None:
         def _deref(ptr_or_ref):
             return ptr_or_ref._obj if hasattr(ptr_or_ref, "_obj") else ptr_or_ref.contents
