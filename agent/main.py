@@ -27,6 +27,7 @@ import daily_routine_action
 import event_stage_farm_action
 import event_story_daily_action
 import guarded_click_action
+import mainline_quest_action
 import profile_prestige_action
 import story_skip_action
 import team_formation_action

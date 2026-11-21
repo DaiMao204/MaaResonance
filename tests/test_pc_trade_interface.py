@@ -33,9 +33,12 @@ class PcTradeInterfaceTest(unittest.TestCase):
         for ctrl in pc_controllers:
             with self.subTest(controller=ctrl):
                 self.assertEqual(available[ctrl], {manual} | custom_pc_tasks)
-        self.assertTrue(({manual, auto, launch} | custom_pc_tasks) <= available["ADB"])
+                self.assertNotIn("MainlineAdvance", available[ctrl])
+        self.assertTrue(({manual, auto, launch, "MainlineAdvance"} | custom_pc_tasks) <= available["ADB"])
 
         presets = {p["name"]: [t for t in p["task"] if t["enabled"]] for p in interface["preset"]}
+        self.assertIn("mainline-advance", presets)
+        self.assertEqual([t["name"] for t in presets["mainline-advance"]], ["MainlineAdvance"])
         pc = presets["pc-manual-business"]
         self.assertEqual([t["name"] for t in pc], [manual])
         options = pc[0]["option"]
