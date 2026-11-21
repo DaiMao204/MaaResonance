@@ -1,0 +1,58 @@
+{
+    "task": [
+        {
+            "name": "StorySkip",
+            "label": "跳过剧情",
+            "entry": "StorySkipStart",
+            "description": "在剧情演出界面自动点击右上角“跳过”，并在遇到对话分支选项或确认弹窗时自动推进，直到退出剧情。",
+            "group": [
+                "experimental"
+            ],
+            "resource": [
+                "official"
+            ],
+            "controller": [
+                "ADB",
+                "Win32",
+                "Win32BackgroundWindowPos",
+                "Win32BackgroundCursorPos"
+            ],
+            "option": [
+                "StorySkipChoiceStrategy"
+            ]
+        }
+    ],
+    "option": {
+        "StorySkipChoiceStrategy": {
+            "type": "select",
+            "label": "对话分支默认选择",
+            "default_case": "First",
+            "cases": [
+                {
+                    "name": "First",
+                    "label": "总是选择第一项",
+                    "pipeline_override": {
+                        "StorySkipStart": {
+                            "custom_action_param": {
+                                "choice_index": 0,
+                                "max_steps": 120
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Last",
+                    "label": "总是选择最后一项",
+                    "pipeline_override": {
+                        "StorySkipStart": {
+                            "custom_action_param": {
+                                "choice_index": 99,
+                                "max_steps": 120
+                            }
+                        }
+                    }
+                }
+            ]
+        }
+    }
+}

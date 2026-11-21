@@ -1,0 +1,362 @@
+{
+    "task": [
+        {
+            "name": "CoopAssault",
+            "label": "共斗活动 · 众志攻坚",
+            "entry": "CoopAssaultStart",
+            "description": "自动进入限时共斗「众志攻坚」，零体力消耗完成每日免费讨伐（优先未击杀 BOSS，自动选择最高已解锁难度），结束后遍历领取「攻坚战果」奖励并返回大厅。",
+            "group": [
+                "daily"
+            ],
+            "resource": [
+                "official"
+            ],
+            "controller": [
+                "ADB",
+                "Win32",
+                "Win32BackgroundWindowPos",
+                "Win32BackgroundCursorPos"
+            ],
+            "option": [
+                "CoopBossPreference",
+                "CoopDifficulty",
+                "CoopMaxRuns",
+                "CoopClaimRewards",
+                "CoopFormationMode",
+                "CoopPreferNativeAuto",
+                "CoopLeaderSkill"
+            ]
+        }
+    ],
+    "option": {
+        "CoopBossPreference": {
+            "type": "select",
+            "label": "BOSS 讨伐优先级",
+            "description": "默认优先讨伐尚未被击杀（血量 > 0%）的 BOSS，全部击杀后自动打可重复挑战目标。",
+            "default_case": "AliveFirst",
+            "cases": [
+                {
+                    "name": "AliveFirst",
+                    "label": "未击杀优先（推荐）",
+                    "pipeline_override": {
+                        "CoopAssaultOptBossPreference": {
+                            "attach": {
+                                "boss_preference": "alive_first"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Left",
+                    "label": "固定左侧 BOSS",
+                    "pipeline_override": {
+                        "CoopAssaultOptBossPreference": {
+                            "attach": {
+                                "boss_preference": "left"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Center",
+                    "label": "固定中间 BOSS",
+                    "pipeline_override": {
+                        "CoopAssaultOptBossPreference": {
+                            "attach": {
+                                "boss_preference": "center"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Right",
+                    "label": "固定右侧 BOSS",
+                    "pipeline_override": {
+                        "CoopAssaultOptBossPreference": {
+                            "attach": {
+                                "boss_preference": "right"
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "CoopDifficulty": {
+            "type": "select",
+            "label": "挑战难度",
+            "default_case": "AutoHighest",
+            "cases": [
+                {
+                    "name": "AutoHighest",
+                    "label": "自动最高已解锁难度（推荐）",
+                    "pipeline_override": {
+                        "CoopAssaultOptDifficulty": {
+                            "attach": {
+                                "preferred_difficulty": 0
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Diff1",
+                    "label": "难度 1",
+                    "pipeline_override": {
+                        "CoopAssaultOptDifficulty": {
+                            "attach": {
+                                "preferred_difficulty": 1
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Diff2",
+                    "label": "难度 2",
+                    "pipeline_override": {
+                        "CoopAssaultOptDifficulty": {
+                            "attach": {
+                                "preferred_difficulty": 2
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Diff3",
+                    "label": "难度 3",
+                    "pipeline_override": {
+                        "CoopAssaultOptDifficulty": {
+                            "attach": {
+                                "preferred_difficulty": 3
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Diff4",
+                    "label": "难度 4（未解锁自动降级）",
+                    "pipeline_override": {
+                        "CoopAssaultOptDifficulty": {
+                            "attach": {
+                                "preferred_difficulty": 4
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Diff5",
+                    "label": "难度 5（未解锁自动降级）",
+                    "pipeline_override": {
+                        "CoopAssaultOptDifficulty": {
+                            "attach": {
+                                "preferred_difficulty": 5
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "CoopMaxRuns": {
+            "type": "select",
+            "label": "本轮讨伐次数上限",
+            "default_case": "All",
+            "cases": [
+                {
+                    "name": "All",
+                    "label": "打完今日全部剩余次数（推荐）",
+                    "pipeline_override": {
+                        "CoopAssaultOptMaxRuns": {
+                            "attach": {
+                                "max_runs": 0
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "One",
+                    "label": "仅打 1 次",
+                    "pipeline_override": {
+                        "CoopAssaultOptMaxRuns": {
+                            "attach": {
+                                "max_runs": 1
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Two",
+                    "label": "最多打 2 次",
+                    "pipeline_override": {
+                        "CoopAssaultOptMaxRuns": {
+                            "attach": {
+                                "max_runs": 2
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "CoopClaimRewards": {
+            "type": "switch",
+            "label": "自动领取「攻坚战果」奖励",
+            "description": "打完或次数为 0 后遍历底部全部 BOSS 页签领取已达标的「攻坚战果」。",
+            "default_case": "Yes",
+            "cases": [
+                {
+                    "name": "Yes",
+                    "pipeline_override": {
+                        "CoopAssaultOptClaimRewards": {
+                            "attach": {
+                                "claim_rewards": true
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "No",
+                    "pipeline_override": {
+                        "CoopAssaultOptClaimRewards": {
+                            "attach": {
+                                "claim_rewards": false
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "CoopFormationMode": {
+            "type": "select",
+            "label": "编队自动选人",
+            "default_case": "Off",
+            "cases": [
+                {
+                    "name": "Off",
+                    "label": "不自动改编队（直接点开始作战）",
+                    "pipeline_override": {
+                        "CoopAssaultFormationEmpty": {
+                            "enabled": false
+                        },
+                        "CoopAssaultFormationStrict": {
+                            "enabled": false
+                        }
+                    }
+                },
+                {
+                    "name": "EmptyOnly",
+                    "label": "仅存在空位时补齐",
+                    "option": [
+                        "CoopFormationRoles"
+                    ],
+                    "pipeline_override": {
+                        "CoopAssaultFormationEmpty": {
+                            "enabled": true
+                        },
+                        "CoopAssaultFormationStrict": {
+                            "enabled": false
+                        }
+                    }
+                },
+                {
+                    "name": "Strict",
+                    "label": "严格按名单自动编队",
+                    "option": [
+                        "CoopFormationRoles"
+                    ],
+                    "pipeline_override": {
+                        "CoopAssaultFormationEmpty": {
+                            "enabled": false
+                        },
+                        "CoopAssaultFormationStrict": {
+                            "enabled": true
+                        }
+                    }
+                }
+            ]
+        },
+        "CoopFormationRoles": {
+            "type": "input",
+            "label": "编队目标角色名单",
+            "description": "按优先级填写角色全名，逗号或顿号分隔；留空则保持当前阵容不调整。",
+            "inputs": [
+                {
+                    "name": "target_roles",
+                    "label": "目标名单",
+                    "default": "",
+                    "pipeline_type": "string"
+                }
+            ],
+            "pipeline_override": {
+                "CoopAssaultFormationQuickSelect": {
+                    "custom_action_param": {
+                        "target_roles": "{target_roles}",
+                        "max_team_size": 5
+                    }
+                },
+                "CoopAssaultFormationEmpty": {
+                    "custom_recognition_param": {
+                        "target_roles": "{target_roles}",
+                        "strict_match": false
+                    }
+                },
+                "CoopAssaultFormationStrict": {
+                    "custom_recognition_param": {
+                        "target_roles": "{target_roles}",
+                        "strict_match": true
+                    }
+                }
+            }
+        },
+        "CoopPreferNativeAuto": {
+            "type": "switch",
+            "label": "优先启用原生自动战斗",
+            "default_case": "Yes",
+            "cases": [
+                {
+                    "name": "Yes",
+                    "pipeline_override": {
+                        "CoopAssaultBattleAutoOptPreferNativeAuto": {
+                            "attach": {
+                                "prefer_native_auto": true
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "No",
+                    "pipeline_override": {
+                        "CoopAssaultBattleAutoOptPreferNativeAuto": {
+                            "attach": {
+                                "prefer_native_auto": false
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "CoopLeaderSkill": {
+            "type": "switch",
+            "label": "手牌接管时优先释放队长技",
+            "default_case": "Yes",
+            "cases": [
+                {
+                    "name": "Yes",
+                    "pipeline_override": {
+                        "CoopAssaultBattleAutoOptLeaderSkill": {
+                            "attach": {
+                                "prefer_leader_skill": true
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "No",
+                    "pipeline_override": {
+                        "CoopAssaultBattleAutoOptLeaderSkill": {
+                            "attach": {
+                                "prefer_leader_skill": false
+                            }
+                        }
+                    }
+                }
+            ]
+        }
+    }
+}

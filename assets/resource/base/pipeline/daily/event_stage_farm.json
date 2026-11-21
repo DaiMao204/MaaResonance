@@ -1,0 +1,523 @@
+{
+    "EventStageFarmStart": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "event_stage_farm_navigate",
+        "focus": {
+            "Node.Action.Starting": "【活动刷关】正在定位目标关卡..."
+        },
+        "next": [
+            "EventStageFarmLoop"
+        ],
+        "on_error": [
+            "EventStageFarmComplete"
+        ]
+    },
+    "EventStageFarmOptTarget": {
+        "action": "DoNothing",
+        "attach": {
+            "target": "miniscape_break"
+        }
+    },
+    "EventStageFarmOptStageName": {
+        "action": "DoNothing",
+        "attach": {
+            "target_stage_name": "调查报告7"
+        }
+    },
+    "EventStageFarmOptRunMode": {
+        "action": "DoNothing",
+        "attach": {
+            "run_mode": "until_clarity_exhausted"
+        }
+    },
+    "EventStageFarmOptRunCount": {
+        "action": "DoNothing",
+        "attach": {
+            "run_count": 0
+        }
+    },
+    "EventStageFarmOptNativeRepeat": {
+        "action": "DoNothing",
+        "attach": {
+            "use_native_auto_repeat": true
+        }
+    },
+    "EventStageFarmOptUseMedicine": {
+        "action": "DoNothing",
+        "attach": {
+            "use_medicine": false
+        }
+    },
+    "EventStageFarmLoop": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "rate_limit": 700,
+        "timeout": 86400000,
+        "next": [
+            "EventStageFarmDoneCheck",
+            "EventStageFarmStorySkip",
+            "EventStageFarmBattleAuto",
+            "EventStageFarmClarityRecovery",
+            "EventStageFarmClarityDisabledFinish",
+            "EventStageFarmLowClarityPrompt",
+            "EventStageFarmDifficultyWarnPrompt",
+            "EventStageFarmDefeatStop",
+            "EventStageFarmSettleNextTemplate",
+            "EventStageFarmSettleNextOcr",
+            "EventStageFarmSettleMission",
+            "EventStageFarmSettleVictoryTap",
+            "EventStageFarmFormationEmpty",
+            "EventStageFarmFormationStrict",
+            "EventStageFarmFormationReadyCheck",
+            "EventStageFarmDetailStep",
+            "EventStageFarmStageListStep"
+        ],
+        "on_error": [
+            "EventStageFarmLoop"
+        ]
+    },
+    "EventStageFarmDoneCheck": {
+        "recognition": "Custom",
+        "custom_recognition": "event_stage_farm_is_done",
+        "action": "DoNothing",
+        "next": [
+            "EventStageFarmComplete"
+        ]
+    },
+    "EventStageFarmStorySkip": {
+        "enabled": true,
+        "recognition": "OCR",
+        "expected": [
+            "跳过"
+        ],
+        "roi": [
+            1100,
+            0,
+            180,
+            90
+        ],
+        "action": "Custom",
+        "custom_action": "story_skip_loop",
+        "custom_action_param": {
+            "choice_index": 0,
+            "max_steps": 120
+        },
+        "post_delay": 600,
+        "next": [
+            "EventStageFarmLoop"
+        ]
+    },
+    "EventStageFarmBattleAuto": {
+        "enabled": true,
+        "recognition": "OCR",
+        "expected": [
+            "MAX"
+        ],
+        "roi": [
+            1095,
+            655,
+            110,
+            60
+        ],
+        "action": "Custom",
+        "custom_action": "battle_autoplay_loop",
+        "custom_action_param": {
+            "play_mode": "fast_rush",
+            "prefer_native_auto": true,
+            "prefer_leader_skill": true,
+            "cost_preference": "left_to_right",
+            "min_cost_to_play": 2,
+            "discard_when_stuck_at_cost": 10,
+            "card_weights": {},
+            "disabled_cards": [],
+            "max_steps": 240
+        },
+        "post_delay": 600,
+        "next": [
+            "EventStageFarmLoop"
+        ]
+    },
+    "EventStageFarmBattleAutoOptPlayMode": {
+        "action": "DoNothing",
+        "attach": {
+            "play_mode": "fast_rush"
+        }
+    },
+    "EventStageFarmBattleAutoOptPreferNativeAuto": {
+        "action": "DoNothing",
+        "attach": {
+            "prefer_native_auto": true
+        }
+    },
+    "EventStageFarmBattleAutoOptLeaderSkill": {
+        "action": "DoNothing",
+        "attach": {
+            "prefer_leader_skill": true
+        }
+    },
+    "EventStageFarmBattleAutoOptMinCost": {
+        "action": "DoNothing",
+        "attach": {
+            "min_cost_to_play": 2
+        }
+    },
+    "EventStageFarmClarityRecovery": {
+        "enabled": false,
+        "recognition": "OCR",
+        "expected": [
+            "请选择恢复方式"
+        ],
+        "roi": [
+            280,
+            320,
+            320,
+            90
+        ],
+        "action": "Custom",
+        "custom_action": "clarity_recovery_action",
+        "custom_action_param": {
+            "lollipop_use_limit": 0,
+            "roll_use_limit": 0,
+            "candy_use_limit": 0,
+            "huashi_use_limit": 0
+        },
+        "post_delay": 700,
+        "next": [
+            "EventStageFarmLoop"
+        ],
+        "on_error": [
+            "EventStageFarmFinishToLobby"
+        ]
+    },
+    "EventStageFarmClarityDisabledFinish": {
+        "recognition": "OCR",
+        "expected": [
+            "请选择恢复方式"
+        ],
+        "roi": [
+            280,
+            320,
+            320,
+            90
+        ],
+        "action": "Custom",
+        "custom_action": "event_stage_farm_finish_to_lobby",
+        "next": [
+            "EventStageFarmComplete"
+        ]
+    },
+    "EventStageFarmLowClarityPrompt": {
+        "recognition": "OCR",
+        "expected": [
+            "澄明度不足"
+        ],
+        "roi": [
+            300,
+            180,
+            680,
+            240
+        ],
+        "action": "Custom",
+        "custom_action": "event_stage_farm_handle_low_clarity",
+        "post_delay": 700,
+        "next": [
+            "EventStageFarmLoop"
+        ]
+    },
+    "EventStageFarmFinishToLobby": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "event_stage_farm_finish_to_lobby",
+        "next": [
+            "EventStageFarmComplete"
+        ]
+    },
+    "EventStageFarmDifficultyWarnPrompt": {
+        "recognition": "OCR",
+        "expected": [
+            "难度过高",
+            "是否仍要继续挑战"
+        ],
+        "roi": [
+            300,
+            260,
+            680,
+            180
+        ],
+        "action": "DoNothing",
+        "next": [
+            "EventStageFarmDifficultyWarnConfirm"
+        ]
+    },
+    "EventStageFarmDifficultyWarnConfirm": {
+        "recognition": "OCR",
+        "expected": [
+            "确认",
+            "确定"
+        ],
+        "roi": [
+            640,
+            440,
+            560,
+            120
+        ],
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "post_delay": 700,
+        "next": [
+            "EventStageFarmLoop"
+        ],
+        "on_error": [
+            "EventStageFarmLoop"
+        ]
+    },
+    "EventStageFarmDefeatStop": {
+        "recognition": "OCR",
+        "expected": [
+            "作战失败",
+            "挑战失败"
+        ],
+        "roi": [
+            160,
+            140,
+            960,
+            320
+        ],
+        "action": "StopTask",
+        "focus": {
+            "Node.Action.Succeeded": "【活动刷关】检测到作战失败，已停止，请检查编队或关卡。"
+        }
+    },
+    "EventStageFarmSettleNextTemplate": {
+        "recognition": "TemplateMatch",
+        "template": "fight/end_fight.png",
+        "threshold": 0.88,
+        "roi": [
+            1040,
+            500,
+            240,
+            220
+        ],
+        "action": "Custom",
+        "custom_action": "event_stage_farm_settle_next",
+        "post_delay": 1000,
+        "next": [
+            "EventStageFarmLoop"
+        ]
+    },
+    "EventStageFarmSettleNextOcr": {
+        "recognition": "OCR",
+        "expected": [
+            "下一步",
+            "继续",
+            "离开"
+        ],
+        "roi": [
+            1040,
+            500,
+            240,
+            220
+        ],
+        "action": "Custom",
+        "custom_action": "event_stage_farm_settle_next",
+        "post_delay": 1000,
+        "next": [
+            "EventStageFarmLoop"
+        ]
+    },
+    "EventStageFarmSettleMission": {
+        "recognition": "OCR",
+        "expected": [
+            "触碰空白区域退出",
+            "点击空白区域退出",
+            "点击空白处关闭",
+            "点击任意位置继续",
+            "触碰屏幕继续"
+        ],
+        "roi": [
+            120,
+            160,
+            1040,
+            540
+        ],
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "custom_action_param": {
+            "target": [
+                640,
+                120
+            ]
+        },
+        "post_delay": 900,
+        "next": [
+            "EventStageFarmLoop"
+        ]
+    },
+    "EventStageFarmSettleVictoryTap": {
+        "recognition": "OCR",
+        "expected": [
+            "作战胜利",
+            "SUCCESSFUL",
+            "COMBAT"
+        ],
+        "roi": [
+            120,
+            160,
+            1040,
+            460
+        ],
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "custom_action_param": {
+            "target": [
+                640,
+                660
+            ]
+        },
+        "post_delay": 900,
+        "next": [
+            "EventStageFarmLoop"
+        ]
+    },
+    "EventStageFarmFormationEmpty": {
+        "enabled": false,
+        "recognition": "Custom",
+        "custom_recognition": "team_formation_needs_update",
+        "custom_recognition_param": {
+            "target_roles": "",
+            "strict_match": false
+        },
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "post_delay": 700,
+        "next": [
+            "EventStageFarmFormationQuickSelect"
+        ]
+    },
+    "EventStageFarmFormationStrict": {
+        "enabled": false,
+        "recognition": "Custom",
+        "custom_recognition": "team_formation_needs_update",
+        "custom_recognition_param": {
+            "target_roles": "",
+            "strict_match": true
+        },
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "post_delay": 700,
+        "next": [
+            "EventStageFarmFormationQuickSelect"
+        ]
+    },
+    "EventStageFarmFormationQuickSelect": {
+        "recognition": "OCR",
+        "expected": [
+            "获取时间",
+            "稀有度",
+            "确认"
+        ],
+        "roi": [
+            800,
+            0,
+            480,
+            720
+        ],
+        "action": "Custom",
+        "custom_action": "team_formation_quick_select",
+        "custom_action_param": {
+            "target_roles": "",
+            "max_team_size": 5
+        },
+        "post_delay": 300,
+        "next": [
+            "EventStageFarmFormationConfirm"
+        ]
+    },
+    "EventStageFarmFormationConfirm": {
+        "recognition": "OCR",
+        "expected": [
+            "确认"
+        ],
+        "roi": [
+            960,
+            610,
+            260,
+            90
+        ],
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "post_delay": 700,
+        "next": [
+            "EventStageFarmFormationStartBattle",
+            "EventStageFarmLoop"
+        ]
+    },
+    "EventStageFarmFormationReadyCheck": {
+        "recognition": "OCR",
+        "expected": [
+            "快速编队",
+            "快速编",
+            "清空编队"
+        ],
+        "roi": [
+            1000,
+            15,
+            270,
+            90
+        ],
+        "action": "DoNothing",
+        "next": [
+            "EventStageFarmFormationStartBattle",
+            "EventStageFarmLoop"
+        ]
+    },
+    "EventStageFarmFormationStartBattle": {
+        "recognition": "OCR",
+        "expected": [
+            "START BATTLE",
+            "开始作战",
+            "开始",
+            "作战"
+        ],
+        "roi": [
+            1100,
+            230,
+            180,
+            360
+        ],
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "post_delay": 1200,
+        "next": [
+            "EventStageFarmLoop"
+        ]
+    },
+    "EventStageFarmDetailStep": {
+        "recognition": "Custom",
+        "custom_recognition": "event_stage_farm_detail_ready",
+        "action": "Custom",
+        "custom_action": "event_stage_farm_detail_step",
+        "post_delay": 400,
+        "next": [
+            "EventStageFarmLoop"
+        ]
+    },
+    "EventStageFarmStageListStep": {
+        "recognition": "Custom",
+        "custom_recognition": "event_stage_farm_list_ready",
+        "action": "Custom",
+        "custom_action": "event_stage_farm_select_stage_from_list",
+        "post_delay": 600,
+        "next": [
+            "EventStageFarmLoop"
+        ]
+    },
+    "EventStageFarmComplete": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "focus": {
+            "Node.Action.Succeeded": "【活动刷关】活动刷关任务已正常结束。"
+        }
+    }
+}

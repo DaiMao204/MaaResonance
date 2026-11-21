@@ -1,0 +1,48 @@
+{
+    "task": [
+        {
+            "name": "AutoTeamFormation",
+            "label": "自动编队（快速选人）",
+            "entry": "AutoTeamFormationStart",
+            "description": "在编队界面点击“快速编队”，按指定角色名单自动识别并调整上阵成员（保留剧情锁定角色）。",
+            "group": [
+                "experimental"
+            ],
+            "resource": [
+                "official"
+            ],
+            "controller": [
+                "ADB",
+                "Win32",
+                "Win32BackgroundWindowPos",
+                "Win32BackgroundCursorPos"
+            ],
+            "option": [
+                "AutoTeamFormationRoles"
+            ]
+        }
+    ],
+    "option": {
+        "AutoTeamFormationRoles": {
+            "type": "input",
+            "label": "目标上阵角色名单",
+            "description": "按优先级填写希望上阵的角色全名，用逗号或顿号分隔；留空则保持当前阵容不调整。",
+            "inputs": [
+                {
+                    "name": "target_roles",
+                    "label": "角色优先级顺序",
+                    "default": "",
+                    "pipeline_type": "string"
+                }
+            ],
+            "pipeline_override": {
+                "AutoTeamFormationQuickSelect": {
+                    "custom_action_param": {
+                        "target_roles": "{target_roles}",
+                        "max_team_size": 5
+                    }
+                }
+            }
+        }
+    }
+}

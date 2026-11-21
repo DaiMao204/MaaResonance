@@ -1,0 +1,207 @@
+{
+    "task": [
+        {
+            "name": "DailyPrep",
+            "label": "日常前置收菜",
+            "entry": "DailyPrepStart",
+            "description": "一键日常前置：邮箱一键领取、派遣委托收菜与再次委托、好友名片支援金币、限时活动启程签到、商城无垠补给周卡领取、营收排行榜全部玩家点赞 3 次。",
+            "group": [
+                "daily"
+            ],
+            "resource": [
+                "official"
+            ],
+            "controller": [
+                "ADB",
+                "Win32",
+                "Win32BackgroundWindowPos",
+                "Win32BackgroundCursorPos"
+            ],
+            "option": [
+                "DailyPrepMailEnabled",
+                "DailyPrepDispatchEnabled",
+                "DailyPrepFriendSupportEnabled",
+                "DailyPrepEventCheckinEnabled",
+                "DailyPrepEternalSupplyEnabled",
+                "DailyPrepRevenueLikeEnabled"
+            ]
+        }
+    ],
+    "option": {
+        "DailyPrepMailEnabled": {
+            "type": "switch",
+            "label": "邮箱一键领取",
+            "description": "进入邮箱点击右下角「一键领取」（不碰「删除已读」）。",
+            "default_case": "Yes",
+            "cases": [
+                {
+                    "name": "Yes",
+                    "pipeline_override": {
+                        "DailyPrepMailStep": {
+                            "enabled": true
+                        }
+                    }
+                },
+                {
+                    "name": "No",
+                    "pipeline_override": {
+                        "DailyPrepMailStep": {
+                            "enabled": false
+                        }
+                    }
+                }
+            ]
+        },
+        "DailyPrepDispatchEnabled": {
+            "type": "switch",
+            "label": "派遣委托收菜",
+            "description": "先收菜再续派，打关期间同步计时。不会点击「立即完成」或「召回」。",
+            "default_case": "Yes",
+            "cases": [
+                {
+                    "name": "Yes",
+                    "option": [
+                        "DailyPrepDispatchReassign"
+                    ],
+                    "pipeline_override": {
+                        "DailyPrepDispatchStep": {
+                            "enabled": true
+                        }
+                    }
+                },
+                {
+                    "name": "No",
+                    "pipeline_override": {
+                        "DailyPrepDispatchStep": {
+                            "enabled": false
+                        }
+                    }
+                }
+            ]
+        },
+        "DailyPrepDispatchReassign": {
+            "type": "switch",
+            "label": "领取后自动再次委托",
+            "description": "开启则在「委托报告」弹窗点击「再次委托」；关闭则仅点击「关闭」。",
+            "default_case": "Yes",
+            "cases": [
+                {
+                    "name": "Yes",
+                    "pipeline_override": {
+                        "DailyPrepDispatchStep": {
+                            "custom_action_param": {
+                                "reassign": true
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "No",
+                    "pipeline_override": {
+                        "DailyPrepDispatchStep": {
+                            "custom_action_param": {
+                                "reassign": false
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "DailyPrepFriendSupportEnabled": {
+            "type": "switch",
+            "label": "好友名片支援金币奖励",
+            "description": "打开好友/名片界面并自动领取助战金币气泡（信用收支）。",
+            "default_case": "Yes",
+            "cases": [
+                {
+                    "name": "Yes",
+                    "pipeline_override": {
+                        "DailyPrepFriendSupportStep": {
+                            "enabled": true
+                        }
+                    }
+                },
+                {
+                    "name": "No",
+                    "pipeline_override": {
+                        "DailyPrepFriendSupportStep": {
+                            "enabled": false
+                        }
+                    }
+                }
+            ]
+        },
+        "DailyPrepEventCheckinEnabled": {
+            "type": "switch",
+            "label": "限时活动启程签到",
+            "description": "进入「活动 -> 限时活动 -> 启程签到」自动领取今日签到奖励。",
+            "default_case": "Yes",
+            "cases": [
+                {
+                    "name": "Yes",
+                    "pipeline_override": {
+                        "DailyPrepEventCheckinStep": {
+                            "enabled": true
+                        }
+                    }
+                },
+                {
+                    "name": "No",
+                    "pipeline_override": {
+                        "DailyPrepEventCheckinStep": {
+                            "enabled": false
+                        }
+                    }
+                }
+            ]
+        },
+        "DailyPrepEternalSupplyEnabled": {
+            "type": "switch",
+            "label": "无垠补给每日领取（已购周卡）",
+            "description": "进入「商城 -> 无垠补给」，若已购买 7 日周卡且存在可领取项则自动点击橙色「领取」，未购买或已领完直接跳过。",
+            "default_case": "Yes",
+            "cases": [
+                {
+                    "name": "Yes",
+                    "pipeline_override": {
+                        "DailyPrepEternalSupplyStep": {
+                            "enabled": true
+                        }
+                    }
+                },
+                {
+                    "name": "No",
+                    "pipeline_override": {
+                        "DailyPrepEternalSupplyStep": {
+                            "enabled": false
+                        }
+                    }
+                }
+            ]
+        },
+        "DailyPrepRevenueLikeEnabled": {
+            "type": "switch",
+            "label": "营收排行榜点赞 3 次",
+            "description": "进入营收排行榜并切换至「全部玩家」，点赞至每日 3/3 上限。",
+            "default_case": "Yes",
+            "cases": [
+                {
+                    "name": "Yes",
+                    "pipeline_override": {
+                        "DailyPrepRevenueLikeStep": {
+                            "enabled": true
+                        }
+                    }
+                },
+                {
+                    "name": "No",
+                    "pipeline_override": {
+                        "DailyPrepRevenueLikeStep": {
+                            "enabled": false
+                        }
+                    }
+                }
+            ]
+        }
+    }
+}

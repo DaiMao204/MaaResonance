@@ -1,0 +1,288 @@
+{
+    "task": [
+        {
+            "name": "MainlineAdvance",
+            "label": "主线自动推进（实验性）",
+            "entry": "MainlineAdvanceLoop",
+            "description": "实验性功能，仅支持安卓模拟器（ADB）：自动识别城内主线任务标记、进站或启程导航、串联剧情跳过、自动编队、主线战斗与战后结算。禁原生自动的关卡当前仅使用「快斩随机甩牌」兜底，不保证高难通关；识别到作战失败（作战失败/挑战失败/重新挑战）将自动停止任务；暂未覆盖制作类/非城市对话支线。",
+            "group": [
+                "experimental"
+            ],
+            "resource": [
+                "official"
+            ],
+            "controller": [
+                "ADB"
+            ],
+            "option": [
+                "MainlineUseClarityMedicine",
+                "MainlineStoryChoice",
+                "MainlineFormationMode",
+                "MainlinePreferNativeAuto",
+                "MainlineLeaderSkill"
+            ]
+        }
+    ],
+    "option": {
+        "MainlineUseClarityMedicine": {
+            "type": "switch",
+            "label": "使用体力药/桦石",
+            "description": "开启后才会显示下方使用次数。次数含义：-1 为无限制，0 为不使用，正数为本轮剩余可用次数；桦石最高 8 次。",
+            "default_case": "No",
+            "cases": [
+                {
+                    "name": "No",
+                    "pipeline_override": {
+                        "MainlineClarityRecovery": {
+                            "enabled": false
+                        }
+                    }
+                },
+                {
+                    "name": "Yes",
+                    "option": [
+                        "MainlineClarityLimits"
+                    ],
+                    "pipeline_override": {
+                        "MainlineClarityRecovery": {
+                            "enabled": true
+                        }
+                    }
+                }
+            ]
+        },
+        "MainlineClarityLimits": {
+            "type": "input",
+            "label": "主线体力药/桦石使用次数",
+            "description": "本轮任务每成功使用 1 次会扣减可用配额；-1 不限次，0 表示禁用该恢复手段。",
+            "inputs": [
+                {
+                    "name": "lollipop_use_limit",
+                    "label": "仙人掌能量棒棒糖使用次数",
+                    "description": "-1 为无限制，0 为不使用，正数为本轮可用次数。",
+                    "default": "0",
+                    "pipeline_type": "int",
+                    "verify": "^(-1|0|[1-9]\\d*)$",
+                    "pattern_msg": "请输入 -1、0 或正整数。"
+                },
+                {
+                    "name": "roll_use_limit",
+                    "label": "仙人掌跳跳卷使用次数",
+                    "description": "-1 为无限制，0 为不使用，正数为本轮可用次数。",
+                    "default": "0",
+                    "pipeline_type": "int",
+                    "verify": "^(-1|0|[1-9]\\d*)$",
+                    "pattern_msg": "请输入 -1、0 或正整数。"
+                },
+                {
+                    "name": "candy_use_limit",
+                    "label": "仙人掌能量跳糖使用次数",
+                    "description": "-1 为无限制，0 为不使用，正数为本轮可用次数。",
+                    "default": "0",
+                    "pipeline_type": "int",
+                    "verify": "^(-1|0|[1-9]\\d*)$",
+                    "pattern_msg": "请输入 -1、0 或正整数。"
+                },
+                {
+                    "name": "huashi_use_limit",
+                    "label": "桦石使用次数（最高 8）",
+                    "description": "-1 为无限制，0 为不使用，1-8 为本轮可用次数。",
+                    "default": "0",
+                    "pipeline_type": "int",
+                    "verify": "^(-1|[0-8])$",
+                    "pattern_msg": "请输入 -1 或 0-8。"
+                }
+            ],
+            "pipeline_override": {
+                "MainlineClarityRecovery": {
+                    "custom_action_param": {
+                        "lollipop_use_limit": "{lollipop_use_limit}",
+                        "roll_use_limit": "{roll_use_limit}",
+                        "candy_use_limit": "{candy_use_limit}",
+                        "huashi_use_limit": "{huashi_use_limit}"
+                    }
+                }
+            }
+        },
+        "MainlineStoryChoice": {
+            "type": "select",
+            "label": "剧情跳过分支策略",
+            "default_case": "First",
+            "cases": [
+                {
+                    "name": "First",
+                    "label": "自动跳过（分支选第一项）",
+                    "pipeline_override": {
+                        "MainlineStorySkip": {
+                            "enabled": true,
+                            "custom_action_param": {
+                                "choice_index": 0,
+                                "max_steps": 120
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Last",
+                    "label": "自动跳过（分支选最后一项）",
+                    "pipeline_override": {
+                        "MainlineStorySkip": {
+                            "enabled": true,
+                            "custom_action_param": {
+                                "choice_index": 99,
+                                "max_steps": 120
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Off",
+                    "label": "关闭剧情跳过",
+                    "pipeline_override": {
+                        "MainlineStorySkip": {
+                            "enabled": false
+                        }
+                    }
+                }
+            ]
+        },
+        "MainlineFormationMode": {
+            "type": "select",
+            "label": "编队自动选人",
+            "default_case": "Off",
+            "cases": [
+                {
+                    "name": "Off",
+                    "label": "不自动改编队（直接开战）",
+                    "pipeline_override": {
+                        "MainlineFormationEmpty": {
+                            "enabled": false
+                        },
+                        "MainlineFormationStrict": {
+                            "enabled": false
+                        }
+                    }
+                },
+                {
+                    "name": "EmptyOnly",
+                    "label": "仅存在空位时补齐（保留剧情/手动配队）",
+                    "option": [
+                        "MainlineFormationRoles"
+                    ],
+                    "pipeline_override": {
+                        "MainlineFormationEmpty": {
+                            "enabled": true
+                        },
+                        "MainlineFormationStrict": {
+                            "enabled": false
+                        }
+                    }
+                },
+                {
+                    "name": "Strict",
+                    "label": "严格按名单自动编队",
+                    "option": [
+                        "MainlineFormationRoles"
+                    ],
+                    "pipeline_override": {
+                        "MainlineFormationEmpty": {
+                            "enabled": false
+                        },
+                        "MainlineFormationStrict": {
+                            "enabled": true
+                        }
+                    }
+                }
+            ]
+        },
+        "MainlineFormationRoles": {
+            "type": "input",
+            "label": "编队目标角色名单",
+            "description": "按优先级填写角色全名，逗号或顿号分隔；留空则保持当前阵容不调整。",
+            "inputs": [
+                {
+                    "name": "target_roles",
+                    "label": "目标名单",
+                    "default": "",
+                    "pipeline_type": "string"
+                }
+            ],
+            "pipeline_override": {
+                "MainlineFormationQuickSelect": {
+                    "custom_action_param": {
+                        "target_roles": "{target_roles}",
+                        "max_team_size": 5
+                    }
+                },
+                "MainlineFormationEmpty": {
+                    "custom_recognition_param": {
+                        "target_roles": "{target_roles}",
+                        "strict_match": false
+                    }
+                },
+                "MainlineFormationStrict": {
+                    "custom_recognition_param": {
+                        "target_roles": "{target_roles}",
+                        "strict_match": true
+                    }
+                }
+            }
+        },
+        "MainlinePreferNativeAuto": {
+            "type": "switch",
+            "label": "优先启用原生自动战斗",
+            "description": "开启后，普通关优先开启游戏原生自动并静默等待；主线禁自动关卡无缝接管手牌。关闭后始终使用手牌出牌。",
+            "default_case": "Yes",
+            "cases": [
+                {
+                    "name": "Yes",
+                    "pipeline_override": {
+                        "MainlineBattleAutoOptPreferNativeAuto": {
+                            "attach": {
+                                "prefer_native_auto": true
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "No",
+                    "pipeline_override": {
+                        "MainlineBattleAutoOptPreferNativeAuto": {
+                            "attach": {
+                                "prefer_native_auto": false
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "MainlineLeaderSkill": {
+            "type": "switch",
+            "label": "手牌接管时优先释放队长技",
+            "description": "开启后，手牌接管阶段将在队长得意技就绪时自动拖放释放。",
+            "default_case": "Yes",
+            "cases": [
+                {
+                    "name": "Yes",
+                    "pipeline_override": {
+                        "MainlineBattleAutoOptLeaderSkill": {
+                            "attach": {
+                                "prefer_leader_skill": true
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "No",
+                    "pipeline_override": {
+                        "MainlineBattleAutoOptLeaderSkill": {
+                            "attach": {
+                                "prefer_leader_skill": false
+                            }
+                        }
+                    }
+                }
+            ]
+        }
+    }
+}
