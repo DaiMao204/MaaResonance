@@ -1,0 +1,101 @@
+{
+    "AutoTeamFormationStart": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "next": [
+            "AutoTeamFormationClickQuickTeam",
+            "AutoTeamFormationOpenFromMainMenu"
+        ]
+    },
+    "AutoTeamFormationOpenFromMainMenu": {
+        "recognition": "OCR",
+        "expected": [
+            "编队"
+        ],
+        "roi": [
+            540,
+            460,
+            140,
+            100
+        ],
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "post_delay": 900,
+        "next": [
+            "AutoTeamFormationClickQuickTeam"
+        ]
+    },
+    "AutoTeamFormationClickQuickTeam": {
+        "recognition": "OCR",
+        "expected": [
+            "快速编队"
+        ],
+        "roi": [
+            1000,
+            15,
+            270,
+            90
+        ],
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "post_delay": 700,
+        "next": [
+            "AutoTeamFormationQuickSelect"
+        ]
+    },
+    "AutoTeamFormationQuickSelect": {
+        "recognition": "OCR",
+        "expected": [
+            "获取时间",
+            "稀有度",
+            "确认"
+        ],
+        "roi": [
+            800,
+            0,
+            480,
+            720
+        ],
+        "action": "Custom",
+        "custom_action": "team_formation_quick_select",
+        "custom_action_param": {
+            "target_roles": "",
+            "max_team_size": 5
+        },
+        "post_delay": 300,
+        "next": [
+            "AutoTeamFormationConfirm"
+        ]
+    },
+    "AutoTeamFormationConfirm": {
+        "recognition": "OCR",
+        "expected": [
+            "确认"
+        ],
+        "roi": [
+            960,
+            610,
+            260,
+            90
+        ],
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "post_delay": 600,
+        "next": [
+            "AutoTeamFormationDone"
+        ]
+    },
+    "AutoTeamFormationDone": {
+        "recognition": "OCR",
+        "expected": [
+            "快速编队"
+        ],
+        "roi": [
+            1000,
+            15,
+            270,
+            90
+        ],
+        "action": "DoNothing"
+    }
+}

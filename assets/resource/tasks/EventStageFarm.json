@@ -1,0 +1,387 @@
+{
+    "task": [
+        {
+            "name": "EventStageFarm",
+            "label": "限时活动刷关（清澄明度）",
+            "entry": "EventStageFarmStart",
+            "description": "自动进入活动关卡（当前默认「箱庭内外 -> 破坏箱庭 -> 调查报告7」，也支持停在任意关卡详情页直接开刷），支持优先开启关卡原生自动连战、按次数/清完体力刷取及限次吃澄明度药剂。",
+            "group": [
+                "daily"
+            ],
+            "resource": [
+                "official"
+            ],
+            "controller": [
+                "ADB",
+                "Win32",
+                "Win32BackgroundWindowPos",
+                "Win32BackgroundCursorPos"
+            ],
+            "option": [
+                "EventStageTarget",
+                "EventStageRunMode",
+                "EventStageUseNativeAutoRepeat",
+                "EventStageUseClarityMedicine",
+                "EventStageFormationMode",
+                "EventStagePreferNativeAuto",
+                "EventStageLeaderSkill"
+            ]
+        }
+    ],
+    "option": {
+        "EventStageTarget": {
+            "type": "select",
+            "label": "活动刷关入口",
+            "default_case": "MiniscapeBreak",
+            "cases": [
+                {
+                    "name": "MiniscapeBreak",
+                    "label": "箱庭内外 · 破坏箱庭（推荐）",
+                    "option": [
+                        "EventStageName"
+                    ],
+                    "pipeline_override": {
+                        "EventStageFarmOptTarget": {
+                            "attach": {
+                                "target": "miniscape_break"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "CurrentStageDetail",
+                    "label": "当前已打开的关卡详情页直接开刷",
+                    "pipeline_override": {
+                        "EventStageFarmOptTarget": {
+                            "attach": {
+                                "target": "current_stage_detail"
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "EventStageName": {
+            "type": "input",
+            "label": "目标关卡名称",
+            "description": "破坏箱庭内按关卡名称定位（默认「调查报告7」，滑到末尾选中后开刷）。",
+            "inputs": [
+                {
+                    "name": "target_stage_name",
+                    "label": "关卡名称",
+                    "default": "调查报告7",
+                    "pipeline_type": "string"
+                }
+            ],
+            "pipeline_override": {
+                "EventStageFarmOptStageName": {
+                    "attach": {
+                        "target_stage_name": "{target_stage_name}"
+                    }
+                }
+            }
+        },
+        "EventStageRunMode": {
+            "type": "select",
+            "label": "刷取停止条件",
+            "default_case": "UntilClarityExhausted",
+            "cases": [
+                {
+                    "name": "UntilClarityExhausted",
+                    "label": "清完当前澄明度（配合下方吃药开关）",
+                    "pipeline_override": {
+                        "EventStageFarmOptRunMode": {
+                            "attach": {
+                                "run_mode": "until_clarity_exhausted"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "FixedCount",
+                    "label": "指定次数",
+                    "option": [
+                        "EventStageRunCount"
+                    ],
+                    "pipeline_override": {
+                        "EventStageFarmOptRunMode": {
+                            "attach": {
+                                "run_mode": "fixed_count"
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "EventStageRunCount": {
+            "type": "input",
+            "label": "指定刷取次数",
+            "inputs": [
+                {
+                    "name": "run_count",
+                    "label": "次数",
+                    "default": "3",
+                    "pipeline_type": "int",
+                    "verify": "^[1-9]\\d*$",
+                    "pattern_msg": "请输入大于 0 的整数。"
+                }
+            ],
+            "pipeline_override": {
+                "EventStageFarmOptRunCount": {
+                    "attach": {
+                        "run_count": "{run_count}"
+                    }
+                }
+            }
+        },
+        "EventStageUseNativeAutoRepeat": {
+            "type": "switch",
+            "label": "优先开启关卡原生「自动战斗」连战",
+            "description": "清完体力模式下开启后，自动拨开详情页「自动战斗」实现 2 秒极速连战；指定次数模式会自动改走单次精准计数。",
+            "default_case": "Yes",
+            "cases": [
+                {
+                    "name": "Yes",
+                    "pipeline_override": {
+                        "EventStageFarmOptNativeRepeat": {
+                            "attach": {
+                                "use_native_auto_repeat": true
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "No",
+                    "pipeline_override": {
+                        "EventStageFarmOptNativeRepeat": {
+                            "attach": {
+                                "use_native_auto_repeat": false
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "EventStageUseClarityMedicine": {
+            "type": "switch",
+            "label": "澄明度不足时使用体力药/桦石",
+            "description": "关闭则体力不足自动取消并返回大厅，不影响后续日常队列；开启后才展开下方次数配额。",
+            "default_case": "No",
+            "cases": [
+                {
+                    "name": "No",
+                    "pipeline_override": {
+                        "EventStageFarmClarityRecovery": {
+                            "enabled": false
+                        },
+                        "EventStageFarmOptUseMedicine": {
+                            "attach": {
+                                "use_medicine": false
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Yes",
+                    "option": [
+                        "EventStageClarityLimits"
+                    ],
+                    "pipeline_override": {
+                        "EventStageFarmClarityRecovery": {
+                            "enabled": true
+                        },
+                        "EventStageFarmOptUseMedicine": {
+                            "attach": {
+                                "use_medicine": true
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "EventStageClarityLimits": {
+            "type": "input",
+            "label": "活动刷关体力药/桦石使用次数",
+            "description": "-1 不限次，0 禁用，正数为本轮可用次数；桦石最高 8 次。",
+            "inputs": [
+                {
+                    "name": "lollipop_use_limit",
+                    "label": "仙人掌能量棒棒糖使用次数",
+                    "default": "0",
+                    "pipeline_type": "int",
+                    "verify": "^(-1|0|[1-9]\\d*)$",
+                    "pattern_msg": "请输入 -1、0 或正整数。"
+                },
+                {
+                    "name": "roll_use_limit",
+                    "label": "仙人掌跳跳卷使用次数",
+                    "default": "0",
+                    "pipeline_type": "int",
+                    "verify": "^(-1|0|[1-9]\\d*)$",
+                    "pattern_msg": "请输入 -1、0 或正整数。"
+                },
+                {
+                    "name": "candy_use_limit",
+                    "label": "仙人掌能量跳糖使用次数",
+                    "default": "0",
+                    "pipeline_type": "int",
+                    "verify": "^(-1|0|[1-9]\\d*)$",
+                    "pattern_msg": "请输入 -1、0 或正整数。"
+                },
+                {
+                    "name": "huashi_use_limit",
+                    "label": "桦石使用次数（最高 8）",
+                    "default": "0",
+                    "pipeline_type": "int",
+                    "verify": "^(-1|[0-8])$",
+                    "pattern_msg": "请输入 -1 或 0-8。"
+                }
+            ],
+            "pipeline_override": {
+                "EventStageFarmClarityRecovery": {
+                    "custom_action_param": {
+                        "lollipop_use_limit": "{lollipop_use_limit}",
+                        "roll_use_limit": "{roll_use_limit}",
+                        "candy_use_limit": "{candy_use_limit}",
+                        "huashi_use_limit": "{huashi_use_limit}"
+                    }
+                }
+            }
+        },
+        "EventStageFormationMode": {
+            "type": "select",
+            "label": "编队自动选人",
+            "default_case": "Off",
+            "cases": [
+                {
+                    "name": "Off",
+                    "label": "不自动改编队（直接点开始作战）",
+                    "pipeline_override": {
+                        "EventStageFarmFormationEmpty": {
+                            "enabled": false
+                        },
+                        "EventStageFarmFormationStrict": {
+                            "enabled": false
+                        }
+                    }
+                },
+                {
+                    "name": "EmptyOnly",
+                    "label": "仅存在空位时补齐",
+                    "option": [
+                        "EventStageFormationRoles"
+                    ],
+                    "pipeline_override": {
+                        "EventStageFarmFormationEmpty": {
+                            "enabled": true
+                        },
+                        "EventStageFarmFormationStrict": {
+                            "enabled": false
+                        }
+                    }
+                },
+                {
+                    "name": "Strict",
+                    "label": "严格按名单自动编队",
+                    "option": [
+                        "EventStageFormationRoles"
+                    ],
+                    "pipeline_override": {
+                        "EventStageFarmFormationEmpty": {
+                            "enabled": false
+                        },
+                        "EventStageFarmFormationStrict": {
+                            "enabled": true
+                        }
+                    }
+                }
+            ]
+        },
+        "EventStageFormationRoles": {
+            "type": "input",
+            "label": "编队目标角色名单",
+            "inputs": [
+                {
+                    "name": "target_roles",
+                    "label": "目标名单",
+                    "default": "",
+                    "pipeline_type": "string"
+                }
+            ],
+            "pipeline_override": {
+                "EventStageFarmFormationQuickSelect": {
+                    "custom_action_param": {
+                        "target_roles": "{target_roles}",
+                        "max_team_size": 5
+                    }
+                },
+                "EventStageFarmFormationEmpty": {
+                    "custom_recognition_param": {
+                        "target_roles": "{target_roles}",
+                        "strict_match": false
+                    }
+                },
+                "EventStageFarmFormationStrict": {
+                    "custom_recognition_param": {
+                        "target_roles": "{target_roles}",
+                        "strict_match": true
+                    }
+                }
+            }
+        },
+        "EventStagePreferNativeAuto": {
+            "type": "switch",
+            "label": "优先启用原生自动战斗",
+            "default_case": "Yes",
+            "cases": [
+                {
+                    "name": "Yes",
+                    "pipeline_override": {
+                        "EventStageFarmBattleAutoOptPreferNativeAuto": {
+                            "attach": {
+                                "prefer_native_auto": true
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "No",
+                    "pipeline_override": {
+                        "EventStageFarmBattleAutoOptPreferNativeAuto": {
+                            "attach": {
+                                "prefer_native_auto": false
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "EventStageLeaderSkill": {
+            "type": "switch",
+            "label": "手牌接管时优先释放队长技",
+            "default_case": "Yes",
+            "cases": [
+                {
+                    "name": "Yes",
+                    "pipeline_override": {
+                        "EventStageFarmBattleAutoOptLeaderSkill": {
+                            "attach": {
+                                "prefer_leader_skill": true
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "No",
+                    "pipeline_override": {
+                        "EventStageFarmBattleAutoOptLeaderSkill": {
+                            "attach": {
+                                "prefer_leader_skill": false
+                            }
+                        }
+                    }
+                }
+            ]
+        }
+    }
+}

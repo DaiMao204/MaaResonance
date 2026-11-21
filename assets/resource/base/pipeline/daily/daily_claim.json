@@ -1,0 +1,52 @@
+{
+    "DailyClaimStart": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "next": [
+            "DailyClaimActivityStep",
+            "DailyClaimBattlePassStep",
+            "DailyClaimComplete"
+        ]
+    },
+    "DailyClaimActivityStep": {
+        "enabled": true,
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "daily_routine_activity",
+        "focus": {
+            "Node.Action.Starting": "【日常收尾】开始领取每日活跃点数与宝箱...",
+            "Node.Action.Succeeded": "【日常收尾】每日活跃领取完成。"
+        },
+        "next": [
+            "DailyClaimBattlePassStep",
+            "DailyClaimComplete"
+        ],
+        "on_error": [
+            "DailyClaimBattlePassStep",
+            "DailyClaimComplete"
+        ]
+    },
+    "DailyClaimBattlePassStep": {
+        "enabled": true,
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "daily_routine_battle_pass",
+        "focus": {
+            "Node.Action.Starting": "【日常收尾】开始领取环游手册（通行证）任务与等级奖励...",
+            "Node.Action.Succeeded": "【日常收尾】通行证领取完成。"
+        },
+        "next": [
+            "DailyClaimComplete"
+        ],
+        "on_error": [
+            "DailyClaimComplete"
+        ]
+    },
+    "DailyClaimComplete": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "focus": {
+            "Node.Action.Succeeded": "【日常收尾】日常领奖收尾任务全部执行完毕。"
+        }
+    }
+}
