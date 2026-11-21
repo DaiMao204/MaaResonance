@@ -1,0 +1,46 @@
+{
+    "WakeUpStart": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "wake_up_to_lobby",
+        "focus": {
+            "Node.Action.Starting": "【开始唤醒】正在检查游戏状态并推进至列车大厅...",
+            "Node.Action.Succeeded": "【开始唤醒】已就绪停在列车大厅。"
+        },
+        "next": [
+            "WakeUpComplete"
+        ]
+    },
+    "WakeUpOptAutoLaunchAdb": {
+        "action": "DoNothing",
+        "attach": {
+            "auto_launch_adb": true
+        }
+    },
+    "WakeUpOptConfirmSmallUpdate": {
+        "action": "DoNothing",
+        "attach": {
+            "auto_confirm_small_update": true,
+            "max_download_mb": 200.0
+        }
+    },
+    "WakeUpOptBlindDismiss": {
+        "action": "DoNothing",
+        "attach": {
+            "allow_blind_dismiss": true
+        }
+    },
+    "WakeUpAdbStartApp": {
+        "recognition": "DirectHit",
+        "action": {
+            "type": "StartApp",
+            "param": {
+                "package": "com.hermes.goda"
+            }
+        }
+    },
+    "WakeUpComplete": {
+        "recognition": "DirectHit",
+        "action": "DoNothing"
+    }
+}

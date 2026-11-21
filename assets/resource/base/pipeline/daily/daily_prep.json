@@ -1,0 +1,151 @@
+{
+    "DailyPrepStart": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "next": [
+            "DailyPrepMailStep",
+            "DailyPrepDispatchStep",
+            "DailyPrepFriendSupportStep",
+            "DailyPrepEventCheckinStep",
+            "DailyPrepEternalSupplyStep",
+            "DailyPrepRevenueLikeStep",
+            "DailyPrepComplete"
+        ]
+    },
+    "DailyPrepMailStep": {
+        "enabled": true,
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "daily_routine_mail",
+        "focus": {
+            "Node.Action.Starting": "【日常前置】开始检查邮箱一键领取...",
+            "Node.Action.Succeeded": "【日常前置】邮箱处理完成。"
+        },
+        "next": [
+            "DailyPrepDispatchStep",
+            "DailyPrepFriendSupportStep",
+            "DailyPrepEventCheckinStep",
+            "DailyPrepEternalSupplyStep",
+            "DailyPrepRevenueLikeStep",
+            "DailyPrepComplete"
+        ],
+        "on_error": [
+            "DailyPrepDispatchStep",
+            "DailyPrepFriendSupportStep",
+            "DailyPrepEventCheckinStep",
+            "DailyPrepEternalSupplyStep",
+            "DailyPrepRevenueLikeStep",
+            "DailyPrepComplete"
+        ]
+    },
+    "DailyPrepDispatchStep": {
+        "enabled": true,
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "daily_routine_dispatch",
+        "custom_action_param": {
+            "reassign": true
+        },
+        "focus": {
+            "Node.Action.Starting": "【日常前置】开始检查派遣委托收菜/续派...",
+            "Node.Action.Succeeded": "【日常前置】派遣委托处理完成。"
+        },
+        "next": [
+            "DailyPrepFriendSupportStep",
+            "DailyPrepEventCheckinStep",
+            "DailyPrepEternalSupplyStep",
+            "DailyPrepRevenueLikeStep",
+            "DailyPrepComplete"
+        ],
+        "on_error": [
+            "DailyPrepFriendSupportStep",
+            "DailyPrepEventCheckinStep",
+            "DailyPrepEternalSupplyStep",
+            "DailyPrepRevenueLikeStep",
+            "DailyPrepComplete"
+        ]
+    },
+    "DailyPrepFriendSupportStep": {
+        "enabled": true,
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "daily_routine_friend_support",
+        "focus": {
+            "Node.Action.Starting": "【日常前置】开始领取好友名片支援金币奖励...",
+            "Node.Action.Succeeded": "【日常前置】好友支援金币处理完成。"
+        },
+        "next": [
+            "DailyPrepEventCheckinStep",
+            "DailyPrepEternalSupplyStep",
+            "DailyPrepRevenueLikeStep",
+            "DailyPrepComplete"
+        ],
+        "on_error": [
+            "DailyPrepEventCheckinStep",
+            "DailyPrepEternalSupplyStep",
+            "DailyPrepRevenueLikeStep",
+            "DailyPrepComplete"
+        ]
+    },
+    "DailyPrepEventCheckinStep": {
+        "enabled": true,
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "daily_routine_event_checkin",
+        "focus": {
+            "Node.Action.Starting": "【日常前置】开始检查限时活动「启程签到」...",
+            "Node.Action.Succeeded": "【日常前置】限时活动签到处理完成。"
+        },
+        "next": [
+            "DailyPrepEternalSupplyStep",
+            "DailyPrepRevenueLikeStep",
+            "DailyPrepComplete"
+        ],
+        "on_error": [
+            "DailyPrepEternalSupplyStep",
+            "DailyPrepRevenueLikeStep",
+            "DailyPrepComplete"
+        ]
+    },
+    "DailyPrepEternalSupplyStep": {
+        "enabled": true,
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "daily_routine_eternal_supply",
+        "focus": {
+            "Node.Action.Starting": "【日常前置】开始检查商城「无垠补给」每日领取...",
+            "Node.Action.Succeeded": "【日常前置】无垠补给处理完成。"
+        },
+        "next": [
+            "DailyPrepRevenueLikeStep",
+            "DailyPrepComplete"
+        ],
+        "on_error": [
+            "DailyPrepRevenueLikeStep",
+            "DailyPrepComplete"
+        ]
+    },
+    "DailyPrepRevenueLikeStep": {
+        "enabled": true,
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "daily_routine_revenue_like",
+        "focus": {
+            "Node.Action.Starting": "【日常前置】开始检查营收排行榜每日点赞...",
+            "Node.Action.Succeeded": "【日常前置】营收排行榜点赞完成。"
+        },
+        "next": [
+            "DailyPrepComplete"
+        ],
+        "on_error": [
+            "DailyPrepComplete"
+        ]
+    },
+    "DailyPrepComplete": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "focus": {
+            "Node.Action.Succeeded": "【日常前置】前置收菜与签到项目全部执行完毕。"
+        }
+    }
+}

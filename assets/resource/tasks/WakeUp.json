@@ -1,0 +1,114 @@
+{
+    "task": [
+        {
+            "name": "WakeUp",
+            "label": "开始唤醒（过登录进大厅）",
+            "entry": "WakeUpStart",
+            "description": "兼容 ADB 与 PC 客户端：ADB 模式下可自动启动游戏，随后自动处理小体积热更确认、资讯公告弹窗、标题页进入游戏及月卡/签到弹窗，直至稳停列车大厅；遇到密码/验证码/大包更新自动停机。",
+            "group": [
+                "daily"
+            ],
+            "resource": [
+                "official"
+            ],
+            "controller": [
+                "ADB",
+                "Win32",
+                "Win32BackgroundWindowPos",
+                "Win32BackgroundCursorPos"
+            ],
+            "option": [
+                "WakeUpAutoLaunchAdb",
+                "WakeUpAutoConfirmSmallUpdate",
+                "WakeUpBlindDismissPopups"
+            ]
+        }
+    ],
+    "option": {
+        "WakeUpAutoLaunchAdb": {
+            "type": "switch",
+            "label": "ADB 模式自动启动游戏",
+            "description": "使用安卓模拟器且尚未打开游戏时自动拉起《雷索纳斯》；PC 模式自动忽略此项，直接接管已打开的客户端窗口。",
+            "default_case": "Yes",
+            "cases": [
+                {
+                    "name": "Yes",
+                    "pipeline_override": {
+                        "WakeUpOptAutoLaunchAdb": {
+                            "attach": {
+                                "auto_launch_adb": true
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "No",
+                    "pipeline_override": {
+                        "WakeUpOptAutoLaunchAdb": {
+                            "attach": {
+                                "auto_launch_adb": false
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "WakeUpAutoConfirmSmallUpdate": {
+            "type": "switch",
+            "label": "自动确认小体积热更资源包（<=200MB）",
+            "description": "登录时若弹出小于 200MB 的热更确认框自动点击「确认」等待下载；超大包仍会停机由人工确认。",
+            "default_case": "Yes",
+            "cases": [
+                {
+                    "name": "Yes",
+                    "pipeline_override": {
+                        "WakeUpOptConfirmSmallUpdate": {
+                            "attach": {
+                                "auto_confirm_small_update": true,
+                                "max_download_mb": 200.0
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "No",
+                    "pipeline_override": {
+                        "WakeUpOptConfirmSmallUpdate": {
+                            "attach": {
+                                "auto_confirm_small_update": false
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "WakeUpBlindDismissPopups": {
+            "type": "switch",
+            "label": "安全试探关闭首登月卡/未知弹窗",
+            "description": "当停留在非大厅/非登录/非加载的遮挡弹屏时，尝试点击上方安全空白区关闭弹窗（如每日月卡领奖遮罩）。",
+            "default_case": "Yes",
+            "cases": [
+                {
+                    "name": "Yes",
+                    "pipeline_override": {
+                        "WakeUpOptBlindDismiss": {
+                            "attach": {
+                                "allow_blind_dismiss": true
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "No",
+                    "pipeline_override": {
+                        "WakeUpOptBlindDismiss": {
+                            "attach": {
+                                "allow_blind_dismiss": false
+                            }
+                        }
+                    }
+                }
+            ]
+        }
+    }
+}

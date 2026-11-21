@@ -1,0 +1,161 @@
+{
+    "task": [
+        {
+            "name": "AutoBattle",
+            "label": "自动作战（手牌接管 · 实验性）",
+            "entry": "AutoBattleEntry",
+            "description": "实验性原子工具：支持原生自动战斗探测；禁原生自动的关卡将回退为快斩模式（大招就绪秒放 + 随机极速甩牌），除非练度足够否则大概率打不过。",
+            "group": [
+                "experimental"
+            ],
+            "resource": [
+                "official"
+            ],
+            "controller": [
+                "ADB",
+                "Win32",
+                "Win32BackgroundWindowPos",
+                "Win32BackgroundCursorPos"
+            ],
+            "option": [
+                "AutoBattleFromFormation",
+                "AutoBattlePlayMode",
+                "AutoBattlePreferNativeAuto",
+                "AutoBattleAutoSettle",
+                "AutoBattleLeaderSkill"
+            ]
+        }
+    ],
+    "option": {
+        "AutoBattleFromFormation": {
+            "type": "switch",
+            "label": "从编队界面自动点开始作战",
+            "description": "开启后会先点击编队右侧“开始作战”，加载进入战斗后再接管；默认关闭以免误耗体力。",
+            "default_case": "No",
+            "cases": [
+                {
+                    "name": "No",
+                    "pipeline_override": {
+                        "AutoBattleEntry": {
+                            "next": [
+                                "AutoBattleStart"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Yes",
+                    "pipeline_override": {
+                        "AutoBattleEntry": {
+                            "next": [
+                                "AutoBattleStart",
+                                "AutoBattleEnterFromFormation"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        "AutoBattlePlayMode": {
+            "type": "select",
+            "label": "手牌出牌模式",
+            "default_case": "FastRush",
+            "cases": [
+                {
+                    "name": "FastRush",
+                    "label": "快斩模式（大招就绪秒放 + 随机极速甩牌）",
+                    "pipeline_override": {
+                        "AutoBattleStartOptPlayMode": {
+                            "attach": {
+                                "play_mode": "fast_rush"
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "AutoBattlePreferNativeAuto": {
+            "type": "switch",
+            "label": "优先启用原生自动战斗",
+            "description": "支持原生自动战斗的关卡优先点击开启游戏自动按钮并仅等待结算；主线禁用原生自动的关卡再接管手牌拖拽。",
+            "default_case": "Yes",
+            "cases": [
+                {
+                    "name": "Yes",
+                    "pipeline_override": {
+                        "AutoBattleStartOptPreferNativeAuto": {
+                            "attach": {
+                                "prefer_native_auto": true
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "No",
+                    "pipeline_override": {
+                        "AutoBattleStartOptPreferNativeAuto": {
+                            "attach": {
+                                "prefer_native_auto": false
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "AutoBattleAutoSettle": {
+            "type": "switch",
+            "label": "战后自动跳过剧情与点击结算",
+            "description": "开启后会等待战后结算界面（若游戏已自动退出到大地图/行车界面则直接收工，不重复点击）；关闭则在战斗结束时即停止。",
+            "default_case": "Yes",
+            "cases": [
+                {
+                    "name": "Yes",
+                    "pipeline_override": {
+                        "AutoBattleStart": {
+                            "next": [
+                                "AutoBattleSettlementPoll01"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "No",
+                    "pipeline_override": {
+                        "AutoBattleStart": {
+                            "next": [
+                                "AutoBattleSkipSettleDone"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        "AutoBattleLeaderSkill": {
+            "type": "switch",
+            "label": "手牌接管时优先释放队长技",
+            "default_case": "Yes",
+            "cases": [
+                {
+                    "name": "Yes",
+                    "pipeline_override": {
+                        "AutoBattleStartOptLeaderSkill": {
+                            "attach": {
+                                "prefer_leader_skill": true
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "No",
+                    "pipeline_override": {
+                        "AutoBattleStartOptLeaderSkill": {
+                            "attach": {
+                                "prefer_leader_skill": false
+                            }
+                        }
+                    }
+                }
+            ]
+        }
+    }
+}
