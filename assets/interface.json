@@ -293,6 +293,17 @@
                     }
                 }
             ]
+        },
+        {
+            "name": "mainline-advance",
+            "label": "主线自动推进（实验性）",
+            "description": "实验性（仅支持 ADB）：自动推进主线任务、跳过剧情、自动编队与战斗；禁原生自动关仅使用快斩甩牌兜底，检测到作战失败将自动停止。",
+            "task": [
+                {
+                    "name": "MainlineAdvance",
+                    "enabled": true
+                }
+            ]
         }
     ],
     "import": [
@@ -309,6 +320,7 @@
         "resource/tasks/StorySkip.json",
         "resource/tasks/AutoTeamFormation.json",
         "resource/tasks/AutoBattle.json",
+        "resource/tasks/MainlineAdvance.json",
         "resource/tasks/LaunchGame.json"
     ]
 }
