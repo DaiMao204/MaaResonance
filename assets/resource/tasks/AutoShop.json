@@ -1,0 +1,824 @@
+{
+    "task": [
+        {
+            "name": "AutoShop",
+            "label": "自动商店采购（周期）",
+            "entry": "AutoShopStart",
+            "description": "按 UID + 刷新周期（05:00 日/周/月）自动执行三层商店优先级采购：① 黑月总部商店（铁盟币，可选采购券，硬屏蔽桦石）；② 赴命商店（仅周期限购，默认仅紫章）；③ 商会里程点数兑换（仅本周/本月限购，非城市站点安全跳过）。每项均做商品名/货币/保留余额二次核验。",
+            "group": [
+                "daily"
+            ],
+            "resource": [
+                "official"
+            ],
+            "controller": [
+                "ADB",
+                "Win32",
+                "Win32BackgroundWindowPos",
+                "Win32BackgroundCursorPos"
+            ],
+            "option": [
+                "AutoShopScheduleMode",
+                "AutoShopBlackMoonHqEnabled",
+                "AutoShopFumingEnabled",
+                "AutoShopChamberEnabled"
+            ]
+        }
+    ],
+    "option": {
+        "AutoShopScheduleMode": {
+            "type": "select",
+            "label": "周期触发与防重复策略",
+            "description": "默认按 UID 在 config/auto_shop_state.json 自动计算并记录下次运行时间（05:00 日/周/月重置；改动清单会自动重查）。选择「立即运行」可跳过冷却直接检查全部分店。",
+            "default_case": "Smart",
+            "cases": [
+                {
+                    "name": "Smart",
+                    "label": "按 UID 自动记录下次运行时间（推荐）",
+                    "pipeline_override": {
+                        "AutoShopOptScheduleMode": {
+                            "attach": {
+                                "schedule_mode": "smart"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "ForceRun",
+                    "label": "立即运行（忽略本周期缓存强制检查）",
+                    "pipeline_override": {
+                        "AutoShopOptScheduleMode": {
+                            "attach": {
+                                "schedule_mode": "force"
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "AutoShopBlackMoonHqEnabled": {
+            "type": "switch",
+            "label": "① 启用黑月总部商店采购",
+            "description": "进入「商城 -> 总部商店」，按优先级购买清单商品（严格屏蔽所有桦石消耗项）。",
+            "default_case": "Yes",
+            "cases": [
+                {
+                    "name": "Yes",
+                    "option": [
+                        "AutoShopHqGoldItems",
+                        "AutoShopHqGoldConfig",
+                        "AutoShopHqTicketEnabled"
+                    ],
+                    "pipeline_override": {
+                        "AutoShopOptBlackMoonHqEnabled": {
+                            "attach": {
+                                "hq_enabled": true
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "No",
+                    "pipeline_override": {
+                        "AutoShopOptBlackMoonHqEnabled": {
+                            "attach": {
+                                "hq_enabled": false
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "AutoShopHqGoldItems": {
+            "type": "checkbox",
+            "label": "黑月总部 · 铁盟币购买清单（按从上到下优先级）",
+            "description": "直接勾选要买的周期商品（已按推荐优先级排序，触及保留线时自动优先保住靠前的高优项；硬屏蔽桦石项）。",
+            "default_case": [
+                "hq_gold_01",
+                "hq_gold_02",
+                "hq_gold_03",
+                "hq_gold_04",
+                "hq_gold_05",
+                "hq_gold_06"
+            ],
+            "cases": [
+                {
+                    "name": "hq_gold_01",
+                    "label": "拉普拉斯协议 (周3·30万起)",
+                    "pipeline_override": {
+                        "AutoShopOptHqGoldItems": {
+                            "attach": {
+                                "hq_gold_pick_01": "拉普拉斯协议:周"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "hq_gold_02",
+                    "label": "拉普拉斯协议 (月10·50万起)",
+                    "pipeline_override": {
+                        "AutoShopOptHqGoldItems": {
+                            "attach": {
+                                "hq_gold_pick_02": "拉普拉斯协议:月"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "hq_gold_03",
+                    "label": "追加注资申请书 (月1·50万)",
+                    "pipeline_override": {
+                        "AutoShopOptHqGoldItems": {
+                            "attach": {
+                                "hq_gold_pick_03": "追加注资申请书:月"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "hq_gold_04",
+                    "label": "进货采买书 (周5·1.5万)",
+                    "pipeline_override": {
+                        "AutoShopOptHqGoldItems": {
+                            "attach": {
+                                "hq_gold_pick_04": "进货采买书:周"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "hq_gold_05",
+                    "label": "仙人掌能量棒棒糖 (周8·1万)",
+                    "pipeline_override": {
+                        "AutoShopOptHqGoldItems": {
+                            "attach": {
+                                "hq_gold_pick_05": "仙人掌能量棒棒糖:周"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "hq_gold_06",
+                    "label": "提神棒棒糖 (周8·1万)",
+                    "pipeline_override": {
+                        "AutoShopOptHqGoldItems": {
+                            "attach": {
+                                "hq_gold_pick_06": "提神棒棒糖:周"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "hq_gold_07",
+                    "label": "广告投放券 (周3·1.5万)",
+                    "pipeline_override": {
+                        "AutoShopOptHqGoldItems": {
+                            "attach": {
+                                "hq_gold_pick_07": "广告投放券:周"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "hq_gold_08",
+                    "label": "自观测胶卷 (日5·10万)",
+                    "pipeline_override": {
+                        "AutoShopOptHqGoldItems": {
+                            "attach": {
+                                "hq_gold_pick_08": "自观测胶卷:日"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "hq_gold_09",
+                    "label": "星云物质(4钛) (日35·3万)",
+                    "pipeline_override": {
+                        "AutoShopOptHqGoldItems": {
+                            "attach": {
+                                "hq_gold_pick_09": "星云物质(4钛):日"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "hq_gold_10",
+                    "label": "空白录像带 (日10·2万)",
+                    "pipeline_override": {
+                        "AutoShopOptHqGoldItems": {
+                            "attach": {
+                                "hq_gold_pick_10": "空白录像带:日"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "hq_gold_11",
+                    "label": "本源之弦 (月4·500万)",
+                    "pipeline_override": {
+                        "AutoShopOptHqGoldItems": {
+                            "attach": {
+                                "hq_gold_pick_11": "本源之弦:月"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "hq_gold_12",
+                    "label": "诱饵气球 (周30·5千)",
+                    "pipeline_override": {
+                        "AutoShopOptHqGoldItems": {
+                            "attach": {
+                                "hq_gold_pick_12": "诱饵气球:周"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "hq_gold_13",
+                    "label": "再交涉请求书 (周5·1万)",
+                    "pipeline_override": {
+                        "AutoShopOptHqGoldItems": {
+                            "attach": {
+                                "hq_gold_pick_13": "再交涉请求书:周"
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "AutoShopHqGoldConfig": {
+            "type": "input",
+            "label": "黑月总部 · 铁盟币保留线与限购/补充规则",
+            "description": "补充框平时留空即可。支持 *N 原地限购（例：提神棒棒糖:周*3，按原勾选优先级只买到第3个）、^ 显式置顶（例：^进货采买书:周）或填新增商品（逗号分隔）。",
+            "inputs": [
+                {
+                    "name": "hq_gold_reserve",
+                    "label": "铁盟币最低保留下限",
+                    "default": "3000000",
+                    "pipeline_type": "int",
+                    "verify": "^(0|[1-9]\\d*)$",
+                    "pattern_msg": "请输入大于等于 0 的非负整数。"
+                },
+                {
+                    "name": "hq_gold_extra",
+                    "label": "单品限量 / ^置顶 / 新增商品（选填）",
+                    "default": "",
+                    "pipeline_type": "string"
+                }
+            ],
+            "pipeline_override": {
+                "AutoShopOptHqGoldConfig": {
+                    "attach": {
+                        "hq_gold_reserve": "{hq_gold_reserve}",
+                        "hq_gold_extra": "{hq_gold_extra}",
+                        "hq_gold_ui_configured": true
+                    }
+                }
+            }
+        },
+        "AutoShopHqTicketEnabled": {
+            "type": "switch",
+            "label": "允许黑月总部使用「黑月采购券」",
+            "description": "默认关闭以保护稀有采购券（独奏/回响/本源之弦、独石碎片等）；开启后才按下方清单兑换。",
+            "default_case": "No",
+            "cases": [
+                {
+                    "name": "No",
+                    "pipeline_override": {
+                        "AutoShopOptHqTicketEnabled": {
+                            "attach": {
+                                "hq_ticket_enabled": false
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Yes",
+                    "option": [
+                        "AutoShopHqTicketItems",
+                        "AutoShopHqTicketConfig"
+                    ],
+                    "pipeline_override": {
+                        "AutoShopOptHqTicketEnabled": {
+                            "attach": {
+                                "hq_ticket_enabled": true
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "AutoShopHqTicketItems": {
+            "type": "checkbox",
+            "label": "黑月总部 · 采购券购买清单（按从上到下优先级）",
+            "description": "勾选允许消耗「黑月采购券」兑换的月限商品；若需其他道具请填下方补充框。",
+            "default_case": [],
+            "cases": [
+                {
+                    "name": "hq_ticket_01",
+                    "label": "拉普拉斯协议 (月·20券)",
+                    "pipeline_override": {
+                        "AutoShopOptHqTicketItems": {
+                            "attach": {
+                                "hq_ticket_pick_01": "拉普拉斯协议:月"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "hq_ticket_02",
+                    "label": "本源之弦 (月)",
+                    "pipeline_override": {
+                        "AutoShopOptHqTicketItems": {
+                            "attach": {
+                                "hq_ticket_pick_02": "本源之弦:月"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "hq_ticket_03",
+                    "label": "独石碎片 (月)",
+                    "pipeline_override": {
+                        "AutoShopOptHqTicketItems": {
+                            "attach": {
+                                "hq_ticket_pick_03": "独石碎片:月"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "hq_ticket_04",
+                    "label": "独奏之弦 (月)",
+                    "pipeline_override": {
+                        "AutoShopOptHqTicketItems": {
+                            "attach": {
+                                "hq_ticket_pick_04": "独奏之弦:月"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "hq_ticket_05",
+                    "label": "回响之弦 (月)",
+                    "pipeline_override": {
+                        "AutoShopOptHqTicketItems": {
+                            "attach": {
+                                "hq_ticket_pick_05": "回响之弦:月"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "hq_ticket_06",
+                    "label": "星云物质(8钛) (月)",
+                    "pipeline_override": {
+                        "AutoShopOptHqTicketItems": {
+                            "attach": {
+                                "hq_ticket_pick_06": "星云物质(8钛):月"
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "AutoShopHqTicketConfig": {
+            "type": "input",
+            "label": "黑月总部 · 采购券保留线与限购/补充规则",
+            "description": "设置采购券最低保留数量；补充框支持 *N 原地限购（例：星云物质(8钛):月*50）、^ 显式置顶或未列出的采购券商品（逗号分隔）。",
+            "inputs": [
+                {
+                    "name": "hq_ticket_reserve",
+                    "label": "黑月采购券最低保留下限",
+                    "default": "0",
+                    "pipeline_type": "int",
+                    "verify": "^(0|[1-9]\\d*)$",
+                    "pattern_msg": "请输入大于等于 0 的非负整数。"
+                },
+                {
+                    "name": "hq_ticket_extra",
+                    "label": "单品限量 / ^置顶 / 新增商品（选填）",
+                    "default": "",
+                    "pipeline_type": "string"
+                }
+            ],
+            "pipeline_override": {
+                "AutoShopOptHqTicketConfig": {
+                    "attach": {
+                        "hq_ticket_reserve": "{hq_ticket_reserve}",
+                        "hq_ticket_extra": "{hq_ticket_extra}",
+                        "hq_ticket_ui_configured": true
+                    }
+                }
+            }
+        },
+        "AutoShopFumingEnabled": {
+            "type": "switch",
+            "label": "② 启用赴命商店采购（铁安局）",
+            "description": "进入「商城 -> 赴命商店」，仅扫描带「当日/本周/本月」周期限购项，自动跳过账号限购及无上限项。",
+            "default_case": "Yes",
+            "cases": [
+                {
+                    "name": "Yes",
+                    "option": [
+                        "AutoShopFumingItems",
+                        "AutoShopFumingConfig",
+                        "AutoShopFumingAllowGoldMedal"
+                    ],
+                    "pipeline_override": {
+                        "AutoShopOptFumingEnabled": {
+                            "attach": {
+                                "fuming_enabled": true
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "No",
+                    "pipeline_override": {
+                        "AutoShopOptFumingEnabled": {
+                            "attach": {
+                                "fuming_enabled": false
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "AutoShopFumingItems": {
+            "type": "checkbox",
+            "label": "赴命商店 · 兑换清单（按从上到下优先级）",
+            "description": "仅包含日/周/月周期限购项；默认仅允许蓝带紫章商品，金章项需同时开启下方「允许橙带金章」开关才会购买。",
+            "default_case": [
+                "fuming_01",
+                "fuming_02",
+                "fuming_03"
+            ],
+            "cases": [
+                {
+                    "name": "fuming_01",
+                    "label": "追加注资申请书 (月1·紫500)",
+                    "pipeline_override": {
+                        "AutoShopOptFumingItems": {
+                            "attach": {
+                                "fuming_pick_01": "追加注资申请书:月"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "fuming_02",
+                    "label": "进货采买书 (周5·紫150)",
+                    "pipeline_override": {
+                        "AutoShopOptFumingItems": {
+                            "attach": {
+                                "fuming_pick_02": "进货采买书:周"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "fuming_03",
+                    "label": "进货采买书 (月10·紫150)",
+                    "pipeline_override": {
+                        "AutoShopOptFumingItems": {
+                            "attach": {
+                                "fuming_pick_03": "进货采买书:月"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "fuming_04",
+                    "label": "星云物质(4钛) (日6·紫100)",
+                    "pipeline_override": {
+                        "AutoShopOptFumingItems": {
+                            "attach": {
+                                "fuming_pick_04": "星云物质(4钛):日"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "fuming_05",
+                    "label": "广告投放券 (周3·紫150)",
+                    "pipeline_override": {
+                        "AutoShopOptFumingItems": {
+                            "attach": {
+                                "fuming_pick_05": "广告投放券:周"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "fuming_06",
+                    "label": "广告投放券 (月6·紫150)",
+                    "pipeline_override": {
+                        "AutoShopOptFumingItems": {
+                            "attach": {
+                                "fuming_pick_06": "广告投放券:月"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "fuming_07",
+                    "label": "勘测信标 (日3·紫50)",
+                    "pipeline_override": {
+                        "AutoShopOptFumingItems": {
+                            "attach": {
+                                "fuming_pick_07": "勘测信标:日"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "fuming_08",
+                    "label": "一般武装改造凭证 (日5·紫50)",
+                    "pipeline_override": {
+                        "AutoShopOptFumingItems": {
+                            "attach": {
+                                "fuming_pick_08": "一般武装改造凭证:日"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "fuming_09",
+                    "label": "特殊武装改造特许 (日3·紫150)",
+                    "pipeline_override": {
+                        "AutoShopOptFumingItems": {
+                            "attach": {
+                                "fuming_pick_09": "特殊武装改造特许:日"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "fuming_10",
+                    "label": "银枝薄荷糖 (周3·紫50)",
+                    "pipeline_override": {
+                        "AutoShopOptFumingItems": {
+                            "attach": {
+                                "fuming_pick_10": "银枝薄荷糖:周"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "fuming_11",
+                    "label": "一元二次 (周2·紫100)",
+                    "pipeline_override": {
+                        "AutoShopOptFumingItems": {
+                            "attach": {
+                                "fuming_pick_11": "一元二次:周"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "fuming_12",
+                    "label": "豆蔻姜百合 (周1·紫150)",
+                    "pipeline_override": {
+                        "AutoShopOptFumingItems": {
+                            "attach": {
+                                "fuming_pick_12": "豆蔻姜百合:周"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "fuming_13",
+                    "label": "自观测胶卷 (日·金章)",
+                    "pipeline_override": {
+                        "AutoShopOptFumingItems": {
+                            "attach": {
+                                "fuming_pick_13": "自观测胶卷:日"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "fuming_14",
+                    "label": "再交涉请求书 (周5·金章)",
+                    "pipeline_override": {
+                        "AutoShopOptFumingItems": {
+                            "attach": {
+                                "fuming_pick_14": "再交涉请求书:周"
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "AutoShopFumingConfig": {
+            "type": "input",
+            "label": "赴命商店 · 紫章保留线与限购/补充规则",
+            "description": "设置蓝带紫章保留线；补充框支持 *N 限制单次数量（例：星云物质(4钛):日*3）、^ 显式置顶或新增周期商品（逗号分隔）。",
+            "inputs": [
+                {
+                    "name": "fuming_purple_reserve",
+                    "label": "蓝带紫章（赴命奖章）最低保留下限",
+                    "default": "2000",
+                    "pipeline_type": "int",
+                    "verify": "^(0|[1-9]\\d*)$",
+                    "pattern_msg": "请输入大于等于 0 的非负整数。"
+                },
+                {
+                    "name": "fuming_extra",
+                    "label": "单品限量 / ^置顶 / 新增商品（选填）",
+                    "default": "",
+                    "pipeline_type": "string"
+                }
+            ],
+            "pipeline_override": {
+                "AutoShopOptFumingConfig": {
+                    "attach": {
+                        "fuming_purple_reserve": "{fuming_purple_reserve}",
+                        "fuming_extra": "{fuming_extra}",
+                        "fuming_ui_configured": true
+                    }
+                }
+            }
+        },
+        "AutoShopFumingAllowGoldMedal": {
+            "type": "switch",
+            "label": "允许赴命商店兑换「橙带金章」商品",
+            "description": "默认关闭：仅允许纯蓝带紫章商品（如进货采买书/注资书）；开启后才允许购买金章项（如金章再交涉请求书）。",
+            "default_case": "No",
+            "cases": [
+                {
+                    "name": "No",
+                    "pipeline_override": {
+                        "AutoShopOptFumingAllowGoldMedal": {
+                            "attach": {
+                                "fuming_allow_gold_medal": false
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Yes",
+                    "pipeline_override": {
+                        "AutoShopOptFumingAllowGoldMedal": {
+                            "attach": {
+                                "fuming_allow_gold_medal": true
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "AutoShopChamberEnabled": {
+            "type": "switch",
+            "label": "③ 启用商会 · 里程点数兑换",
+            "description": "从当前停靠城市进入「商会 -> 里程点数兑换」，仅兑换本周/本月周期项（严禁碰账号总次数胶卷/扩建/协议）；若列车当前停靠非城市站点则安全跳过。",
+            "default_case": "Yes",
+            "cases": [
+                {
+                    "name": "Yes",
+                    "option": [
+                        "AutoShopChamberItems",
+                        "AutoShopChamberConfig"
+                    ],
+                    "pipeline_override": {
+                        "AutoShopOptChamberEnabled": {
+                            "attach": {
+                                "chamber_enabled": true
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "No",
+                    "pipeline_override": {
+                        "AutoShopOptChamberEnabled": {
+                            "attach": {
+                                "chamber_enabled": false
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "AutoShopChamberItems": {
+            "type": "checkbox",
+            "label": "商会 · 里程点数兑换清单（按从上到下优先级）",
+            "description": "仅包含本周/本月周期限购项（严禁碰账号总次数胶卷/扩建/协议）；按推荐优先级排列。",
+            "default_case": [
+                "chamber_01",
+                "chamber_02"
+            ],
+            "cases": [
+                {
+                    "name": "chamber_01",
+                    "label": "进货采买书 (周5·150)",
+                    "pipeline_override": {
+                        "AutoShopOptChamberItems": {
+                            "attach": {
+                                "chamber_pick_01": "进货采买书:周"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "chamber_02",
+                    "label": "进货采买书 (月10·150)",
+                    "pipeline_override": {
+                        "AutoShopOptChamberItems": {
+                            "attach": {
+                                "chamber_pick_02": "进货采买书:月"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "chamber_03",
+                    "label": "广告投放券 (周3·150)",
+                    "pipeline_override": {
+                        "AutoShopOptChamberItems": {
+                            "attach": {
+                                "chamber_pick_03": "广告投放券:周"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "chamber_04",
+                    "label": "广告投放券 (月6·150)",
+                    "pipeline_override": {
+                        "AutoShopOptChamberItems": {
+                            "attach": {
+                                "chamber_pick_04": "广告投放券:月"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "chamber_05",
+                    "label": "再交涉请求书 (周5·100)",
+                    "pipeline_override": {
+                        "AutoShopOptChamberItems": {
+                            "attach": {
+                                "chamber_pick_05": "再交涉请求书:周"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "chamber_06",
+                    "label": "银枝薄荷糖 (周3·50)",
+                    "pipeline_override": {
+                        "AutoShopOptChamberItems": {
+                            "attach": {
+                                "chamber_pick_06": "银枝薄荷糖:周"
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "chamber_07",
+                    "label": "诱饵气球 (周10·20)",
+                    "pipeline_override": {
+                        "AutoShopOptChamberItems": {
+                            "attach": {
+                                "chamber_pick_07": "诱饵气球:周"
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "AutoShopChamberConfig": {
+            "type": "input",
+            "label": "商会 · 里程点数保留线与限购/补充规则",
+            "description": "设置里程点数保留线；补充框支持 *N 限制单次数量（例：进货采买书:周*2）、^ 显式置顶或新增周期商品（逗号分隔）。",
+            "inputs": [
+                {
+                    "name": "chamber_reserve",
+                    "label": "里程点数最低保留下限",
+                    "default": "1000",
+                    "pipeline_type": "int",
+                    "verify": "^(0|[1-9]\\d*)$",
+                    "pattern_msg": "请输入大于等于 0 的非负整数。"
+                },
+                {
+                    "name": "chamber_extra",
+                    "label": "单品限量 / ^置顶 / 新增商品（选填）",
+                    "default": "",
+                    "pipeline_type": "string"
+                }
+            ],
+            "pipeline_override": {
+                "AutoShopOptChamberConfig": {
+                    "attach": {
+                        "chamber_reserve": "{chamber_reserve}",
+                        "chamber_extra": "{chamber_extra}",
+                        "chamber_ui_configured": true
+                    }
+                }
+            }
+        }
+    }
+}

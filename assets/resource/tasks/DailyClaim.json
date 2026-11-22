@@ -1,0 +1,76 @@
+{
+    "task": [
+        {
+            "name": "DailyClaim",
+            "label": "日常收尾领奖",
+            "entry": "DailyClaimStart",
+            "description": "一键日常末尾收尾：领取导航手册「每日活跃」点数与 100~600 宝箱，以及环游手册（通行证）每日/每周任务与等级奖励。",
+            "group": [
+                "daily"
+            ],
+            "resource": [
+                "official"
+            ],
+            "controller": [
+                "ADB",
+                "Win32",
+                "Win32BackgroundWindowPos",
+                "Win32BackgroundCursorPos"
+            ],
+            "option": [
+                "DailyClaimActivityEnabled",
+                "DailyClaimBattlePassEnabled"
+            ]
+        }
+    ],
+    "option": {
+        "DailyClaimActivityEnabled": {
+            "type": "switch",
+            "label": "每日活跃领奖与宝箱",
+            "description": "进入「导航手册 -> 每日活跃」，领取已完成任务活跃度并点击所有已点亮的 100~600 宝箱。",
+            "default_case": "Yes",
+            "cases": [
+                {
+                    "name": "Yes",
+                    "pipeline_override": {
+                        "DailyClaimActivityStep": {
+                            "enabled": true
+                        }
+                    }
+                },
+                {
+                    "name": "No",
+                    "pipeline_override": {
+                        "DailyClaimActivityStep": {
+                            "enabled": false
+                        }
+                    }
+                }
+            ]
+        },
+        "DailyClaimBattlePassEnabled": {
+            "type": "switch",
+            "label": "环游手册（通行证）领奖",
+            "description": "遍历左侧各通行证分别领取「每日任务」「每周任务」及等级奖励（不会点击购买等级或进阶）。",
+            "default_case": "Yes",
+            "cases": [
+                {
+                    "name": "Yes",
+                    "pipeline_override": {
+                        "DailyClaimBattlePassStep": {
+                            "enabled": true
+                        }
+                    }
+                },
+                {
+                    "name": "No",
+                    "pipeline_override": {
+                        "DailyClaimBattlePassStep": {
+                            "enabled": false
+                        }
+                    }
+                }
+            ]
+        }
+    }
+}

@@ -1,0 +1,180 @@
+{
+    "DailyRoutineStart": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "next": [
+            "DailyRoutineMailStep",
+            "DailyRoutineDispatchStep",
+            "DailyRoutineFriendSupportStep",
+            "DailyRoutineEventCheckinStep",
+            "DailyRoutineRevenueLikeStep",
+            "DailyRoutineActivityStep",
+            "DailyRoutineBattlePassStep",
+            "DailyRoutineComplete"
+        ]
+    },
+    "DailyRoutineMailStep": {
+        "enabled": true,
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "daily_routine_mail",
+        "focus": {
+            "Node.Action.Starting": "【自动日常】开始检查邮箱一键领取...",
+            "Node.Action.Succeeded": "【自动日常】邮箱处理完成。"
+        },
+        "next": [
+            "DailyRoutineDispatchStep",
+            "DailyRoutineFriendSupportStep",
+            "DailyRoutineEventCheckinStep",
+            "DailyRoutineRevenueLikeStep",
+            "DailyRoutineActivityStep",
+            "DailyRoutineBattlePassStep",
+            "DailyRoutineComplete"
+        ],
+        "on_error": [
+            "DailyRoutineDispatchStep",
+            "DailyRoutineFriendSupportStep",
+            "DailyRoutineEventCheckinStep",
+            "DailyRoutineRevenueLikeStep",
+            "DailyRoutineActivityStep",
+            "DailyRoutineBattlePassStep",
+            "DailyRoutineComplete"
+        ]
+    },
+    "DailyRoutineDispatchStep": {
+        "enabled": true,
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "daily_routine_dispatch",
+        "custom_action_param": {
+            "reassign": true
+        },
+        "focus": {
+            "Node.Action.Starting": "【自动日常】开始检查派遣委托收菜/续派...",
+            "Node.Action.Succeeded": "【自动日常】派遣委托处理完成。"
+        },
+        "next": [
+            "DailyRoutineFriendSupportStep",
+            "DailyRoutineEventCheckinStep",
+            "DailyRoutineRevenueLikeStep",
+            "DailyRoutineActivityStep",
+            "DailyRoutineBattlePassStep",
+            "DailyRoutineComplete"
+        ],
+        "on_error": [
+            "DailyRoutineFriendSupportStep",
+            "DailyRoutineEventCheckinStep",
+            "DailyRoutineRevenueLikeStep",
+            "DailyRoutineActivityStep",
+            "DailyRoutineBattlePassStep",
+            "DailyRoutineComplete"
+        ]
+    },
+    "DailyRoutineFriendSupportStep": {
+        "enabled": true,
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "daily_routine_friend_support",
+        "focus": {
+            "Node.Action.Starting": "【自动日常】开始检查好友名片支援金币奖励...",
+            "Node.Action.Succeeded": "【自动日常】好友支援奖励处理完成。"
+        },
+        "next": [
+            "DailyRoutineEventCheckinStep",
+            "DailyRoutineRevenueLikeStep",
+            "DailyRoutineActivityStep",
+            "DailyRoutineBattlePassStep",
+            "DailyRoutineComplete"
+        ],
+        "on_error": [
+            "DailyRoutineEventCheckinStep",
+            "DailyRoutineRevenueLikeStep",
+            "DailyRoutineActivityStep",
+            "DailyRoutineBattlePassStep",
+            "DailyRoutineComplete"
+        ]
+    },
+    "DailyRoutineEventCheckinStep": {
+        "enabled": true,
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "daily_routine_event_checkin",
+        "focus": {
+            "Node.Action.Starting": "【自动日常】开始检查限时活动「启程签到」...",
+            "Node.Action.Succeeded": "【自动日常】限时活动签到处理完成。"
+        },
+        "next": [
+            "DailyRoutineRevenueLikeStep",
+            "DailyRoutineActivityStep",
+            "DailyRoutineBattlePassStep",
+            "DailyRoutineComplete"
+        ],
+        "on_error": [
+            "DailyRoutineRevenueLikeStep",
+            "DailyRoutineActivityStep",
+            "DailyRoutineBattlePassStep",
+            "DailyRoutineComplete"
+        ]
+    },
+    "DailyRoutineRevenueLikeStep": {
+        "enabled": true,
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "daily_routine_revenue_like",
+        "focus": {
+            "Node.Action.Starting": "【自动日常】开始检查营收排行榜每日点赞...",
+            "Node.Action.Succeeded": "【自动日常】营收排行榜点赞完成。"
+        },
+        "next": [
+            "DailyRoutineActivityStep",
+            "DailyRoutineBattlePassStep",
+            "DailyRoutineComplete"
+        ],
+        "on_error": [
+            "DailyRoutineActivityStep",
+            "DailyRoutineBattlePassStep",
+            "DailyRoutineComplete"
+        ]
+    },
+    "DailyRoutineActivityStep": {
+        "enabled": true,
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "daily_routine_activity",
+        "focus": {
+            "Node.Action.Starting": "【自动日常】开始领取每日活跃点数与宝箱...",
+            "Node.Action.Succeeded": "【自动日常】每日活跃领取完成。"
+        },
+        "next": [
+            "DailyRoutineBattlePassStep",
+            "DailyRoutineComplete"
+        ],
+        "on_error": [
+            "DailyRoutineBattlePassStep",
+            "DailyRoutineComplete"
+        ]
+    },
+    "DailyRoutineBattlePassStep": {
+        "enabled": true,
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "daily_routine_battle_pass",
+        "focus": {
+            "Node.Action.Starting": "【自动日常】开始领取环游手册（通行证）任务与等级奖励...",
+            "Node.Action.Succeeded": "【自动日常】通行证领取完成。"
+        },
+        "next": [
+            "DailyRoutineComplete"
+        ],
+        "on_error": [
+            "DailyRoutineComplete"
+        ]
+    },
+    "DailyRoutineComplete": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "focus": {
+            "Node.Action.Succeeded": "【自动日常】已勾选的日常项目全部执行完毕。"
+        }
+    }
+}

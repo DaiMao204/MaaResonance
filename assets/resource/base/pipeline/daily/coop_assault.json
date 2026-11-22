@@ -1,0 +1,427 @@
+{
+    "CoopAssaultStart": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "coop_assault_enter_hub",
+        "focus": {
+            "Node.Action.Starting": "【众志攻坚】正在进入共斗活动界面..."
+        },
+        "next": [
+            "CoopAssaultLoop"
+        ],
+        "on_error": [
+            "CoopAssaultComplete"
+        ]
+    },
+    "CoopAssaultOptBossPreference": {
+        "action": "DoNothing",
+        "attach": {
+            "boss_preference": "alive_first"
+        }
+    },
+    "CoopAssaultOptDifficulty": {
+        "action": "DoNothing",
+        "attach": {
+            "preferred_difficulty": 0
+        }
+    },
+    "CoopAssaultOptMaxRuns": {
+        "action": "DoNothing",
+        "attach": {
+            "max_runs": 0
+        }
+    },
+    "CoopAssaultOptClaimRewards": {
+        "action": "DoNothing",
+        "attach": {
+            "claim_rewards": true
+        }
+    },
+    "CoopAssaultLoop": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "rate_limit": 850,
+        "timeout": 86400000,
+        "next": [
+            "CoopAssaultDoneCheck",
+            "CoopAssaultStorySkip",
+            "CoopAssaultBattleAuto",
+            "CoopAssaultDefeatStop",
+            "CoopAssaultSettleNextTemplate",
+            "CoopAssaultSettleNextOcr",
+            "CoopAssaultSettleMission",
+            "CoopAssaultSettleVictoryTap",
+            "CoopAssaultFormationEmpty",
+            "CoopAssaultFormationStrict",
+            "CoopAssaultFormationReadyCheck",
+            "CoopAssaultPrepareModal",
+            "CoopAssaultMapFight",
+            "CoopAssaultMapFinish",
+            "CoopAssaultHomeFallback"
+        ],
+        "on_error": [
+            "CoopAssaultLoop"
+        ]
+    },
+    "CoopAssaultDoneCheck": {
+        "recognition": "Custom",
+        "custom_recognition": "coop_assault_is_done",
+        "action": "DoNothing",
+        "next": [
+            "CoopAssaultComplete"
+        ]
+    },
+    "CoopAssaultStorySkip": {
+        "enabled": true,
+        "recognition": "OCR",
+        "expected": [
+            "跳过"
+        ],
+        "roi": [
+            1100,
+            0,
+            180,
+            90
+        ],
+        "action": "Custom",
+        "custom_action": "story_skip_loop",
+        "custom_action_param": {
+            "choice_index": 0,
+            "max_steps": 120
+        },
+        "post_delay": 600,
+        "next": [
+            "CoopAssaultLoop"
+        ]
+    },
+    "CoopAssaultBattleAuto": {
+        "enabled": true,
+        "recognition": "OCR",
+        "expected": [
+            "MAX"
+        ],
+        "roi": [
+            1095,
+            655,
+            110,
+            60
+        ],
+        "action": "Custom",
+        "custom_action": "battle_autoplay_loop",
+        "custom_action_param": {
+            "play_mode": "fast_rush",
+            "prefer_native_auto": true,
+            "prefer_leader_skill": true,
+            "cost_preference": "left_to_right",
+            "min_cost_to_play": 2,
+            "discard_when_stuck_at_cost": 10,
+            "card_weights": {},
+            "disabled_cards": [],
+            "max_steps": 240
+        },
+        "post_delay": 600,
+        "next": [
+            "CoopAssaultLoop"
+        ]
+    },
+    "CoopAssaultBattleAutoOptPlayMode": {
+        "action": "DoNothing",
+        "attach": {
+            "play_mode": "fast_rush"
+        }
+    },
+    "CoopAssaultBattleAutoOptPreferNativeAuto": {
+        "action": "DoNothing",
+        "attach": {
+            "prefer_native_auto": true
+        }
+    },
+    "CoopAssaultBattleAutoOptLeaderSkill": {
+        "action": "DoNothing",
+        "attach": {
+            "prefer_leader_skill": true
+        }
+    },
+    "CoopAssaultBattleAutoOptMinCost": {
+        "action": "DoNothing",
+        "attach": {
+            "min_cost_to_play": 2
+        }
+    },
+    "CoopAssaultDefeatStop": {
+        "recognition": "OCR",
+        "expected": [
+            "作战失败",
+            "挑战失败"
+        ],
+        "roi": [
+            160,
+            140,
+            960,
+            320
+        ],
+        "action": "StopTask",
+        "focus": {
+            "Node.Action.Succeeded": "【众志攻坚】检测到作战失败，已停止，请调整难度或编队。"
+        }
+    },
+    "CoopAssaultSettleNextTemplate": {
+        "recognition": "TemplateMatch",
+        "template": "fight/end_fight.png",
+        "threshold": 0.88,
+        "roi": [
+            1040,
+            500,
+            240,
+            220
+        ],
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "post_delay": 1000,
+        "next": [
+            "CoopAssaultLoop"
+        ]
+    },
+    "CoopAssaultSettleNextOcr": {
+        "recognition": "OCR",
+        "expected": [
+            "下一步",
+            "继续",
+            "离开"
+        ],
+        "roi": [
+            1040,
+            500,
+            240,
+            220
+        ],
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "post_delay": 1000,
+        "next": [
+            "CoopAssaultLoop"
+        ]
+    },
+    "CoopAssaultSettleMission": {
+        "recognition": "OCR",
+        "expected": [
+            "触碰空白区域退出",
+            "点击空白区域退出",
+            "点击空白处关闭",
+            "点击任意位置继续",
+            "触碰屏幕继续"
+        ],
+        "roi": [
+            120,
+            160,
+            1040,
+            540
+        ],
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "custom_action_param": {
+            "target": [
+                640,
+                120
+            ]
+        },
+        "post_delay": 900,
+        "next": [
+            "CoopAssaultLoop"
+        ]
+    },
+    "CoopAssaultSettleVictoryTap": {
+        "recognition": "OCR",
+        "expected": [
+            "作战胜利",
+            "SUCCESSFUL",
+            "COMBAT"
+        ],
+        "roi": [
+            120,
+            160,
+            1040,
+            460
+        ],
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "custom_action_param": {
+            "target": [
+                640,
+                660
+            ]
+        },
+        "post_delay": 900,
+        "next": [
+            "CoopAssaultLoop"
+        ]
+    },
+    "CoopAssaultFormationEmpty": {
+        "enabled": false,
+        "recognition": "Custom",
+        "custom_recognition": "team_formation_needs_update",
+        "custom_recognition_param": {
+            "target_roles": "",
+            "strict_match": false
+        },
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "post_delay": 700,
+        "next": [
+            "CoopAssaultFormationQuickSelect"
+        ]
+    },
+    "CoopAssaultFormationStrict": {
+        "enabled": false,
+        "recognition": "Custom",
+        "custom_recognition": "team_formation_needs_update",
+        "custom_recognition_param": {
+            "target_roles": "",
+            "strict_match": true
+        },
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "post_delay": 700,
+        "next": [
+            "CoopAssaultFormationQuickSelect"
+        ]
+    },
+    "CoopAssaultFormationQuickSelect": {
+        "recognition": "OCR",
+        "expected": [
+            "获取时间",
+            "稀有度",
+            "确认"
+        ],
+        "roi": [
+            800,
+            0,
+            480,
+            720
+        ],
+        "action": "Custom",
+        "custom_action": "team_formation_quick_select",
+        "custom_action_param": {
+            "target_roles": "",
+            "max_team_size": 5
+        },
+        "post_delay": 300,
+        "next": [
+            "CoopAssaultFormationConfirm"
+        ]
+    },
+    "CoopAssaultFormationConfirm": {
+        "recognition": "OCR",
+        "expected": [
+            "确认"
+        ],
+        "roi": [
+            960,
+            610,
+            260,
+            90
+        ],
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "post_delay": 700,
+        "next": [
+            "CoopAssaultFormationStartBattle",
+            "CoopAssaultLoop"
+        ]
+    },
+    "CoopAssaultFormationReadyCheck": {
+        "recognition": "OCR",
+        "expected": [
+            "快速编队",
+            "快速编",
+            "清空编队"
+        ],
+        "roi": [
+            1000,
+            15,
+            270,
+            90
+        ],
+        "action": "DoNothing",
+        "next": [
+            "CoopAssaultFormationStartBattle",
+            "CoopAssaultLoop"
+        ]
+    },
+    "CoopAssaultFormationStartBattle": {
+        "recognition": "OCR",
+        "expected": [
+            "START BATTLE",
+            "开始作战",
+            "开始",
+            "作战"
+        ],
+        "roi": [
+            1100,
+            230,
+            180,
+            360
+        ],
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "post_delay": 1200,
+        "next": [
+            "CoopAssaultLoop"
+        ]
+    },
+    "CoopAssaultPrepareModal": {
+        "recognition": "Custom",
+        "custom_recognition": "coop_assault_prepare_ready",
+        "action": "Custom",
+        "custom_action": "coop_assault_select_diff_and_enter",
+        "post_delay": 800,
+        "next": [
+            "CoopAssaultLoop"
+        ]
+    },
+    "CoopAssaultMapFight": {
+        "recognition": "Custom",
+        "custom_recognition": "coop_assault_should_fight",
+        "action": "Custom",
+        "custom_action": "coop_assault_prepare_and_enter",
+        "post_delay": 700,
+        "next": [
+            "CoopAssaultLoop"
+        ]
+    },
+    "CoopAssaultMapFinish": {
+        "recognition": "Custom",
+        "custom_recognition": "coop_assault_should_finish",
+        "action": "Custom",
+        "custom_action": "coop_assault_claim_and_finish",
+        "post_delay": 500,
+        "next": [
+            "CoopAssaultComplete"
+        ]
+    },
+    "CoopAssaultHomeFallback": {
+        "recognition": "OCR",
+        "expected": [
+            "进入挑战"
+        ],
+        "roi": [
+            740,
+            540,
+            480,
+            110
+        ],
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "post_delay": 1000,
+        "next": [
+            "CoopAssaultLoop"
+        ]
+    },
+    "CoopAssaultComplete": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "focus": {
+            "Node.Action.Succeeded": "【众志攻坚】共斗任务与战果检查已结束。"
+        }
+    }
+}

@@ -1,0 +1,78 @@
+{
+    "task": [
+        {
+            "name": "EventStoryDaily",
+            "label": "限时剧情日常 · 糖霜记忆",
+            "entry": "EventStoryDailyStart",
+            "description": "自动进入限时活动「糖霜记忆 -> 前往取景」，点击当前解锁的「开始取景」卡片并完成战斗/剧情，全部今日取景完成后返回大厅。",
+            "group": [
+                "daily"
+            ],
+            "resource": [
+                "official"
+            ],
+            "controller": [
+                "ADB",
+                "Win32",
+                "Win32BackgroundWindowPos",
+                "Win32BackgroundCursorPos"
+            ],
+            "option": [
+                "EventStorySkipEnabled",
+                "EventStoryPreferNativeAuto"
+            ]
+        }
+    ],
+    "option": {
+        "EventStorySkipEnabled": {
+            "type": "switch",
+            "label": "自动跳过活动剧情",
+            "default_case": "Yes",
+            "cases": [
+                {
+                    "name": "Yes",
+                    "pipeline_override": {
+                        "EventStoryDailyStorySkip": {
+                            "enabled": true
+                        }
+                    }
+                },
+                {
+                    "name": "No",
+                    "pipeline_override": {
+                        "EventStoryDailyStorySkip": {
+                            "enabled": false
+                        }
+                    }
+                }
+            ]
+        },
+        "EventStoryPreferNativeAuto": {
+            "type": "switch",
+            "label": "战斗优先启用原生自动",
+            "default_case": "Yes",
+            "cases": [
+                {
+                    "name": "Yes",
+                    "pipeline_override": {
+                        "EventStoryDailyBattleAutoOptPreferNativeAuto": {
+                            "attach": {
+                                "prefer_native_auto": true
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "No",
+                    "pipeline_override": {
+                        "EventStoryDailyBattleAutoOptPreferNativeAuto": {
+                            "attach": {
+                                "prefer_native_auto": false
+                            }
+                        }
+                    }
+                }
+            ]
+        }
+    }
+}

@@ -1,0 +1,23 @@
+{
+    "StorySkipStart": {
+        "recognition": "OCR",
+        "expected": [
+            "跳过",
+            "回顾",
+            "自动"
+        ],
+        "roi": [
+            0,
+            0,
+            1280,
+            90
+        ],
+        "action": "Custom",
+        "custom_action": "story_skip_loop",
+        "custom_action_param": {
+            "choice_index": 0,
+            "max_steps": 120
+        },
+        "post_delay": 300
+    }
+}
