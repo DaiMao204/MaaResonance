@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+from pathlib import Path
+import runpy
+import sys
+from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 
 from maa_resonance.logic.clarity_recovery import (
     choose_clarity_card,
@@ -138,6 +143,100 @@ class ClarityRecoveryLogicTest(unittest.TestCase):
         assert picked is not None
         self.assertEqual(picked["key"], "lollipop")
         self.assertEqual(find_clarity_popup_button(agent_entries, kind="confirm"), (1000, 585))
+
+    def test_unlimited_huashi_keeps_eight_use_cap(self) -> None:
+        cards = parse_clarity_cards(self._sample_screen_entries())
+        limits = parse_clarity_limits({"huashi_use_limit": -1})
+        self.assertEqual(limits["huashi"], 8)
+        self.assertEqual(choose_clarity_card(cards, limits=limits, used_counts={"huashi": 7})["key"], "huashi")
+        self.assertIsNone(choose_clarity_card(cards, limits=limits, used_counts={"huashi": 8}))
+
+    def run_recovery(self, limits, screens, used=None):
+        from agent import clarity_recovery_action as recovery
+
+        counts = dict(used or {})
+        argv = SimpleNamespace(node_name="TestRecovery", task_detail=SimpleNamespace(task_id=71),
+                               custom_action_param=limits)
+        with (
+            patch.dict(recovery._CLARITY_USED_BY_TASK, {71: counts}, clear=True),
+            patch.object(recovery, "safe_screencap", return_value=object()),
+            patch.object(recovery, "sleep_with_stop", return_value=True),
+            patch.object(recovery, "ocr_roi", side_effect=screens),
+            patch.object(recovery, "tap_point", return_value=True) as tap,
+        ):
+            ok = recovery.ClarityRecoveryAction().run(SimpleNamespace(), argv)
+        return ok, [call.args[2] for call in tap.call_args_list], counts
+
+    def test_unselected_popup_never_uses_a_quota(self) -> None:
+        prompt = [{"text": "当前澄明度"}, {"text": "确认", "box": [970, 570, 60, 30]}]
+        cancel = {"text": "取消", "box": [300, 570, 60, 30]}
+        for limits in ({}, {"huashi_use_limit": 8}):
+            for extra, taps in (([], []), ([cancel], [(330, 585)])):
+                with self.subTest(limits=limits, cancel=bool(extra)):
+                    self.assertEqual(self.run_recovery(limits, [prompt + extra]), (False, taps, {}))
+
+    def test_untrusted_dialog_and_unreadable_result_never_count(self) -> None:
+        screen = self._sample_screen_entries()
+        cancel = {"text": "取消", "box": [300, 570, 60, 30]}
+        buttons = [cancel, {"text": "确认", "box": [970, 570, 60, 30]}]
+        limits = {"huashi_use_limit": 1}
+        self.assertEqual(self.run_recovery(limits, [screen, buttons]),
+                         (False, [(1085, 585), (330, 585)], {}))
+        self.assertEqual(self.run_recovery(limits, [screen, buttons + [{"text": "当前澄明度"}], []]),
+                         (False, [(1085, 585), (1000, 585)], {}))
+
+    def test_mismatching_payment_item_cancels_at_every_confirmation(self) -> None:
+        screen = self._sample_screen_entries()
+        limits = {"lollipop_use_limit": 1}
+        buttons = [{"text": "取消", "box": [300, 570, 60, 30]}, {"text": "确认", "box": [970, 570, 60, 30]}]
+        matched = buttons + [{"text": "当前澄明度"}, {"text": "使用仙人掌能量棒棒糖", "box": [540, 300, 175, 30]}]
+        wrong = buttons + [{"text": "当前澄明度"}, {"text": "消耗桦石", "box": [540, 300, 70, 30]}]
+        self.assertEqual(self.run_recovery(limits, [screen, wrong]), (False, [(195, 585), (330, 585)], {}))
+        self.assertEqual(self.run_recovery(limits, [screen, matched, wrong]),
+                         (False, [(195, 585), (1000, 585), (330, 585)], {}))
+        self.assertFalse(is_clarity_confirm_popup(screen))
+
+    def test_partial_stale_dialog_does_not_select_a_card_behind_it(self) -> None:
+        screen = self._sample_screen_entries() + [{"text": "当前澄明度"}]
+        self.assertEqual(self.run_recovery({"huashi_use_limit": 2}, [screen]), (False, [], {}))
+
+    def test_eighth_verified_use_counts_once_and_ninth_never_taps(self) -> None:
+        screen = self._sample_screen_entries()
+        confirmed = [dict(entry, text="每日限购7/8") if entry["text"] == "每日限购8/8" else entry for entry in screen]
+        dialog = [{"text": "请选择补充次数"}, {"text": "确定", "box": [970, 570, 60, 30]}]
+        limits = {"huashi_use_limit": -1}
+        self.assertEqual(self.run_recovery(limits, [screen, dialog, confirmed], {"huashi": 7}),
+                         (True, [(1085, 585), (1000, 585), (63, 32)], {"huashi": 8}))
+        self.assertEqual(self.run_recovery(limits, [screen], {"huashi": 8}),
+                         (False, [], {"huashi": 8}))
+
+    def test_finished_task_releases_only_its_own_quota(self) -> None:
+        sinks = []
+
+        def register_sink(cls):
+            sinks.append(cls())
+            return cls
+
+        events = SimpleNamespace(Starting=1, Succeeded=2, Failed=3)
+        server = SimpleNamespace(custom_action=lambda name: lambda cls: cls, tasker_sink=lambda: register_sink)
+        with patch.dict(sys.modules, {
+            "maa.agent.agent_server": SimpleNamespace(AgentServer=server),
+            "maa.context": SimpleNamespace(Context=object),
+            "maa.custom_action": SimpleNamespace(CustomAction=object),
+            "maa.event_sink": SimpleNamespace(NotificationType=events),
+            "maa.tasker": SimpleNamespace(TaskerEventSink=object),
+        }):
+            module = runpy.run_path(str(Path(__file__).resolve().parents[1] / "agent" / "clarity_recovery_action.py"))
+        sink, = sinks
+        counts = module["_CLARITY_USED_BY_TASK"]
+        counts.update({71: {"roll": 1}, 72: {"huashi": 8}})
+        task = SimpleNamespace(task_id=71)
+        sink.on_tasker_task(None, events.Starting, task)
+        self.assertEqual(counts, {71: {"roll": 1}, 72: {"huashi": 8}})
+        sink.on_tasker_task(None, events.Succeeded, task)
+        self.assertEqual(counts, {72: {"huashi": 8}})
+        sink.on_tasker_task(None, events.Failed, SimpleNamespace(task_id=72))
+        self.assertEqual(counts, {})
 
 
 if __name__ == "__main__":

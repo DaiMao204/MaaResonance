@@ -10,7 +10,7 @@
             "EventStageFarmLoop"
         ],
         "on_error": [
-            "EventStageFarmComplete"
+            "DailyActivityNavigationFailed"
         ]
     },
     "EventStageFarmOptTarget": {
@@ -53,7 +53,7 @@
         "recognition": "DirectHit",
         "action": "DoNothing",
         "rate_limit": 700,
-        "timeout": 86400000,
+        "timeout": 180000,
         "next": [
             "EventStageFarmDoneCheck",
             "EventStageFarmStorySkip",
@@ -74,7 +74,7 @@
             "EventStageFarmStageListStep"
         ],
         "on_error": [
-            "EventStageFarmLoop"
+            "DailyActivityNavigationFailed"
         ]
     },
     "EventStageFarmDoneCheck": {

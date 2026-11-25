@@ -703,16 +703,17 @@ def parse_exchange_shop_rows(
         center = _entry_center(entry)
         if box is None or center is None:
             continue
-        cleaned = _clean(entry.get("text"))
-        if not cleaned:
+        raw = str(entry.get("text") or "").strip()
+        if not raw:
             continue
-        norm_entries.append((box, center, cleaned))
+        norm_entries.append((box, center, raw))
 
     # Item names live in x in [620..810] and contain CJK (excluding '已兑换完').
     anchors: list[tuple[int, str]] = []
-    for _box, (cx, cy), cleaned in norm_entries:
+    for _box, (cx, cy), raw in norm_entries:
         if not (620 <= cx <= 810 and 190 <= cy <= 670):
             continue
+        cleaned = _clean(raw)
         if "已兑换完" in cleaned or "已售" in cleaned:
             continue
         if re.search(r"[\u4e00-\u9fff]", cleaned):
@@ -735,8 +736,10 @@ def parse_exchange_shop_rows(
         sold_out = False
         exchange_btn_pt: tuple[int, int] | None = None
         cost_entries: list[tuple[int, tuple[int, int, int, int], tuple[int, int]]] = []
+        incomplete_cost = False
 
-        for box, (cx, cy), cleaned in norm_entries:
+        for box, (cx, cy), raw in norm_entries:
+            cleaned = _clean(raw)
             if "已兑换完" in cleaned and -65 <= (cy - name_cy) <= 15:
                 sold_out = True
                 continue
@@ -755,7 +758,10 @@ def parse_exchange_shop_rows(
                 exchange_btn_pt = (cx, cy)
                 continue
             if 805 <= cx <= 1115 and -24 <= (cy - name_cy) <= 26:
-                pairs = parse_exchange_cost_pairs(cleaned)
+                # Preserve spaces separating two currencies in a single OCR box.
+                pairs = parse_exchange_cost_pairs(raw)
+                if len(pairs) != raw.count("/") or (not pairs and re.search(r"\d", raw)):
+                    incomplete_cost = True
                 for idx_p, (bal, cost) in enumerate(pairs):
                     sub_box = (box[0] + idx_p * 88, box[1], max(60, box[2] // max(1, len(pairs))), box[3])
                     cost_entries.append((cx + idx_p * 88, sub_box, (bal, cost)))
@@ -766,6 +772,15 @@ def parse_exchange_shop_rows(
             medal = classify_fuming_medal_slot(bgr_image, cbox) if classify_medal else "mileage"
             costs.append({"balance": bal, "unit_cost": cost, "medal": medal})
 
+        # A second medal icon can survive OCR even when its balance/cost text disappears.
+        if classify_medal and len(cost_entries) == 1:
+            _, (x, y, w, h), _ = cost_entries[0]
+            for adjacent_x in (x - 88, x + 88):
+                if 805 <= adjacent_x + w // 2 <= 1115:
+                    adjacent_medal = classify_fuming_medal_slot(bgr_image, (adjacent_x, y, w, h))
+                    if adjacent_medal != "unknown" and adjacent_medal != costs[0]["medal"]:
+                        incomplete_cost = True
+
         if exchange_btn_pt is None:
             exchange_btn_pt = (1177, max(150, name_cy - 48))
 
@@ -775,7 +790,7 @@ def parse_exchange_shop_rows(
                 "period": period,
                 "remaining": remaining,
                 "sold_out": sold_out,
-                "costs": costs,
+                "costs": [] if incomplete_cost else costs,
                 "exchange_point": exchange_btn_pt,
                 "cy": name_cy,
             }
@@ -899,6 +914,33 @@ def plan_affordable_quantity(balance: int, reserve: int, unit_cost: int, max_qty
     if budget < unit_cost:
         return 0
     return min(int(max_qty), budget // int(unit_cost))
+
+
+def affordable_exchange_quantity(
+    costs: list[dict[str, Any]],
+    reserve: int,
+    *,
+    shop_kind: str,
+    allow_gold_medal: bool,
+) -> int:
+    """Limit an exchange by every required currency; unknown or duplicate slots are ambiguous."""
+    allowed = {"mileage"} if shop_kind == "chamber" else {"purple_medal"}
+    if shop_kind == "fuming" and allow_gold_medal:
+        allowed.add("gold_medal")
+    limits: list[int] = []
+    seen: set[str] = set()
+    for slot in costs:
+        medal = slot.get("medal")
+        balance = slot.get("balance")
+        unit_cost = slot.get("unit_cost")
+        if medal not in allowed or medal in seen or not isinstance(balance, int):
+            return 0
+        if not isinstance(unit_cost, int) or unit_cost <= 0:
+            return 0
+        seen.add(medal)
+        keep = 0 if medal == "gold_medal" else reserve
+        limits.append(max(0, balance - keep) // unit_cost)
+    return min(limits, default=0)
 
 
 # ---------------------------------------------------------------------------

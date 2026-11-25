@@ -65,10 +65,11 @@ CLARITY_CARDS: tuple[ClarityCardSpec, ...] = (
 
 CLARITY_BACK_POINT = (63, 32)
 CLARITY_POPUP_ROI = (220, 120, 840, 540)
+HUASHI_USE_CAP = 8
 
 _UNAVAILABLE_KEYWORDS = ("获取途径", "库存不足", "数量不足", "无库存", "没有可用", "已达上限", "次数不足")
 _LIMITED_KEYWORDS = ("剩余时间", "天后", "小时")
-_CONFIRM_KEYWORDS = ("确定", "确认", "使用", "补充")
+_CONFIRM_KEYWORDS = ("确定", "确认", "使用", "补充", "确认使用", "确定使用", "确认补充", "确定补充", "立即使用")
 _CANCEL_KEYWORDS = ("取消", "关闭")
 
 
@@ -188,12 +189,12 @@ def parse_clarity_cards(ocr_entries: list[dict[str, Any]]) -> list[dict[str, Any
 
 
 def parse_clarity_limits(params: dict[str, Any] | None) -> dict[str, int]:
-    """Normalize per-card usage limits from task params (-1=unlimited, 0=disabled, >0=max uses)."""
+    """Interpret -1 as unlimited for medicines and as the eight-use maximum for Huashi."""
     mapping = {
         "lollipop": ("lollipop_use_limit", None),
         "roll": ("roll_use_limit", None),
         "candy": ("candy_use_limit", None),
-        "huashi": ("huashi_use_limit", 8),
+        "huashi": ("huashi_use_limit", HUASHI_USE_CAP),
     }
     limits: dict[str, int] = {}
     raw_params = params if isinstance(params, dict) else {}
@@ -205,7 +206,7 @@ def parse_clarity_limits(params: dict[str, Any] | None) -> dict[str, int]:
             parsed = 0
         if parsed < -1:
             parsed = 0
-        if max_cap is not None and parsed > max_cap:
+        if max_cap is not None and (parsed == -1 or parsed > max_cap):
             parsed = max_cap
         limits[card_key] = parsed
     return limits
@@ -227,6 +228,8 @@ def choose_clarity_card(
         if key in excluded_keys or card.get("unavailable"):
             continue
         kind = str(card.get("kind") or "")
+        if key == "huashi" and int(used_map.get(key, 0)) >= HUASHI_USE_CAP:
+            continue
         if limits is not None:
             limit = int(limits.get(key, 0))
             if limit == 0:
@@ -261,17 +264,38 @@ def popup_reports_no_stock(ocr_entries: list[dict[str, Any]]) -> bool:
     return any(kw in joined for kw in _UNAVAILABLE_KEYWORDS)
 
 
-_CONFIRM_POPUP_CONTEXT_KEYWORDS = ("当前澄明度", "最少", "最多", "使用后", "消耗")
+_CONFIRM_POPUP_CONTEXT_KEYWORDS = ("当前澄明度", "补充后澄明度", "恢复后澄明度", "使用后澄明度", "补充次数", "恢复次数")
+
+
+def clarity_popup_item_keys(ocr_entries: list[dict[str, Any]]) -> set[str]:
+    """Read item names in the dialog, ignoring the picker cards visible behind it."""
+    keys = set()
+    for entry in ocr_entries:
+        text = "".join(str(entry.get("text") or "").split())
+        center = _entry_center(entry)
+        if center is not None:
+            if not _point_in_roi(center, CLARITY_POPUP_ROI):
+                continue
+            if center[1] >= CLARITY_CARDS[0].card_roi[1] and not any(
+                word in text for word in ("消耗", "花费", "扣除", "使用")
+            ):
+                continue
+        for spec in CLARITY_CARDS:
+            if spec.name.removeprefix("仙人掌") in text:
+                keys.add(spec.key)
+    return keys
+
+
+def has_clarity_popup_context(ocr_entries: list[dict[str, Any]]) -> bool:
+    joined = "".join(str(e.get("text") or "").strip() for e in ocr_entries)
+    return any(kw in joined for kw in _CONFIRM_POPUP_CONTEXT_KEYWORDS) or bool(clarity_popup_item_keys(ocr_entries))
 
 
 def is_clarity_confirm_popup(ocr_entries: list[dict[str, Any]]) -> bool:
     """Return True when OCR entries indicate the Clarity item confirmation dialog is open."""
     if find_clarity_popup_button(ocr_entries, kind="confirm") is None:
         return False
-    if find_clarity_popup_button(ocr_entries, kind="cancel") is not None:
-        return True
-    joined = "".join(str(e.get("text") or "").strip() for e in (ocr_entries or ()) if isinstance(e, dict))
-    return any(kw in joined for kw in _CONFIRM_POPUP_CONTEXT_KEYWORDS)
+    return has_clarity_popup_context(ocr_entries)
 
 
 def find_clarity_popup_button(
@@ -285,17 +309,14 @@ def find_clarity_popup_button(
     for entry in ocr_entries or ():
         if not isinstance(entry, dict):
             continue
-        text = str(entry.get("text") or "").strip()
-        if not text or not any(kw in text for kw in keywords):
+        text = "".join(str(entry.get("text") or "").split())
+        if text not in keywords:
             continue
         center = _entry_center(entry)
         if center is None:
             continue
         cx, cy = center
         if not (240 <= cx <= 1120 and 320 <= cy <= 660):
-            continue
-        # Ignore descriptive title phrases like "请选择补充次数" or "补充后澄明度"
-        if len(text) > 4 and kind == "confirm":
             continue
         matches.append((cx, cy, text))
 

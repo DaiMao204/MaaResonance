@@ -228,6 +228,12 @@ def _return_to_lobby(
     return _shared_return_to_lobby(context, prefix, max_steps=max_steps, dismiss_point=dismiss_point)
 
 
+@AgentServer.custom_action("daily_activity_return_to_lobby")
+class DailyActivityReturnToLobbyAction(CustomAction):
+    def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
+        return _return_to_lobby(context, argv.node_name, dismiss_point=REWARD_POPUP_TOP_SAFE_POINT)
+
+
 def _open_drawer(context: Context, prefix: str) -> tuple[Any | None, list[dict[str, Any]]]:
     """Ensure the left navigation drawer is open and return (image, entries)."""
     return _shared_open_drawer(context, prefix)

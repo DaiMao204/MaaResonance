@@ -202,7 +202,7 @@
         "EventStageClarityLimits": {
             "type": "input",
             "label": "活动刷关体力药/桦石使用次数",
-            "description": "-1 不限次，0 禁用，正数为本轮可用次数；桦石最高 8 次。",
+            "description": "0 表示禁用，正数为本轮可用次数。填写 -1 时体力药不限次，桦石每轮最多使用 8 次。",
             "inputs": [
                 {
                     "name": "lollipop_use_limit",

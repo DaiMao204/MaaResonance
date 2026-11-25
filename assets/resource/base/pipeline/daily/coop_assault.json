@@ -10,7 +10,7 @@
             "CoopAssaultLoop"
         ],
         "on_error": [
-            "CoopAssaultComplete"
+            "DailyActivityNavigationFailed"
         ]
     },
     "CoopAssaultOptBossPreference": {
@@ -41,7 +41,7 @@
         "recognition": "DirectHit",
         "action": "DoNothing",
         "rate_limit": 850,
-        "timeout": 86400000,
+        "timeout": 180000,
         "next": [
             "CoopAssaultDoneCheck",
             "CoopAssaultStorySkip",
@@ -60,7 +60,7 @@
             "CoopAssaultHomeFallback"
         ],
         "on_error": [
-            "CoopAssaultLoop"
+            "DailyActivityNavigationFailed"
         ]
     },
     "CoopAssaultDoneCheck": {

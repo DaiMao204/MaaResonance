@@ -222,7 +222,7 @@ class BattleAutoplayLogicTest(unittest.TestCase):
 
         def fake_run_action(node_name, box, detail, override):
             taps.append((node_name, tuple(override[node_name]["target"][:2])))
-            return SimpleNamespace(succeeded=True)
+            return SimpleNamespace(success=True)
 
         ctx = SimpleNamespace(
             tasker=SimpleNamespace(stopping=False, controller=None),
@@ -308,7 +308,7 @@ class BattleAutoplayLogicTest(unittest.TestCase):
         ctx = SimpleNamespace(
             tasker=SimpleNamespace(stopping=False, controller=None),
             run_recognition=fake_run_reco,
-            run_action=lambda *_a, **_kw: SimpleNamespace(succeeded=True),
+            run_action=lambda *_a, **_kw: SimpleNamespace(success=True),
         )
         argv = SimpleNamespace(
             node_name="TestVictory",

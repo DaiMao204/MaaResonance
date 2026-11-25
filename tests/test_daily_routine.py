@@ -471,12 +471,17 @@ class DailyRoutineLogicTest(unittest.TestCase):
             return True
 
         ran_actions: list[str] = []
+
+        def fake_run_action(name, *args, **kwargs):
+            ran_actions.append(name)
+            return SimpleNamespace(success=True)
+
         ctx = SimpleNamespace(
             tasker=SimpleNamespace(
                 stopping=False,
                 controller=SimpleNamespace(info={"type": "win32", "mouse_method": 64}),
             ),
-            run_action=lambda name, *args, **kwargs: ran_actions.append(name),
+            run_action=fake_run_action,
         )
         ig.clear_recorded_controller_info()
         try:

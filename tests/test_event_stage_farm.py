@@ -38,9 +38,17 @@ def _real_maa_resource():
     try:
         try:
             resource_mod = importlib.import_module("maa.resource")
-            yield resource_mod.Resource
         except ImportError:
             yield None
+            return
+        # These tests bind to a local Resource. Loading the real AgentServer
+        # decorators switches MaaFramework into its separate IPC server mode.
+        def local_registration(_name):
+            return lambda cls: cls
+
+        server = SimpleNamespace(custom_action=local_registration, custom_recognition=local_registration)
+        with patch.dict(sys.modules, {"maa.agent.agent_server": SimpleNamespace(AgentServer=server)}):
+            yield resource_mod.Resource
     finally:
         if stashed:
             for name in list(sys.modules):
@@ -50,6 +58,48 @@ def _real_maa_resource():
 
 
 class EventStageFarmLogicTest(unittest.TestCase):
+    def test_activity_navigation_failures_leave_the_daily_queue_unblocked(self) -> None:
+        with _real_maa_resource() as Resource:
+            if Resource is None:
+                self.skipTest("maafw is not installed")
+            from agent import coop_assault_action, daily_routine_action, event_stage_farm_action
+
+            daily = ROOT / "assets/resource/base/pipeline/daily"
+            recovery = "DailyActivityNavigationFailed"
+            ctx = SimpleNamespace(tasker=SimpleNamespace(stopping=False))
+            cases = (
+                (coop_assault_action, coop_assault_action.CoopAssaultEnterHubAction,
+                 "CoopAssault", "coop_assault.json", "_COOP_STATE_BY_TASK"),
+                (event_stage_farm_action, event_stage_farm_action.EventStageFarmNavigateAction,
+                 "EventStageFarm", "event_stage_farm.json", "_STAGE_STATE_BY_TASK"),
+            )
+            for module, action, name, filename, state_attr in cases:
+                with self.subTest(task=name):
+                    argv = SimpleNamespace(node_name=name + "Start")
+                    with (
+                        patch.object(module, state_attr, {}),
+                        patch.object(module, "safe_screencap", return_value=object()),
+                        patch.object(module, "ocr_roi", return_value=[]),
+                        patch.object(module, "open_activity_hub", return_value=False),
+                        patch.object(module, "select_activity_tab") as select_tab,
+                    ):
+                        self.assertFalse(action().run(ctx, argv).success)
+                        select_tab.assert_not_called()
+                    pipeline = json.loads((daily / filename).read_text(encoding="utf-8"))
+                    self.assertEqual(pipeline[name + "Start"]["on_error"], [recovery])
+                    self.assertEqual(pipeline[name + "Loop"]["on_error"], [recovery])
+                    self.assertLessEqual(pipeline[name + "Loop"]["timeout"], 180000)
+
+            recovery_node = json.loads((daily / "daily_routine.json").read_text(encoding="utf-8"))[recovery]
+            self.assertFalse(recovery_node.get("next"))
+            self.assertFalse(recovery_node.get("on_error"))
+            argv = SimpleNamespace(node_name=recovery)
+            for returned in (True, False):
+                with patch.object(daily_routine_action, "_return_to_lobby", return_value=returned) as recover:
+                    result = daily_routine_action.DailyActivityReturnToLobbyAction().run(ctx, argv)
+                    self.assertEqual(result, returned)
+                    recover.assert_called_once()
+
     def test_stage_discovery_and_detail_checks(self) -> None:
         self.assertEqual(
             find_miniscape_break_button([{"text": "破坏箱庭", "box": [1114, 614, 87, 23]}]),

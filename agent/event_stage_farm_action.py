@@ -214,7 +214,7 @@ class EventStageFarmNavigateAction(CustomAction):
 
         if not is_stage_list_screen_entries(ocr_roi(context, img, f"{prefix}InitList", [20, 20, 1240, 560])):
             if not open_activity_hub(context, prefix):
-                return CustomAction.RunResult(success=not is_stopping(context))
+                return CustomAction.RunResult(success=False)
             entered, _ = select_activity_tab(context, prefix, "限时活动", ("箱庭内外",))
             if not entered:
                 print("[EventStageFarm] 未找到限时活动「箱庭内外」，安全结束。", flush=True)

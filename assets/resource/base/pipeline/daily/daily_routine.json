@@ -1,4 +1,13 @@
 {
+    "DailyActivityNavigationFailed": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "daily_activity_return_to_lobby",
+        "focus": {
+            "Node.Action.Starting": "【日常】未能定位活动页面，跳过本项，尝试返回列车大厅。",
+            "Node.Action.Failed": "【日常】未能返回列车大厅，请检查当前画面。"
+        }
+    },
     "DailyRoutineStart": {
         "recognition": "DirectHit",
         "action": "DoNothing",

@@ -19,6 +19,8 @@ from agent.utils.input_guard import (
     record_controller_info,
     resolve_click_target_point,
     run_controller_click_guarded,
+    run_guarded_click,
+    run_guarded_swipe,
     safe_screencap,
     sleep_with_stop,
     wait_mouse_button_released,
@@ -39,6 +41,41 @@ def _make_reco_detail(entries: list[dict[str, object]]):
 
 
 class InputGuardAndClarityRetryTest(unittest.TestCase):
+    def test_actions_propagate_native_click_and_swipe_results(self) -> None:
+        for result, expected in (
+            (SimpleNamespace(success=True), True),
+            (SimpleNamespace(success=False), False),
+            (None, False),
+        ):
+            with self.subTest(result=result):
+                run_action = Mock(return_value=result)
+                ctx = SimpleNamespace(tasker=SimpleNamespace(stopping=False), run_action=run_action)
+                self.assertIs(run_guarded_click(ctx, "Tap", 10, 20, wait_release=False), expected)
+                self.assertIs(
+                    run_guarded_swipe(ctx, "Drag", (10, 20), (30, 40), wait_release=False),
+                    expected,
+                )
+                self.assertEqual(run_action.call_count, 2)
+
+    def test_controller_click_and_swipe_propagate_job_status(self) -> None:
+        for result, expected in (
+            (SimpleNamespace(succeeded=True), True),
+            (SimpleNamespace(succeeded=False), False),
+            (None, False),
+        ):
+            with self.subTest(result=result):
+                controller = Mock()
+                controller.post_click.return_value.wait.return_value = result
+                controller.post_swipe.return_value.wait.return_value = result
+                ctx = SimpleNamespace(tasker=SimpleNamespace(stopping=False, controller=controller))
+                self.assertIs(run_controller_click_guarded(ctx, 10, 20, wait_release=False), expected)
+                self.assertIs(
+                    run_guarded_swipe(ctx, "Drag", (10, 20), (30, 40), wait_release=False),
+                    expected,
+                )
+                controller.post_click.assert_called_once_with(10, 20)
+                controller.post_swipe.assert_called_once_with(10, 20, 30, 40, 500)
+
     def test_wait_mouse_button_released_zero_delay_wait_stop_and_timeout(self) -> None:
         ctx = SimpleNamespace(tasker=SimpleNamespace(stopping=False))
         sleeps: list[float] = []
@@ -187,7 +224,7 @@ class InputGuardAndClarityRetryTest(unittest.TestCase):
         def fake_run_action(node_name, box, detail, override):
             target = override[node_name]["target"]
             taps.append((node_name, (int(target[0]), int(target[1]))))
-            return SimpleNamespace(succeeded=True)
+            return SimpleNamespace(success=True)
 
         ctx = SimpleNamespace(
             tasker=SimpleNamespace(
@@ -235,7 +272,7 @@ class InputGuardAndClarityRetryTest(unittest.TestCase):
         def fake_run_action(node_name, box, detail, override):
             target = override[node_name]["target"]
             taps.append((node_name, (int(target[0]), int(target[1]))))
-            return SimpleNamespace(succeeded=True)
+            return SimpleNamespace(success=True)
 
         ctx = SimpleNamespace(
             tasker=SimpleNamespace(
@@ -309,7 +346,7 @@ class InputGuardAndClarityRetryTest(unittest.TestCase):
 
         def fake_run_action(node_name, box, detail, override):
             recorded_actions.append((node_name, override[node_name]))
-            return SimpleNamespace(succeeded=True)
+            return SimpleNamespace(success=True)
 
         def _make_ctx(info: dict[str, object]):
             return SimpleNamespace(
@@ -554,7 +591,7 @@ class InputGuardAndClarityRetryTest(unittest.TestCase):
                         post_click=lambda *_a: self.fail("should use run_guarded_click on win32 bg"),
                     ),
                 ),
-                run_action=lambda name, _b, _d, ov: bg_actions.append((name, ov[name])) or SimpleNamespace(succeeded=True),
+                run_action=lambda name, _b, _d, ov: bg_actions.append((name, ov[name])) or SimpleNamespace(success=True),
             )
             with patch("agent.utils.input_guard.wait_mouse_button_released", return_value=True):
                 self.assertTrue(run_controller_click_guarded(ctx_bg, 640, 360, tap_node="TradeTestTap"))

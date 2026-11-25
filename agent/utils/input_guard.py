@@ -425,7 +425,6 @@ def run_guarded_click(
             "post_delay": 0,
         }
 
-    acted = False
     with pin_cursor_for_win32_click(
         context,
         info,
@@ -434,15 +433,15 @@ def run_guarded_click(
         pre_hover_sec=pre_hover_sec,
         post_up_settle_sec=post_up_settle_sec,
     ):
-        if not _is_stopping(context):
-            context.run_action(
-                tap_node,
-                (px_i, py_i, 1, 1),
-                "",
-                {tap_node: node_cfg},
-            )
-            acted = True
-    return acted
+        if _is_stopping(context):
+            return False
+        detail = context.run_action(
+            tap_node,
+            (px_i, py_i, 1, 1),
+            "",
+            {tap_node: node_cfg},
+        )
+    return detail is not None and detail.success
 
 
 def run_controller_click_guarded(
@@ -483,7 +482,7 @@ def run_controller_click_guarded(
     if controller is None:
         return False
     job = controller.post_click(px_i, py_i).wait()
-    return bool(getattr(job, "succeeded", True))
+    return job is not None and job.succeeded
 
 
 def run_guarded_swipe(
@@ -520,9 +519,9 @@ def run_guarded_swipe(
         if controller is None:
             return False
         job = controller.post_swipe(x1, y1, x2, y2, dur_ms).wait()
-        return bool(getattr(job, "succeeded", True))
+        return job is not None and job.succeeded
 
-    context.run_action(
+    detail = context.run_action(
         swipe_node,
         (0, 0, 0, 0),
         "",
@@ -538,7 +537,7 @@ def run_guarded_swipe(
             }
         },
     )
-    return True
+    return detail is not None and detail.success
 
 
 def safe_screencap(context: Any) -> Any | None:

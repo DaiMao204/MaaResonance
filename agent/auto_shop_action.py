@@ -35,6 +35,7 @@ from maa_resonance.logic.auto_shop import (
     PERIOD_KEYS,
     SHOP_POPUP_ROI,
     ShopBuyRule,
+    affordable_exchange_quantity,
     compute_rule_remaining_quota,
     compute_shop_config_hash,
     compute_shop_next_run,
@@ -110,6 +111,28 @@ def _wait_popup(
     )
 
 
+def _read_shop_popup(context: Context, name: str, shop_kind: str) -> dict[str, Any] | None:
+    image = safe_screencap(context)
+    if image is None:
+        return None
+    entries = ocr_roi(context, image, name, SHOP_POPUP_ROI)
+    return parse_shop_confirm_popup(entries, image, shop_kind=shop_kind)
+
+
+def _verified_popup_quantity(
+    popup: dict[str, Any], item_name: str, currency: str | None = None
+) -> int | None:
+    quantity = popup.get("cur_qty")
+    maximum = popup.get("max_qty")
+    if not isinstance(quantity, int) or not isinstance(maximum, int) or not 1 <= quantity <= maximum:
+        return None
+    if not shop_item_name_matches(popup.get("item_name"), item_name):
+        return None
+    if currency is not None and popup.get("currency") != currency:
+        return None
+    return quantity
+
+
 def _adjust_popup_quantity(
     context: Context,
     prefix: str,
@@ -118,50 +141,35 @@ def _adjust_popup_quantity(
     *,
     shop_kind: str,
 ) -> dict[str, Any] | None:
-    """Adjust modal slider to ``target_qty`` using fewest taps, returning refreshed popup state."""
-    cur_qty = int(popup.get("cur_qty") or 1)
-    max_qty = max(1, int(popup.get("max_qty") or target_qty or 1))
-    target = max(1, min(max_qty, int(target_qty)))
-    if target == cur_qty:
+    """Read the actual quantity after each batch of at most 40 adjustment taps."""
+    item_name = popup["item_name"]
+    currency = popup.get("currency") if shop_kind == "hq" else None
+    cur_qty = _verified_popup_quantity(popup, item_name, currency)
+    if cur_qty is None or not 1 <= target_qty <= popup["max_qty"] or target_qty == cur_qty:
         return popup
-
-    if target == max_qty:
-        if not tap_point(context, f"{prefix}Max", popup["max_pt"]):
+    max_qty = popup["max_qty"]
+    routes = [
+        (abs(target_qty - cur_qty), cur_qty, None),
+        (target_qty, 1, "min_pt"),
+        (1 + max_qty - target_qty, max_qty, "max_pt"),
+    ]
+    _, position, jump = min(routes, key=lambda route: route[0])
+    if jump:
+        if not tap_point(context, f"{prefix}Jump", popup[jump]) or not sleep_with_stop(context, 0.3):
             return None
-        if not sleep_with_stop(context, 0.3):
+    while True:
+        step = 1 if target_qty > position else -1
+        button = "inc_pt" if step == 1 else "dec_pt"
+        for _ in range(min(abs(target_qty - position), 40)):
+            if not tap_point(context, f"{prefix}Step", popup[button]) or not sleep_with_stop(context, 0.16):
+                return None
+            position += step
+        popup = _read_shop_popup(context, f"{prefix}PopRefreshed", shop_kind)
+        if popup is None:
             return None
-    else:
-        inc_steps = target - cur_qty if target > cur_qty else max_qty + 1
-        dec_steps_from_max = (max_qty - target) + 1
-        if inc_steps <= dec_steps_from_max and target > cur_qty:
-            for idx in range(min(inc_steps, 40)):
-                if not tap_point(context, f"{prefix}Inc{idx}", popup["inc_pt"]):
-                    return None
-                if not sleep_with_stop(context, 0.16):
-                    return None
-        elif dec_steps_from_max < inc_steps and max_qty > target:
-            if not tap_point(context, f"{prefix}MaxForStep", popup["max_pt"]):
-                return None
-            if not sleep_with_stop(context, 0.25):
-                return None
-            for idx in range(min(max_qty - target, 40)):
-                if not tap_point(context, f"{prefix}Dec{idx}", popup["dec_pt"]):
-                    return None
-                if not sleep_with_stop(context, 0.16):
-                    return None
-        elif target < cur_qty:
-            for idx in range(min(cur_qty - target, 40)):
-                if not tap_point(context, f"{prefix}DecCur{idx}", popup["dec_pt"]):
-                    return None
-                if not sleep_with_stop(context, 0.16):
-                    return None
-
-    img = safe_screencap(context)
-    if img is None:
-        return None
-    entries = ocr_roi(context, img, f"{prefix}PopRefreshed", SHOP_POPUP_ROI)
-    refreshed = parse_shop_confirm_popup(entries, img, shop_kind=shop_kind)
-    return refreshed or popup
+        observed = _verified_popup_quantity(popup, item_name, currency)
+        if observed != position or popup["max_qty"] != max_qty or position == target_qty:
+            return popup
 
 
 def _find_matched_sold_out_period(
@@ -472,32 +480,33 @@ def _run_black_moon_hq(
                     if adjusted is None:
                         return False, bought_logs, matched_periods, partial_due_to_budget
 
-                    # Guard against escalating prices (e.g. 拉普拉斯协议): step down until within reserve.
-                    for dec_try in range(12):
+                    # Read the actual total after each decrement; tiered prices cannot be extrapolated.
+                    expected_qty = target_qty
+                    verified = False
+                    for dec_try in range(13):
+                        final_qty = _verified_popup_quantity(adjusted, rule.item_name, expected_currency)
                         total_price = adjusted.get("price")
-                        cur_q = int(adjusted.get("cur_qty") or 1)
-                        if total_price is None or (cur_balance - total_price >= reserve):
+                        if final_qty != expected_qty or not isinstance(total_price, int) or total_price <= 0:
                             break
-                        if cur_q <= 1:
-                            adjusted["__abort_budget"] = True
+                        if cur_balance - total_price >= reserve:
+                            verified = True
+                            break
+                        if final_qty <= 1 or dec_try == 12:
                             break
                         if not tap_point(context, f"{prefix}EscDec{rule_idx}_{dec_try}", adjusted["dec_pt"]):
                             return False, bought_logs, matched_periods, partial_due_to_budget
                         if not sleep_with_stop(context, 0.25):
                             return False, bought_logs, matched_periods, partial_due_to_budget
-                        chk_img = safe_screencap(context)
-                        if chk_img is None:
+                        adjusted = _read_shop_popup(context, f"{prefix}EscChk{rule_idx}_{dec_try}", "hq")
+                        if adjusted is None:
                             return False, bought_logs, matched_periods, partial_due_to_budget
-                        chk_entries = ocr_roi(context, chk_img, f"{prefix}EscChk{rule_idx}_{dec_try}", SHOP_POPUP_ROI)
-                        re_pop = parse_shop_confirm_popup(chk_entries, chk_img, shop_kind="hq")
-                        if re_pop is not None:
-                            adjusted = re_pop
-                        else:
-                            adjusted["cur_qty"] = max(1, cur_q - 1)
+                        expected_qty -= 1
 
-                    if adjusted.get("__abort_budget"):
-                        tap_point(context, f"{prefix}CancelEsc{rule_idx}", adjusted["cancel_pt"])
-                        sleep_with_stop(context, 0.55)
+                    if not verified:
+                        if not tap_point(context, f"{prefix}CancelEsc{rule_idx}", adjusted["cancel_pt"]):
+                            return False, bought_logs, matched_periods, partial_due_to_budget
+                        if not sleep_with_stop(context, 0.55):
+                            return False, bought_logs, matched_periods, partial_due_to_budget
                         partial_due_to_budget = True
                         settled_keys.add(key)
                         if rule.period is not None:
@@ -505,8 +514,6 @@ def _run_black_moon_hq(
                             break
                         continue
 
-                    final_qty = int(adjusted.get("cur_qty") or target_qty)
-                    final_price = adjusted.get("price")
                     if not tap_point(context, f"{prefix}ConfirmR{rule_idx}", adjusted["confirm_pt"]):
                         return False, bought_logs, matched_periods, partial_due_to_budget
                     if not sleep_with_stop(context, 0.95):
@@ -517,7 +524,7 @@ def _run_black_moon_hq(
                         dismiss_point=REWARD_POPUP_TOP_SAFE_POINT,
                     ):
                         return False, bought_logs, matched_periods, partial_due_to_budget
-                    bought_logs.append(f"{card['name']}({card['period']})x{final_qty}@{final_price or '?'}")
+                    bought_logs.append(f"{card['name']}({card['period']})x{final_qty}@{total_price}")
                     if final_qty < desired_qty:
                         partial_due_to_budget = True
                     if final_qty >= max_qty:
@@ -695,17 +702,14 @@ def _run_exchange_shop(
                             break
                         continue
 
-                    primary_cost = costs[0]
-                    bal = int(primary_cost["balance"])
-                    unit_cost = int(primary_cost["unit_cost"])
-                    row_reserve = reserve if (shop_kind != "fuming" or primary_cost["medal"] == "purple_medal") else 0
-                    row_max = int(row.get("remaining") or 1)
-                    row_desired = min(row_max, allowed_qty) if allowed_qty is not None else row_max
-                    est_qty = plan_affordable_quantity(bal, row_reserve, unit_cost, row_desired)
-                    if est_qty <= 0:
+                    # The shelf may omit the limit. The modal supplies the actual maximum.
+                    affordable = affordable_exchange_quantity(
+                        costs, reserve, shop_kind=shop_kind, allow_gold_medal=allow_gold_medal
+                    )
+                    if affordable <= 0:
                         print(
                             f"[AutoShop] {shop_kind} 跳过「{row['name']}」({row['period']}): "
-                            f"余额 {bal} 扣单价 {unit_cost} 将低于保留下限 {row_reserve}。",
+                            f"无法核实全部兑换货币满足保留下限 {reserve}。",
                             flush=True,
                         )
                         partial_due_to_budget = True
@@ -727,7 +731,7 @@ def _run_exchange_shop(
                             break
                         continue
 
-                    if popup["item_name"] and not shop_item_name_matches(popup["item_name"], rule.item_name):
+                    if not shop_item_name_matches(popup["item_name"], rule.item_name):
                         print(
                             f"[AutoShop] 安全拦截：兑换弹窗「{popup['item_name']}」与预期「{rule.item_name}」不符，已取消。",
                             flush=True,
@@ -742,16 +746,7 @@ def _run_exchange_shop(
 
                     max_qty = popup.get("max_qty") or row.get("remaining") or 1
                     desired_qty = min(max_qty, allowed_qty) if allowed_qty is not None else max_qty
-                    target_qty = plan_affordable_quantity(bal, row_reserve, unit_cost, desired_qty)
-                    if target_qty <= 0:
-                        tap_point(context, f"{prefix}CancelReserve{rule_idx}", popup["cancel_pt"])
-                        sleep_with_stop(context, 0.55)
-                        partial_due_to_budget = True
-                        settled_keys.add(key)
-                        if rule.period is not None:
-                            rule_done = True
-                            break
-                        continue
+                    target_qty = min(affordable, desired_qty)
 
                     adjusted = _adjust_popup_quantity(
                         context,
@@ -762,7 +757,18 @@ def _run_exchange_shop(
                     )
                     if adjusted is None:
                         return False, bought_logs, matched_periods, partial_due_to_budget
-                    final_qty = int(adjusted.get("cur_qty") or target_qty)
+                    final_qty = _verified_popup_quantity(adjusted, rule.item_name)
+                    if final_qty != target_qty:
+                        if not tap_point(context, f"{prefix}CancelMismatch{rule_idx}", adjusted["cancel_pt"]):
+                            return False, bought_logs, matched_periods, partial_due_to_budget
+                        if not sleep_with_stop(context, 0.55):
+                            return False, bought_logs, matched_periods, partial_due_to_budget
+                        partial_due_to_budget = True
+                        settled_keys.add(key)
+                        if rule.period is not None:
+                            rule_done = True
+                            break
+                        continue
                     if not tap_point(context, f"{prefix}ConfirmR{rule_idx}", adjusted["confirm_pt"]):
                         return False, bought_logs, matched_periods, partial_due_to_budget
                     if not sleep_with_stop(context, 0.95):

@@ -173,7 +173,7 @@ class CoopAssaultEnterHubAction(CustomAction):
 
         if not is_coop_home_entries(full_entries):
             if not open_activity_hub(context, prefix):
-                return CustomAction.RunResult(success=not is_stopping(context))
+                return CustomAction.RunResult(success=False)
             entered, _ = select_activity_tab(context, prefix, "限时活动", ("众志攻坚",))
             if not entered:
                 print("[CoopAssault] 未找到限时活动「众志攻坚」，结束任务。", flush=True)

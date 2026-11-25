@@ -919,6 +919,152 @@ class AutoShopLogicTest(unittest.TestCase):
             self.assertFalse(partial2)
             mock_tap_skip.assert_not_called()
 
+    def _replay_purchase(self, kind, maximum, reserve, *, costs=(), price=None, fault=None, allow_gold=True):
+        """Drive the purchase action with a modal whose OCR changes in response to each button tap."""
+        with _real_maa_resource() as resource:
+            if resource is None:
+                self.skipTest("maafw is not installed")
+            import agent.auto_shop_action as asa
+
+            ctx = SimpleNamespace(tasker=SimpleNamespace(stopping=False))
+            gold_image = np.full((720, 1280, 3), 28, dtype=np.uint8)
+            blank_image = gold_image.copy()
+            _paint_bgr(gold_image, 615, 429, 645, 470, (45, 175, 230))
+            name = "进货采买书"
+            qty = 1
+            adjusted = False
+            taps = []
+            reads = []
+            confirmations = []
+            cost_fn = price or (lambda q: q)
+            shelf = dict(name=name, period="weekly", remaining=maximum, sold_out=False,
+                         limit_total=maximum, currency="gold", unit_cost=1, costs=costs,
+                         tap_point=(780, 250), exchange_point=(1177, 250))
+            rules = [ShopBuyRule(name, name, "weekly", "gold" if kind == "hq" else None)]
+
+            def tap(_context, label, point):
+                nonlocal qty, adjusted
+                taps.append(label)
+                if point == (983, 534):
+                    confirmations.append((qty, cost_fn(qty)))
+                elif point in [(386, 377), (447, 377), (826, 377), (892, 377)]:
+                    adjusted = True
+                    if point == (386, 377):
+                        qty = 1
+                    elif point == (892, 377):
+                        qty = maximum
+                    elif fault != "missed-taps":
+                        qty += 1 if point == (826, 377) else -1
+                return True
+
+            def screenshot(_context):
+                return blank_image if adjusted and fault == "currency" else gold_image
+
+            def ocr(_context, _image, _label, roi):
+                if roi != asa.SHOP_POPUP_ROI:
+                    return []
+                reads.append(qty)
+                item = "另一件商品" if adjusted and fault == "item" else name
+                entries = [
+                    {"text": "取消", "box": [323, 519, 52, 30]},
+                    {"text": "确定", "box": [957, 519, 52, 30]},
+                ]
+                if adjusted and fault == "modal":
+                    return []
+                if not (adjusted and fault == "quantity"):
+                    entries.append({"text": f"{qty}/{maximum}", "box": [611, 351, 58, 25]})
+                if kind == "hq":
+                    entries.append({"text": item, "box": [590, 302, 100, 28]})
+                    if not (adjusted and fault == "price"):
+                        entries.append({"text": str(cost_fn(qty)), "box": [656, 439, 55, 26]})
+                elif fault != "unnamed":
+                    entries.append({"text": f"确认消耗以上素材兑换{item}×{qty}吗？", "box": [450, 430, 380, 26]})
+                return entries
+
+            with (
+                patch.object(asa, "safe_screencap", side_effect=screenshot),
+                patch.object(asa, "ocr_roi", side_effect=ocr),
+                patch.object(asa, "tap_point", side_effect=tap),
+                patch.object(asa, "sleep_with_stop", return_value=True),
+                patch.object(asa, "dismiss_reward_popup_if_present", return_value=True),
+                patch.object(asa, "parse_hq_balances", return_value={"gold": 100}),
+                patch.object(asa, "parse_hq_shop_cards", return_value=[shelf]),
+                patch.object(asa, "parse_exchange_shop_rows", return_value=[shelf]),
+            ):
+                if kind == "hq":
+                    result = asa._run_black_moon_hq(ctx, "Replay", rules, reserve, False, [], 0)
+                else:
+                    result = asa._run_exchange_shop(
+                        ctx, "Replay", rules, reserve, shop_kind=kind, allow_gold_medal=allow_gold
+                    )
+            return result, reads, taps, confirmations
+
+    def test_exchange_reads_actual_quantity_after_40_steps(self) -> None:
+        mileage = [{"medal": "mileage", "balance": 100, "unit_cost": 1}]
+        result, reads, _, confirmations = self._replay_purchase("chamber", 99, 45, costs=mileage)
+        self.assertEqual(reads, [1, 59, 55])
+        self.assertEqual(confirmations, [(55, 55)])
+        self.assertEqual(result[1], ["进货采买书(weekly)x55"])
+
+        for fault in ("missed-taps", "quantity", "item", "unnamed", "modal"):
+            with self.subTest(fault=fault):
+                result, _, taps, confirmations = self._replay_purchase("chamber", 99, 45, costs=mileage, fault=fault)
+                self.assertEqual(confirmations, [])
+                self.assertEqual(result[1], [])
+                if fault == "modal":
+                    self.assertFalse(result[0])
+                else:
+                    self.assertTrue(any("Cancel" in tap for tap in taps))
+
+    def test_hq_rechecks_tiered_price_and_identity(self) -> None:
+        result, reads, taps, confirmations = self._replay_purchase("hq", 50, 50, price=lambda q: 2 * q - 1)
+        self.assertEqual(reads[-1], 38)  # The twelfth decrement still costs 75 with only 50 spendable.
+        self.assertEqual(sum("EscDec" in tap for tap in taps), 12)
+        self.assertEqual(confirmations, [])
+        self.assertEqual(result[1], [])
+        self.assertTrue(result[3])
+        for fault in ("price", "quantity", "currency", "item", "modal"):
+            with self.subTest(fault=fault):
+                result, _, _, confirmations = self._replay_purchase("hq", 5, 50, fault=fault)
+                self.assertEqual(confirmations, [])
+                self.assertEqual(result[1], [])
+        _, _, _, confirmations = self._replay_purchase("hq", 5, 50, price=lambda q: q * 10)
+        self.assertEqual(confirmations, [(5, 50)])
+
+    def test_fuming_respects_second_currency_and_gold_permission(self) -> None:
+        gold = {"medal": "gold_medal", "balance": 100, "unit_cost": 1}
+        purple = {"medal": "purple_medal", "balance": 100, "unit_cost": 10}
+        for costs in ([gold, purple], [purple, gold]):
+            _, _, taps, confirmations = self._replay_purchase("fuming", 5, 100, costs=costs)
+            self.assertEqual(taps, [])
+            self.assertEqual(confirmations, [])
+            _, _, _, confirmations = self._replay_purchase("fuming", 5, 75, costs=costs)
+            self.assertEqual(confirmations, [(2, 2)])
+        for costs in ([gold, dict(purple, medal="unknown")], [purple, purple], [dict(gold, balance=None)]):
+            _, _, _, confirmations = self._replay_purchase("fuming", 5, 0, costs=costs)
+            self.assertFalse(confirmations)
+        _, _, _, confirmations = self._replay_purchase("fuming", 5, 0, costs=[gold, purple], allow_gold=False)
+        self.assertFalse(confirmations)
+
+    def test_fuming_reads_grouped_cost_text_and_rejects_missing_second_price(self) -> None:
+        image = np.full((720, 1280, 3), 28, dtype=np.uint8)
+        _paint_bgr(image, 821, 162, 876, 190, (45, 140, 235))
+        _paint_bgr(image, 909, 162, 964, 190, (220, 120, 70))
+        item = {"text": "进货采买书×1", "box": [656, 240, 110, 19]}
+        for text, width in (("10000/1 100/10", 160), ("10000/1 100/?", 160), ("10000/1100/10", 160),
+                            ("10000/1", 75)):
+            with self.subTest(text=text):
+                entries = [item, {"text": text, "box": [816, 240, width, 18]}]
+                row, = parse_exchange_shop_rows(entries, image, classify_medal=True)
+                costs = row["costs"]
+                if text == "10000/1 100/10":
+                    self.assertEqual(costs, [
+                        {"medal": "gold_medal", "balance": 10000, "unit_cost": 1},
+                        {"medal": "purple_medal", "balance": 100, "unit_cost": 10},
+                    ])
+                else:
+                    self.assertEqual(costs, [])
+
     def test_pipeline_task_schema_and_maafw_bundle_load(self) -> None:
         pipeline = json.loads((ROOT / "assets/resource/base/pipeline/daily/auto_shop.json").read_text(encoding="utf-8"))
         task_cfg = json.loads((ROOT / "assets/resource/tasks/AutoShop.json").read_text(encoding="utf-8"))
