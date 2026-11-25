@@ -4,10 +4,12 @@ import hashlib
 import json
 import math
 import time
-from dataclasses import dataclass
+from contextlib import suppress
+from dataclasses import dataclass, replace
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Iterable, Literal
+from uuid import uuid4
 
 import requests
 from loguru import logger
@@ -46,6 +48,7 @@ COLUMBA_TRADE_DATA_PATH = RESOURCES_PATH / "goods" / "ColumbaTradeData2026.json"
 COLUMBA_FATIGUE_DATA_PATH = RESOURCES_PATH / "goods" / "CityFatigueData2026.json"
 COLUMBA_LOCAL_MARKET_DATA_PATH = RESOURCES_PATH / "goods" / "ColumbaLocalMarketData2026.json"
 DEFAULT_MARKET_CACHE_TTL = 300.0
+TRADE_MARKET_API_URL = "https://reso-online-ddos.soli-reso.com/get_server_trade/"
 MARKET_CACHE_DIR = ROOT_PATH / "cache" / "market"
 CITY_NAME_ALIASES = {
     "\u4e03\u53f7\u81ea\u7531\u6e2f": "7\u53f7\u81ea\u7531\u6e2f",
@@ -65,6 +68,16 @@ class MarketData:
     sell_prices: dict[str, dict[str, dict[str, Any]]]
     tired: dict[str, int]
     buy_prices: dict[str, dict[str, dict[str, Any]]] | None = None
+    refresh_time: int = 0
+    interval: int = 0
+    from_cache: bool = False
+
+    def quote_details(self) -> dict[str, Any]:
+        return {
+            "source": "cache" if self.from_cache else "live",
+            "refresh_time": self.refresh_time,
+            "interval": self.interval,
+        }
 
 
 @dataclass(frozen=True)
@@ -238,7 +251,7 @@ def market_data_from_server_trade(payload: dict[str, Any]) -> MarketData:
         if not isinstance(trade_info, dict):
             continue
         for city_name, info in (trade_info.get("buy") or {}).items():
-            if not isinstance(info, dict):
+            if not get_price(info):
                 continue
             city = normalize_city_name(city_name)
             stock = int(info.get("stock") or 1)
@@ -250,10 +263,12 @@ def market_data_from_server_trade(payload: dict[str, Any]) -> MarketData:
             }
             buy_prices.setdefault(city, {})[good_name] = info
         for city_name, info in (trade_info.get("sell") or {}).items():
-            if not isinstance(info, dict):
+            if not get_price(info):
                 continue
             sell_prices.setdefault(normalize_city_name(city_name), {})[good_name] = info
 
+    if not buy_prices or not sell_prices:
+        raise ValueError("行情缺少有效买价或卖价")
     tired = (
         payload.get("tired")
         or payload.get("CityTiredData")
@@ -267,6 +282,8 @@ def market_data_from_server_trade(payload: dict[str, Any]) -> MarketData:
         buy_prices=buy_prices,
         sell_prices=sell_prices,
         tired=tired,
+        refresh_time=int(payload.get("refresh_time") or 0),
+        interval=int(payload.get("interval") or 0),
     )
 
 
@@ -284,7 +301,7 @@ def market_data_from_payload(payload: dict[str, Any]) -> MarketData:
         or payload.get("CityGoodsData")
         or payload.get("cityGoodsData")
     )
-    buy_prices = payload.get("buy_prices") or payload.get("buyPrices")
+    buy_prices = payload.get("buy_prices", payload.get("buyPrices"))
     sell_prices = (
         payload.get("sell_prices")
         or payload.get("prices")
@@ -334,11 +351,11 @@ def read_market_cache(
     cache_dir: str | Path | None = None,
 ) -> tuple[dict[str, Any], float, Path] | None:
     path = market_cache_path(api_url, cache_dir)
-    if not path.exists():
-        return None
     try:
         cache = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+    except FileNotFoundError:
+        return None
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         logger.warning(f"读取行情缓存失败，已忽略: {path} ({exc})")
         return None
     if not isinstance(cache, dict):
@@ -364,13 +381,16 @@ def write_market_cache(
         "fetched_at": time.time(),
         "payload": payload,
     }
+    tmp_path = path.with_suffix(f".{uuid4().hex}.tmp")
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-        tmp_path = path.with_suffix(path.suffix + ".tmp")
-        tmp_path.write_text(json.dumps(cache, ensure_ascii=False, indent=2), encoding="utf-8")
+        tmp_path.write_text(json.dumps(cache, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
         tmp_path.replace(path)
     except OSError as exc:
         logger.warning(f"写入行情缓存失败，已继续使用实时数据: {path} ({exc})")
+    finally:
+        with suppress(OSError):
+            tmp_path.unlink(missing_ok=True)
 
 
 def market_cache_is_fresh(fetched_at: float, cache_ttl: float | None) -> bool:
@@ -379,9 +399,18 @@ def market_cache_is_fresh(fetched_at: float, cache_ttl: float | None) -> bool:
     return cache_ttl > 0 and time.time() - fetched_at < cache_ttl
 
 
-def market_data_from_cache(payload: dict[str, Any], path: Path) -> MarketData | None:
+def parse_market_response(payload: dict[str, Any], api_url: str) -> MarketData:
+    market = market_data_from_payload(unwrap_market_payload(payload))
+    if api_url == TRADE_MARKET_API_URL:
+        quoted_cities = set(market.buy_prices or {}) & set(market.sell_prices)
+        if market.refresh_time <= 0 or market.interval <= 0 or len(quoted_cities) < 2:
+            raise ValueError("国服行情缺少有效更新时间或双城报价")
+    return market
+
+
+def market_data_from_cache(payload: dict[str, Any], path: Path, api_url: str) -> MarketData | None:
     try:
-        return market_data_from_payload(unwrap_market_payload(payload, "market cache"))
+        return replace(parse_market_response(payload, api_url), from_cache=True)
     except Exception as exc:
         logger.warning(f"行情缓存不可用，已忽略: {path} ({exc})")
         return None
@@ -397,30 +426,46 @@ def fetch_market_data(
     refresh_cache: bool = False,
     cache_dir: str | Path | None = None,
 ) -> MarketData:
-    cached = read_market_cache(api_url, cache_dir=cache_dir) if use_cache else None
-    if cached and not refresh_cache and market_cache_is_fresh(cached[1], cache_ttl):
-        market = market_data_from_cache(cached[0], cached[2])
-        if market:
-            logger.info(f"使用本地行情缓存: {cached[2]}")
-            return market
+    if use_cache and not refresh_cache:
+        cached = read_market_cache(api_url, cache_dir=cache_dir)
+        if cached and market_cache_is_fresh(cached[1], cache_ttl):
+            market = market_data_from_cache(cached[0], cached[2], api_url)
+            if market:
+                logger.info(f"使用本地行情缓存: {cached[2]}")
+                return market
 
     try:
         response = requests.get(api_url, timeout=timeout, headers=headers)
         response.raise_for_status()
         raw_payload = response.json()
-        payload = unwrap_market_payload(raw_payload)
-        market = market_data_from_payload(payload)
+        market = parse_market_response(raw_payload, api_url)
     except Exception as exc:
+        cached = read_market_cache(api_url, cache_dir=cache_dir) if use_cache else None
         if cached:
-            market = market_data_from_cache(cached[0], cached[2])
+            market = market_data_from_cache(cached[0], cached[2], api_url)
             if market:
                 logger.warning(f"实时行情请求失败，使用本地缓存: {exc}")
                 return market
         raise
 
-    if use_cache and isinstance(raw_payload, dict):
+    if use_cache:
+        cached = read_market_cache(api_url, cache_dir=cache_dir) if market.refresh_time else None
+        if cached:
+            previous = unwrap_market_payload(cached[0], "market cache")
+            if isinstance(previous.get("refresh_time"), int) and previous["refresh_time"] > market.refresh_time:
+                newer_market = market_data_from_cache(cached[0], cached[2], api_url)
+                if newer_market:
+                    logger.warning("接口返回了较旧的行情，继续使用缓存中的更新报价")
+                    return newer_market
         write_market_cache(api_url, raw_payload, cache_dir=cache_dir)
     return market
+
+
+def load_trade_market_data() -> MarketData:
+    try:
+        return fetch_market_data(TRADE_MARKET_API_URL, refresh_cache=True)
+    except (requests.RequestException, ValueError, TypeError, OverflowError, AttributeError) as exc:
+        raise RuntimeError(f"国服行情获取失败，且没有可用的行情缓存：{exc}") from exc
 
 
 def load_market_data_file(path: str | Path) -> MarketData:
@@ -867,9 +912,10 @@ def get_price(info: dict[str, Any] | None) -> float:
     if not isinstance(info, dict):
         return 0.0
     try:
-        return float(info.get("price") or 0)
+        price = float(info.get("price") or 0)
     except (TypeError, ValueError):
         return 0.0
+    return price if math.isfinite(price) and price > 0 else 0.0
 
 
 def city_allowed(buy_city: str, sell_city: str, options: RoutePlanOptions) -> bool:
@@ -1048,6 +1094,13 @@ def calculate_columba_combinations(
     if base_fatigue <= 0:
         return {}
 
+    candidates = [
+        RouteModel.PurchaseCandidate(
+            name=item["name"], base_lot=item["buy_lot"], single_profit=item["single_profit"],
+            buy_price=js_round(item["buy_price"]), sell_price=js_round(item["sell_price"]),
+        )
+        for item in price_items
+    ]
     stats_by_restock: dict[int, dict[str, Any]] = {}
     max_lot = get_max_lot(trade_data, options)
     for restock in range(max(0, max_restock) + 1):
@@ -1096,6 +1149,7 @@ def calculate_columba_combinations(
 
         stats_by_restock[restock] = {
             "combinations": combinations,
+            "candidates": candidates,
             "profit": total_profit,
             "cost": total_cost,
             "income": total_income,
@@ -1148,6 +1202,7 @@ def stats_to_route_model(
         sell_city_name=sell_city,
         haggle_num=haggle_num,
         goods_data=goods_data,
+        purchase_candidates=stats["candidates"],
         buy_price=buy_price_total,
         sell_price=sell_price_total,
         cost=cost_total,
@@ -1266,10 +1321,14 @@ def make_routes_model(
 ) -> RoutesModel | None:
     first = stats_to_route_model(go, from_city, to_city, options)
     second = stats_to_route_model(ret, to_city, from_city, options)
+    return combine_round_trip(first, second, label)
+
+
+def combine_round_trip(first: RouteModel, second: RouteModel, label: str) -> RoutesModel | None:
     total_fatigue = first.city_tired + second.city_tired
     total_restock = first.book + second.book
     special_metrics = wulinyuan_route_metrics(first, second)
-    if is_wulinyuan_pair(from_city, to_city):
+    if is_wulinyuan_pair(first.buy_city_name, first.sell_city_name):
         if not special_metrics:
             return None
         total_profit = special_metrics["profit_score"]
@@ -1429,11 +1488,14 @@ def plan_one_way_route(
     if not city_allowed(buy_city, sell_city, options):
         return None
 
-    buy_prices = (market.buy_prices or market.sell_prices).get(buy_city, {})
+    # Older market files use one price table for both sides. An explicit empty
+    # buy table means there are no buy quotes, not that sell quotes can be used.
+    price_table = market.buy_prices if market.buy_prices is not None else market.sell_prices
+    buy_prices = price_table.get(buy_city, {})
     sell_prices = market.sell_prices.get(sell_city, {})
     buy_goods = market.buy_goods.get(buy_city, {})
     goods: list[tuple[str, int, int, int, int]] = []
-    for good_name, buy_price_info in buy_prices.items():
+    for good_name, good_info in buy_goods.items():
         if options.allowed_goods and good_name not in options.allowed_goods:
             continue
         if options.blocked_goods and good_name in options.blocked_goods:
@@ -1441,13 +1503,14 @@ def plan_one_way_route(
         global_status = options.product_unlock_status or {}
         if not product_unlocked(good_name, buy_city, global_status, options):
             continue
-        buy_price = int((buy_price_info or {}).get("price", 0))
-        sell_price = int((sell_prices.get(good_name) or {}).get("price", 0))
+        buy_price = js_round(get_price(buy_prices.get(good_name)))
+        sell_price = js_round(get_price(sell_prices.get(good_name)))
         unit_profit = sell_price - buy_price
         if buy_price <= 0 or sell_price <= 0 or unit_profit < options.min_profit:
             continue
-        good_info = buy_goods.get(good_name, {})
-        num = max(1, int((good_info or {}).get("num", 1)))
+        num = int((good_info or {}).get("num", 1))
+        if num <= 0:
+            continue
         goods.append((good_name, num, buy_price, sell_price, unit_profit))
 
     if not goods:
@@ -1491,6 +1554,12 @@ def plan_one_way_route(
         sell_city_name=sell_city,
         haggle_num=haggle_num,
         goods_data=goods_data,
+        purchase_candidates=[
+            RouteModel.PurchaseCandidate(
+                name=name, base_lot=num, single_profit=margin, buy_price=buy_price, sell_price=sell_price,
+            )
+            for name, num, buy_price, sell_price, margin in goods
+        ],
         buy_price=buy_price_total,
         sell_price=sell_price_total,
         cost=buy_price_total,
@@ -1510,7 +1579,7 @@ def iter_one_way_routes(
     market: MarketData,
     options: RoutePlanOptions | None = None,
 ) -> Iterable[RouteModel]:
-    cities = sorted(set((market.buy_prices or market.sell_prices).keys()) & set(market.sell_prices.keys()))
+    cities = sorted(market.buy_goods.keys() & market.sell_prices.keys())
     for buy_city in cities:
         for sell_city in cities:
             route = plan_one_way_route(market, buy_city, sell_city, options)
@@ -1523,34 +1592,24 @@ def plan_two_city_routes(
     options: RoutePlanOptions | None = None,
 ) -> list[RoutesModel]:
     options = options or RoutePlanOptions()
-    if options.use_columba_onegraph:
+    if options.use_columba_onegraph and market.buy_prices is not None:
         trade_data = load_columba_trade_data()
         if trade_data.get("products"):
-            plans = plan_columba_two_city_routes(market, options, trade_data)
-            if plans:
-                return plans
+            # A market with no profitable round trip must stay empty. The gross
+            # spread in the legacy model ignores taxes and account constraints.
+            return plan_columba_two_city_routes(market, options, trade_data)
 
     plans: list[RoutesModel] = []
-    cities = sorted(set((market.buy_prices or market.sell_prices).keys()) & set(market.sell_prices.keys()))
+    cities = sorted(market.buy_goods.keys() & market.sell_prices.keys())
     for buy_city in cities:
         for sell_city in cities:
             first = plan_one_way_route(market, buy_city, sell_city, options)
             second = plan_one_way_route(market, sell_city, buy_city, options)
             if first and second:
-                profit = first.profit + second.profit
-                tired = first.city_tired + second.city_tired
-                book = first.book + second.book
-                plans.append(
-                    RoutesModel(
-                        city_data=[first, second],
-                        profit=profit,
-                        city_tired=tired,
-                        tired_profit=int(profit / max(tired, 1)),
-                        book=book,
-                        general_profit_index=calculate_general_profit_index(profit, tired, book),
-                        strategy_label="legacy",
-                    )
-                )
+                route = combine_round_trip(first, second, "legacy")
+                if route:
+                    route.tired_profit = int(route.profit / max(route.city_tired, 1))
+                    plans.append(route)
 
     plans.sort(
         key=lambda route: routes_sort_key(
@@ -1583,6 +1642,7 @@ def summarize_routes(routes: RoutesModel, strategy: RouteStrategy = "general_pro
                 "last_not_wasting_restock": route.last_not_wasting_restock,
                 "score": route_score(route, strategy),
                 "goods": list(route.goods_data.keys()),
+                "purchase_candidates": [item.model_dump() for item in route.purchase_candidates],
                 "goods_detail": [
                     {
                         "name": name,

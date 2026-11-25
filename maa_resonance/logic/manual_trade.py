@@ -8,7 +8,7 @@ from typing import Any
 from .planner import RoutePlanOptions
 from .planner import WULINYUAN_CITY_NAME
 from .planner import WULINYUAN_TRADE_ENABLED
-from .planner import load_columba_baseline_market_data
+from .planner import load_trade_market_data
 from .planner import load_columba_trade_data
 from .planner import normalize_mixed_currency_priority
 from .planner import plan_two_city_routes
@@ -437,6 +437,7 @@ def _planner_options_from_account(
         strategy="general_profit_index",
         mixed_currency_priority="total",
         max_goods_num=max_goods_num,
+        max_restock=max(max_book_by_city.values()),
         prestige_by_city={normalize_city_name(str(k)): int(v) for k, v in prestige_by_city.items()},
         roles=roles,
         use_default_roles=False,
@@ -533,6 +534,13 @@ def _auto_planner_options_from_account(
     )
 
 
+def _orient_summary(summary: dict[str, Any], departure_city: str) -> None:
+    legs = summary["legs"]
+    if len(legs) == 2 and legs[1]["buy_city"] == departure_city:
+        legs.reverse()
+        summary["mode"] = "+".join(reversed(summary["mode"].split("+")))
+
+
 def _route_city_names(summary: dict[str, Any]) -> set[str]:
     cities: set[str] = set()
     for leg in summary.get("legs") or []:
@@ -548,6 +556,7 @@ def _route_city_names(summary: dict[str, Any]) -> set[str]:
 def calculate_auto_two_city_trade(
     *,
     uid: str = "",
+    departure_city: str = "",
     priority_cities: Any = None,
     exclude_cities: Any = None,
     max_restock: int = 6,
@@ -578,7 +587,7 @@ def calculate_auto_two_city_trade(
         account = build_default_account_config(uid)
     used_default_account = config_path is None
 
-    market = load_columba_baseline_market_data()
+    market = load_trade_market_data()
     options = _auto_planner_options_from_account(
         account,
         priority_cities=priority_city_set,
@@ -593,11 +602,13 @@ def calculate_auto_two_city_trade(
     if wulinyuan_enabled and WULINYUAN_CITY_NAME in available_cities:
         options.exclude_cities.discard(WULINYUAN_CITY_NAME)
     routes = plan_two_city_routes(market, options)
-    if priority_city_set:
+    departure_city = normalize_city_name(departure_city.strip())
+    required_cities = priority_city_set | ({departure_city} if departure_city else set())
+    if required_cities:
         routes = [
             route
             for route in routes
-            if priority_city_set.issubset({item.buy_city_name for item in route.city_data} | {item.sell_city_name for item in route.city_data})
+            if required_cities.issubset({leg.buy_city_name for leg in route.city_data})
         ]
     if not routes:
         raise RuntimeError("未能计算符合条件的自动双城跑商线路")
@@ -608,11 +619,13 @@ def calculate_auto_two_city_trade(
     if len(legs) < 2 or not isinstance(legs[0], dict) or not isinstance(legs[1], dict):
         raise RuntimeError("自动双城跑商规划结果不完整")
 
+    _orient_summary(summary, departure_city)
     start_city = normalize_city_name(str(legs[0].get("buy_city") or "").strip())
     target_city = normalize_city_name(str(legs[0].get("sell_city") or "").strip())
     result = {
         "version": 1,
         "mode": "auto",
+        "market": market.quote_details(),
         "updated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
         "uid": str(account.get("uid") or uid or ""),
         "account_config": str(config_path) if config_path else "",
@@ -683,7 +696,7 @@ def calculate_manual_two_city_trade(
     if target_raise_percent is None:
         target_raise_percent = 0 if target_haggle_percent is None else int(target_haggle_percent)
 
-    market = load_columba_baseline_market_data()
+    market = load_trade_market_data()
     options = _planner_options_from_account(
         account,
         start_city=start_city,
@@ -713,19 +726,10 @@ def calculate_manual_two_city_trade(
     # With directed_city_pairs/include_cities fixed, this is the best goods
     # selection for the requested pair rather than a city-route search result.
     summary = summarize_routes(route, options.strategy)
-    legs = summary.get("legs") if isinstance(summary.get("legs"), list) else []
-    if (
-        len(legs) == 2
-        and isinstance(legs[0], dict)
-        and isinstance(legs[1], dict)
-        and legs[0].get("buy_city") == target_city
-        and legs[0].get("sell_city") == start_city
-        and legs[1].get("buy_city") == start_city
-        and legs[1].get("sell_city") == target_city
-    ):
-        summary["legs"] = [legs[1], legs[0]]
+    _orient_summary(summary, start_city)
     result = {
         "version": 1,
+        "market": market.quote_details(),
         "updated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
         "uid": str(account.get("uid") or uid or ""),
         "account_config": str(config_path) if config_path else "",

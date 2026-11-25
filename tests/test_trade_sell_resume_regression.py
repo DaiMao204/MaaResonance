@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import ast
+import time
+import traceback
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -25,6 +27,12 @@ def _load_trade_actions(state: dict) -> dict:
         "_manual_two_city_clear_existing_cargo_limit",
         "_manual_two_city_clear_buy_selection_state",
         "_manual_two_city_texts_contain",
+        "_manual_two_city_refresh_market_before_buy",
+        "_manual_two_city_recalculate_at_station",
+        "_manual_two_city_calculate_params_from_state",
+        "_manual_two_city_current_task_entry",
+        "_manual_two_city_log_label",
+        "_manual_two_city_endpoint_cities",
         "ManualTwoCityBusinessAfterDrinkReturnCityAction",
         "ManualTwoCityBusinessCurrentCityReadyAction",
         "ManualTwoCityBusinessAfterSellAction",
@@ -32,6 +40,8 @@ def _load_trade_actions(state: dict) -> dict:
     }
     constants = {
         "MANUAL_TWO_CITY_TASK_ENTRY",
+        "AUTO_TWO_CITY_TASK_ENTRY",
+        "MANUAL_TWO_CITY_TERMINAL_FAILED",
         "MANUAL_TWO_CITY_RUN_MODE_ONE_ROUND",
         "MANUAL_TWO_CITY_RUN_MODE_UNTIL_FATIGUE_EXHAUSTED",
         "MANUAL_TWO_CITY_TERMINAL_ONE_ROUND_COMPLETE",
@@ -45,6 +55,12 @@ def _load_trade_actions(state: dict) -> dict:
     namespace = {
         "CustomAction": object,
         "_manual_two_city_state": lambda: state,
+        "time": time,
+        "traceback": traceback,
+        "_trade_wulinyuan_enabled": lambda state: True,
+        "calculate_manual_two_city_trade": lambda **params: state["result"],
+        "save_manual_two_city_result": Mock(),
+        "_trade_market_log_suffix": lambda result: "",
         "_argv_param": lambda argv: argv.params,
         "_ocr_texts": lambda argv: argv.texts,
         "_ocr_entries": lambda argv: [],
@@ -88,7 +104,10 @@ class TradeSellResumeRegressionTest(unittest.TestCase):
         self.old_marker = "1|0|岚心城|海角城"
         self.old_usage = {"marker": self.old_marker, "attempted": True, "requested": 3, "used": 3}
         self.state = {
-            "result": {"summary": {"legs": self.legs}},
+            "result": {
+                "start_city": "岚心城", "target_city": "海角城", "summary": {"legs": self.legs},
+                "market": {"source": "live", "refresh_time": int(time.time()), "interval": 600},
+            },
             "run_mode": "until_fatigue_exhausted",
             "completed_rounds": 1,
             "active_leg_index": 1,

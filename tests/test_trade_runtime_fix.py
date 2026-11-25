@@ -1046,7 +1046,7 @@ class TradeRuntimeFixTest(unittest.TestCase):
                 )
             )
             recalculate = stack.enter_context(
-                patch.object(trade, "_manual_two_city_recalculate_after_product_scan", return_value=True)
+                patch.object(trade, "_manual_two_city_recalculate_at_station", return_value=True)
             )
             stack.enter_context(patch.object(trade, "_append_user_log"))
             stack.enter_context(patch.object(trade, "_json_payload"))
@@ -1063,7 +1063,7 @@ class TradeRuntimeFixTest(unittest.TestCase):
         )
         self.assertIn("岚心城", state["product_scan_completed_cities"])
         self.assertFalse(state["product_scan_retry_missing_trade_fields"]["needed"])
-        recalculate.assert_called_once_with("岚心城")
+        recalculate.assert_called_once_with("岚心城", reason="商品状态扫描")
 
     def test_cargo_load_ocr_excludes_haggle_and_retries_until_stable(self) -> None:
         compact_entries = [

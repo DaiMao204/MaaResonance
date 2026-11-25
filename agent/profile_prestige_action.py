@@ -2997,6 +2997,15 @@ class ProfileCityUnlockCompleteAction(CustomAction):
         return True
 
 
+def _trade_market_log_suffix(result: dict[str, Any]) -> str:
+    market = result.get("market") or {}
+    if not market.get("refresh_time"):
+        return ""
+    stamp = time.strftime("%m-%d %H:%M", time.localtime(market["refresh_time"]))
+    source = "本地缓存" if market["source"] == "cache" else "国服接口"
+    return f" 行情来自{source}（{stamp}）。"
+
+
 @AgentServer.custom_action("manual_two_city_business_calculate")
 class ManualTwoCityBusinessCalculateAction(CustomAction):
     def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
@@ -3107,7 +3116,7 @@ class ManualTwoCityBusinessCalculateAction(CustomAction):
                 MANUAL_TWO_CITY_TASK_ENTRY,
                 (
                     f"手动双城预期收益：利润 {profit}，参考利润 {reference_profit}，"
-                    f"疲劳 {tired}，进货书 {restock}"
+                    f"疲劳 {tired}，进货书 {restock}。{_trade_market_log_suffix(result)}"
                 ),
                 run_id=run_id,
                 event="manual_two_city_business_calculated",
@@ -3271,7 +3280,7 @@ class AutoTwoCityBusinessCalculateAction(CustomAction):
                 (
                     f"自动双城规划完成：{result.get('start_city')} <-> {result.get('target_city')}，"
                     f"利润 {summary.get('profit')}，参考利润 {summary.get('reference_profit')}，"
-                    f"疲劳 {summary.get('tired')}，进货书 {summary.get('restock')}。"
+                    f"疲劳 {summary.get('tired')}，进货书 {summary.get('restock')}。{_trade_market_log_suffix(result)}"
                 ),
                 run_id=run_id,
                 event="auto_two_city_business_calculated",
@@ -4423,7 +4432,7 @@ def _manual_two_city_recalculate_after_account_profile(*, allow_default_account:
             (
                 f"已按当前账号配置重算{task_label}收益："
                 f"利润 {summary.get('profit')}，参考利润 {summary.get('reference_profit')}，"
-                f"疲劳 {summary.get('tired')}，耗时 {elapsed_ms}ms。"
+                f"疲劳 {summary.get('tired')}，耗时 {elapsed_ms}ms。{_trade_market_log_suffix(new_result)}"
             ),
             run_id=str(state.get("run_id") or ""),
             event="manual_two_city_account_profile_recalculated",
@@ -7433,7 +7442,6 @@ def _manual_two_city_quick_buy_selection_plan(
         return {"ok": False, "reason": "invalid_leg"}
     buy_city = normalize_city_name(str(leg.get("buy_city") or "").strip())
     planned_goods = [str(item) for item in (leg.get("goods") or []) if str(item).strip()]
-    planned_set = set(planned_goods)
     if not buy_city or len(planned_goods) < 2:
         return {"ok": False, "reason": "not_enough_planned_goods", "buy_city": buy_city, "planned_goods": planned_goods}
     if not isinstance(cargo_load, dict):
@@ -7458,10 +7466,10 @@ def _manual_two_city_quick_buy_selection_plan(
             "capacity": capacity,
             "remaining_capacity": remaining_capacity,
         }
-    if planned_total / remaining_capacity < POST_BUY_CARGO_VERIFY_PLANNED_RATIO:
+    if planned_total != remaining_capacity:
         return {
             "ok": False,
-            "reason": "planned_not_near_remaining_full",
+            "reason": "planned_total_differs_from_remaining_capacity",
             "planned_total": planned_total,
             "capacity": capacity,
             "used": used,
@@ -7476,15 +7484,23 @@ def _manual_two_city_quick_buy_selection_plan(
     positions = sorted(order_index[good] for good in planned_goods)
     start, end = positions[0], positions[-1]
     block_goods = ordered_goods[start : end + 1]
-    if len(block_goods) != len(planned_set) or set(block_goods) != planned_set:
+    if block_goods != planned_goods:
         return {
             "ok": False,
-            "reason": "planned_goods_not_contiguous",
+            "reason": "trade_order_differs_from_plan",
             "planned_goods": planned_goods,
             "block_goods": block_goods,
         }
 
     status_by_good = _manual_two_city_product_status_for_city(buy_city)
+    if "purchase_candidates" in leg:
+        ranked = [item["name"] for item in leg["purchase_candidates"]]
+        buyable = [
+            good for good in ordered_goods
+            if status_by_good.get(good) not in {PRODUCT_STATUS_LOCKED, PRODUCT_STATUS_MISSING}
+        ]
+        if buyable != [good for good in ranked if good in buyable]:
+            return {"ok": False, "reason": "unpriced_or_out_of_order_stock"}
     unsafe_before = [
         good
         for good in ordered_goods[:start]
@@ -7527,10 +7543,10 @@ def _manual_two_city_quick_buy_selection_plan(
         for good in block_goods
         if 0 < planned_loads.get(good, 0) < available_lots.get(good, 0)
     ]
-    if len(partial_goods) > 1:
+    if partial_goods and partial_goods != [block_tail_good]:
         return {
             "ok": False,
-            "reason": "multiple_partial_goods",
+            "reason": "partial_good_not_at_end",
             "partial_goods": partial_goods,
             "block_tail_good": block_tail_good,
             "planned_loads": planned_loads,
@@ -7577,6 +7593,47 @@ def _manual_two_city_quick_buy_selection_plan(
         "partial_goods": partial_goods,
         "available_detail": available_detail,
     }
+
+
+def _manual_two_city_quoted_restock(state: dict[str, Any]) -> bool:
+    market = (state.get("result") or {}).get("market") or {}
+    limited = state.get("buy_selection_skip_restock_quick_buy") or state.get("buy_selection_had_cargo")
+    return bool(limited) and market.get("source") in {"live", "cache"}
+
+
+def _manual_two_city_market_stock_plan(
+    state: dict[str, Any], leg: dict[str, Any], cargo: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    remaining = _manual_two_city_cargo_remaining_capacity(cargo)
+    if remaining is None or remaining <= 0:
+        return None
+    usage = _manual_two_city_buy_book_usage(state, leg)
+    books = max(0, int(usage.get("used") or 0))
+    lots = {
+        item["name"]: min(remaining, int(item["base_lot"]) * (1 + books))
+        for item in leg.get("purchase_candidates") or []
+        if item.get("name") and item.get("single_profit", 0) > 0 and item.get("base_lot", 0) > 0
+    }
+    if not lots:
+        return None
+    return {
+        "lots": lots,
+        "restock": books,
+        "initial_used": int(cargo["used"]),
+        "capacity": int(cargo["capacity"]),
+        "expected_load": min(remaining, sum(lots.values())),
+        "unseen_goods": [],
+    }
+
+
+def _manual_two_city_market_load_verified(state: dict[str, Any], cargo: dict[str, Any] | None) -> bool:
+    plan = state.get("buy_selection_market_stock") or {}
+    actual = sum(_manual_two_city_selected_buy_actual_loads(state).values())
+    return bool(
+        plan and cargo and actual > 0
+        and int(cargo["capacity"]) == plan["capacity"]
+        and int(cargo["used"]) == plan["initial_used"] + actual
+    )
 
 
 def _manual_two_city_cargo_load_full(cargo_load: dict[str, Any] | None) -> bool:
@@ -9934,6 +9991,12 @@ def _manual_two_city_clear_buy_selection_state(state: dict[str, Any]) -> None:
         "buy_selection_last_cargo_load",
         "buy_selection_verified_cargo_load",
         "buy_selection_quick_all_buy",
+        "buy_selection_deferred_goods",
+        "buy_selection_scan_start_count",
+        "buy_selection_resume_priority_scan",
+        "buy_selection_market_stock",
+        "buy_selection_market_stock_error",
+        "buy_selection_had_cargo",
         "buy_selection_replan_pending",
         "buy_selection_replan_city",
         "buy_selection_replan_missing",
@@ -11700,7 +11763,7 @@ class ManualTwoCityBusinessUseBuyBooksAction(CustomAction):
                 MANUAL_TWO_CITY_TASK_ENTRY,
                 (
                     "进货书：货仓已有大量本地货，使用进货书后的可买载量预计低于计划 50%，"
-                    "本段跳过进货书并改用右上角全部买入补货。"
+                    "本段跳过进货书，按剩余仓位补货。"
                 ),
                 level="warning",
                 event="manual_two_city_buy_books_skipped_existing_cargo_limit",
@@ -11976,7 +12039,7 @@ class ManualTwoCityBusinessUseBuyBooksAction(CustomAction):
             MANUAL_TWO_CITY_TASK_ENTRY,
             (
                 f"进货书：实际使用 {used_total}/{requested_total} 本。"
-                + (" 进货书不足，本段改用右上角全部买入，按实际库存补货。" if book_shortfall else "继续选择计划商品。")
+                + (" 进货书不足，本段按实际库存补货。" if book_shortfall else "继续选择计划商品。")
             ),
             level="warning" if used_total < requested_total else "info",
             event="manual_two_city_buy_books_done",
@@ -12207,6 +12270,31 @@ class ManualTwoCityBusinessApplyBuyHaggleAction(CustomAction):
         return True
 
 
+def _manual_two_city_refresh_market_before_buy(state: dict[str, Any], city: str) -> bool:
+    if state.get("market_replan_failed"):
+        return False
+    result = state.get("result") or {}
+    market = result.get("market") or {}
+    now = time.time()
+    refresh_time = int(market.get("refresh_time") or 0)
+    interval = int(market.get("interval") or 0)
+    if refresh_time > 0 and interval > 0 and now < refresh_time + interval:
+        return True
+    if now < state.get("market_retry_after", 0):
+        return True
+    if city and city not in _manual_two_city_endpoint_cities():
+        # The initial transfer gets the train to a route endpoint first.
+        return True
+    return _manual_two_city_recalculate_at_station(city, reason="买入前行情刷新")
+
+
+@AgentServer.custom_recognition("manual_two_city_business_market_replan_failed")
+class ManualTwoCityBusinessMarketReplanFailedRecognition(CustomRecognition):
+    def analyze(self, context: Context, argv: CustomRecognition.AnalyzeArg) -> CustomRecognition.AnalyzeResult:
+        failed = bool(_manual_two_city_state().get("market_replan_failed"))
+        return CustomRecognition.AnalyzeResult(box=(0, 0, 1, 1) if failed else None, detail={"ok": failed})
+
+
 @AgentServer.custom_action("manual_two_city_business_buy_page_ready")
 class ManualTwoCityBusinessBuyPageReadyAction(CustomAction):
     def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
@@ -12247,6 +12335,10 @@ class ManualTwoCityBusinessBuyPageReadyAction(CustomAction):
         if current_city:
             state["current_city"] = current_city
         leg = _manual_two_city_set_active_leg_by_city(current_city) if current_city else _manual_two_city_active_leg()
+        buy_city = current_city or state.get("current_city") or ""
+        if not _manual_two_city_refresh_market_before_buy(state, buy_city):
+            return False
+        leg = _manual_two_city_active_leg()
         planned_goods = [str(item) for item in (leg.get("goods") or []) if str(item).strip()]
         stale_selected = [str(item) for item in (state.get("selected_buy_goods") or []) if str(item).strip()]
         ui_selection_visible = _manual_two_city_texts_contain(texts, ["全部取消"])
@@ -12278,6 +12370,7 @@ class ManualTwoCityBusinessBuyPageReadyAction(CustomAction):
             )
         _manual_two_city_clear_buy_selection_state(state)
         cargo_load, cargo_probe_texts, cargo_probe_used = _manual_two_city_read_buy_page_cargo_load(context, entries)
+        state["buy_selection_had_cargo"] = bool(cargo_load and cargo_load["used"] > 0)
         cleanup_signature = None
         existing_cargo_limit = False
         if cargo_load is not None:
@@ -12364,7 +12457,7 @@ class ManualTwoCityBusinessBuyPageReadyAction(CustomAction):
                             f"剩余可买载量 {restock_loss.get('effective_buy_capacity')}/"
                             f"{restock_loss.get('planned_total')}，"
                             f"预计收益折损 {float(restock_loss.get('loss_ratio') or 0):.1%}，"
-                            "本段将跳过进货书并直接全部买入。"
+                            "本段将跳过进货书，按剩余仓位补货。"
                         ),
                         level="warning",
                         event="manual_two_city_pre_buy_cleanup_skip_restock_due_existing_cargo",
@@ -13244,34 +13337,45 @@ class ManualTwoCityBusinessProductScanPrepareAction(CustomAction):
         return True
 
 
-def _manual_two_city_recalculate_after_product_scan(city_name: Any) -> bool:
+def _manual_two_city_recalculate_at_station(
+    city_name: Any, *, reason: str, new_round: bool = False,
+) -> bool:
     state = _manual_two_city_state()
     task_entry = _manual_two_city_current_task_entry(state)
     task_label = _manual_two_city_log_label(state)
-    params = dict(state.get("manual_params") or {})
-    result = state.get("result") if isinstance(state.get("result"), dict) else {}
-    if not params:
-        params = {
-            "start_city": result.get("start_city"),
-            "target_city": result.get("target_city"),
-            "uid": result.get("uid"),
-            "start_book": result.get("start_book", 0),
-            "target_book": result.get("target_book", 0),
-            "start_bargain_percent": result.get("start_bargain_percent", result.get("start_haggle_percent", 0)),
-            "start_raise_percent": result.get("start_raise_percent", result.get("start_haggle_percent", 0)),
-            "target_bargain_percent": result.get("target_bargain_percent", result.get("target_haggle_percent", 0)),
-            "target_raise_percent": result.get("target_raise_percent", result.get("target_haggle_percent", 0)),
-        }
+    params = _manual_two_city_calculate_params_from_state()
+    result = state.get("result") or {}
     city = normalize_city_name(str(city_name or "").strip())
     try:
+        if not city:
+            raise ValueError("无法确认本段买入城市")
         transient_status = state.get("transient_product_status_by_city")
-        if state.get("auto_route_enabled"):
+        can_choose_route = new_round or (
+            not state.get("active_leg_index") and not _manual_two_city_buy_book_usage(state).get("attempted")
+        )
+        choose_route = state.get("auto_route_enabled") and can_choose_route
+        if choose_route:
             params = dict(state.get("auto_route_params") or {})
             params["wulinyuan_enabled"] = _trade_wulinyuan_enabled(state)
-            if isinstance(transient_status, dict) and transient_status:
-                params["transient_product_status_by_city"] = transient_status
-            params["allow_default_account"] = True
+            params["departure_city"] = city
+        if isinstance(transient_status, dict) and transient_status:
+            params["transient_product_status_by_city"] = transient_status
+        params["require_uid"] = True
+        params["allow_default_account"] = True
+        if choose_route:
             new_result = calculate_auto_two_city_trade(**params)
+        else:
+            # Keep this round's destination, book allocation and haggle settings
+            # after its outbound leg or its first book has already been used.
+            new_result = calculate_manual_two_city_trade(**params)
+            if state.get("auto_route_enabled"):
+                new_result = {**result, **new_result, "mode": "auto"}
+        legs = (new_result.get("summary") or {}).get("legs") or []
+        active_index = next((i for i, leg in enumerate(legs) if leg.get("buy_city") == city), -1)
+        if active_index < 0 or (choose_route and active_index != 0):
+            raise ValueError(f"规划结果缺少从 {city} 出发的有效路段")
+        output_path = save_manual_two_city_result(new_result, task_entry=task_entry)
+        if choose_route:
             state["manual_params"] = {
                 "start_city": new_result.get("start_city"),
                 "target_city": new_result.get("target_city"),
@@ -13284,29 +13388,26 @@ def _manual_two_city_recalculate_after_product_scan(city_name: Any) -> bool:
                 "target_raise_percent": new_result.get("target_raise_percent", 0),
                 "wulinyuan_enabled": params.get("wulinyuan_enabled"),
             }
-        else:
-            if isinstance(transient_status, dict) and transient_status:
-                params["transient_product_status_by_city"] = transient_status
-            params["allow_default_account"] = True
-            new_result = calculate_manual_two_city_trade(**params)
         state["result"] = new_result
         state["manual_start_city"] = new_result.get("start_city")
         state["manual_target_city"] = new_result.get("target_city")
         state["selected_buy_goods"] = []
-        legs = (new_result.get("summary") or {}).get("legs") or []
-        active_index = 0
-        for index, leg in enumerate(legs):
-            if isinstance(leg, dict) and str(leg.get("buy_city") or "").strip() == city:
-                active_index = index
-                break
         state["active_leg_index"] = active_index
-        output_path = save_manual_two_city_result(new_result, task_entry=task_entry)
+        market = new_result.get("market") or {}
+        now = time.time()
+        # The API can still return the previous period shortly after the clock
+        # ticks over. A repeated UI recovery must not poll it on every frame.
+        if now >= int(market.get("refresh_time") or 0) + int(market.get("interval") or 0):
+            state["market_retry_after"] = now + 60
+        else:
+            state.pop("market_retry_after", None)
         summary = new_result.get("summary") or {}
         _append_user_log(
             task_entry,
             (
-                f"{city or '当前城市'} 商品状态扫描后已重新计算{task_label}收益："
+                f"{city} {reason}后已重新计算{task_label}收益："
                 f"利润 {summary.get('profit')}，参考利润 {summary.get('reference_profit')}。"
+                f"{_trade_market_log_suffix(new_result)}"
             ),
             run_id=str(state.get("run_id") or ""),
             event="manual_two_city_business_recalculated_after_product_scan",
@@ -13332,9 +13433,12 @@ def _manual_two_city_recalculate_after_product_scan(city_name: Any) -> bool:
                 )
         return True
     except Exception as exc:
+        state["market_replan_failed"] = True
+        state["terminal_status"] = MANUAL_TWO_CITY_TERMINAL_FAILED
+        state["terminal_reason"] = f"{city or '当前城市'} {reason}后无法规划：{exc}"
         _append_user_log(
             task_entry,
-            f"{city or '当前城市'} 商品状态扫描后重算{task_label}失败：{type(exc).__name__}: {exc}",
+            f"{city or '当前城市'} {reason}后重算{task_label}失败：{type(exc).__name__}: {exc}",
             run_id=str(state.get("run_id") or ""),
             level="error",
             event="manual_two_city_business_recalculate_after_product_scan_failed",
@@ -14046,7 +14150,7 @@ class ManualTwoCityBusinessProductScanCompleteAction(CustomAction):
                 },
             )
             return False
-        ok = _manual_two_city_recalculate_after_product_scan(city)
+        ok = _manual_two_city_recalculate_at_station(city, reason="商品状态扫描")
         _json_payload(
             "manual_two_city_business_product_scan_complete",
             {
@@ -14921,6 +15025,10 @@ class ManualTwoCityBusinessStrengthRecoveryResumeAction(CustomAction):
 class ManualTwoCityBusinessQuickBuySelectionAction(CustomAction):
     def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
         state = _manual_two_city_state()
+        # The planned stock no longer applies. A full cart alone cannot verify
+        # which goods the shop picked. Read the individual load increments.
+        if _manual_two_city_quoted_restock(state):
+            return False
         entries = _ocr_entries(argv)
         leg = _manual_two_city_set_active_leg_by_visible_goods(entries)
         cargo_load, cargo_texts = _manual_two_city_probe_buy_page_cargo_load(
@@ -14978,7 +15086,6 @@ class ManualTwoCityBusinessQuickBuySelectionAction(CustomAction):
                 roi=BUY_CART_SELECTED_ROI,
             )
             selected = selected_delta > 0 or cancel_hit or _manual_two_city_cargo_load_full(after_cargo)
-            planned_goods = [str(item) for item in (leg.get("goods") or []) if str(item).strip()]
             if not selected:
                 state["selected_buy_goods"] = []
                 state["selected_buy_goods_actual_load"] = {}
@@ -15014,8 +15121,8 @@ class ManualTwoCityBusinessQuickBuySelectionAction(CustomAction):
                 )
                 return False
 
-            state["selected_buy_goods"] = list(planned_goods)
-            state["selected_buy_goods_actual_load"] = {"__skip_restock_quick_buy__": selected_delta} if selected_delta > 0 else {}
+            state["selected_buy_goods"] = []
+            state["selected_buy_goods_actual_load"] = {}
             state["buy_selection_locked_goods"] = []
             state["buy_selection_no_delta_goods"] = []
             state["buy_selection_capacity_limited_goods"] = []
@@ -15174,14 +15281,8 @@ class ManualTwoCityBusinessQuickBuySelectionAction(CustomAction):
             return False
 
         state.pop("buy_selection_quick_cancel_failed", None)
-        planned_goods = [str(item) for item in (plan.get("planned_goods") or []) if str(item).strip()]
-        planned_loads = {
-            str(good): int(load)
-            for good, load in (plan.get("planned_loads") or {}).items()
-            if str(good).strip()
-        }
-        state["selected_buy_goods"] = list(planned_goods)
-        state["selected_buy_goods_actual_load"] = planned_loads
+        state["selected_buy_goods"] = []
+        state["selected_buy_goods_actual_load"] = {}
         state["buy_selection_locked_goods"] = []
         state["buy_selection_no_delta_goods"] = []
         state["buy_selection_capacity_limited_goods"] = []
@@ -15242,7 +15343,6 @@ class ManualTwoCityBusinessSelectBuyGoodsAction(CustomAction):
         planned_goods = [str(item) for item in (leg.get("goods") or []) if str(item).strip()]
         locked_config_goods = _manual_two_city_configured_locked_goods(buy_city)
         locked_config_set = set(locked_config_goods)
-        scan_targets = list(dict.fromkeys(planned_goods + locked_config_goods))
         if page_index <= 1 and state.get("buy_selection_quick_cancel_failed"):
             failure = state.get("buy_selection_quick_cancel_failed")
             _append_user_log(
@@ -15263,6 +15363,9 @@ class ManualTwoCityBusinessSelectBuyGoodsAction(CustomAction):
             if str(item).strip()
         }
         if page_index <= 1:
+            state["buy_selection_deferred_goods"] = []
+        new_selection = page_index <= 1 and not state.pop("buy_selection_resume_priority_scan", False)
+        if new_selection:
             selected = set()
             state["selected_buy_goods"] = []
             state["buy_selection_locked_goods"] = []
@@ -15272,6 +15375,14 @@ class ManualTwoCityBusinessSelectBuyGoodsAction(CustomAction):
             state["selected_buy_goods_actual_load"] = {}
             state["buy_selection_full_cargo"] = False
             state.pop("buy_selection_last_cargo_load", None)
+            state.pop("buy_selection_quick_all_buy", None)
+            state.pop("buy_selection_market_stock", None)
+            state.pop("buy_selection_market_stock_error", None)
+            if _manual_two_city_quoted_restock(state):
+                cleared, _ = _manual_two_city_clear_top_all_buy_selection(context, "ManualTwoCityMarketStockClear")
+                if not cleared:
+                    state["buy_selection_market_stock_error"] = "未能确认已清空原有选择"
+                    return True
         cumulative_locked = {
             str(item)
             for item in (state.get("buy_selection_locked_goods") or [])
@@ -15287,14 +15398,40 @@ class ManualTwoCityBusinessSelectBuyGoodsAction(CustomAction):
             for item in (state.get("buy_selection_capacity_limited_goods") or [])
             if str(item).strip()
         }
+        deferred_goods = set(state.get("buy_selection_deferred_goods") or [])
         actual_loads = _manual_two_city_selected_buy_actual_loads(state)
         planned_loads = _manual_two_city_planned_goods_loads(leg)
-        planned_index = {good: index for index, good in enumerate(planned_goods)}
-        restore_index = {good: len(planned_goods) + index for index, good in enumerate(locked_config_goods)}
         cargo_load, cargo_texts = _manual_two_city_probe_buy_page_cargo_load(
             context,
             f"ManualTwoCityBuySelectionCargoBeforePage{page_index:03d}",
         )
+        market_stock = state.get("buy_selection_market_stock")
+        if _manual_two_city_quoted_restock(state):
+            if new_selection:
+                market_stock = _manual_two_city_market_stock_plan(state, leg, cargo_load)
+                state["buy_selection_market_stock"] = market_stock
+                if market_stock:
+                    _append_user_log(
+                        MANUAL_TWO_CITY_TASK_ENTRY,
+                        f"按行情补货：实际使用 {market_stock['restock']} 本进货书，剩余仓位 "
+                        f"{market_stock['capacity'] - market_stock['initial_used']}，"
+                        f"购买顺序为{'、'.join(market_stock['lots'])}。",
+                        event="manual_two_city_market_stock_plan", data=market_stock,
+                    )
+            if not market_stock or not cargo_load or (
+                cargo_load["capacity"] != market_stock["capacity"]
+                or cargo_load["used"] != market_stock["initial_used"] + sum(actual_loads.values())
+            ):
+                state["buy_selection_market_stock_error"] = "可买商品或当前仓位无法确认"
+                return True
+            planned_loads = market_stock["lots"]
+            planned_goods = list(planned_loads)
+        unseen = set(market_stock["unseen_goods"]) if market_stock else set()
+        if page_index <= 1:
+            state["buy_selection_scan_start_count"] = len(selected | cumulative_locked | cumulative_no_delta | unseen)
+        planned_index = {good: index for index, good in enumerate(planned_goods)}
+        restore_index = {good: len(planned_goods) + index for index, good in enumerate(locked_config_goods)}
+        scan_targets = list(dict.fromkeys(planned_goods + locked_config_goods))
         if cargo_load is not None:
             state["buy_selection_last_cargo_load"] = cargo_load
         cargo_full = _manual_two_city_cargo_load_full(cargo_load)
@@ -15314,6 +15451,8 @@ class ManualTwoCityBusinessSelectBuyGoodsAction(CustomAction):
             is_restore_target = good in locked_config_set
             if is_planned and good in selected:
                 continue
+            if market_stock and good in cumulative_no_delta:
+                continue
             if not is_planned and not is_restore_target:
                 continue
             x = int(float(entry.get("center_x") or 0))
@@ -15324,6 +15463,7 @@ class ManualTwoCityBusinessSelectBuyGoodsAction(CustomAction):
             if good in seen_page_goods:
                 continue
             seen_page_goods.add(good)
+            unseen.discard(good)
             visible_entries.append((planned_index.get(good, restore_index.get(good, 9999)), float(y), float(x), entry, good, row_texts))
 
         for _planned_order, _y, _x, entry, good, row_texts in sorted(visible_entries):
@@ -15375,6 +15515,14 @@ class ManualTwoCityBusinessSelectBuyGoodsAction(CustomAction):
                         data={"city": buy_city, "good": good, "result": restore_result, "texts": row_texts[:20]},
                     )
                     continue
+                # Earlier pages may contain the last, partially purchased product.
+                # Keep the space for higher-margin goods until they have been tried.
+                if any(
+                    name not in selected and name not in cumulative_locked and name not in cumulative_no_delta and name not in unseen
+                    for name in planned_goods[:planned_index[good]]
+                ):
+                    deferred_goods.add(good)
+                    continue
                 remaining_capacity = _manual_two_city_cargo_remaining_capacity(cargo_load)
                 expected_load = planned_loads.get(good)
                 pre_click_capacity_limited = (
@@ -15418,10 +15566,13 @@ class ManualTwoCityBusinessSelectBuyGoodsAction(CustomAction):
                     _manual_two_city_close_product_detail_if_needed(context)
                     continue
 
-                after_cargo, after_cargo_texts = _manual_two_city_probe_buy_page_cargo_load(
-                    context,
-                    f"ManualTwoCityBuySelectionCargoAfter{page_index:03d}_{len(clicked) + len(no_delta) + 1:03d}",
-                )
+                probe_name = f"ManualTwoCityBuySelectionCargoAfter{page_index:03d}_{len(clicked) + len(no_delta) + 1:03d}"
+                if market_stock:
+                    after_cargo, after_cargo_texts, _ = _manual_two_city_probe_buy_page_cargo_load_with_retry(
+                        context, probe_name, expected_capacity=market_stock["capacity"], minimum_used=before_used + 1,
+                    )
+                else:
+                    after_cargo, after_cargo_texts = _manual_two_city_probe_buy_page_cargo_load(context, probe_name)
                 if after_cargo is not None:
                     state["buy_selection_last_cargo_load"] = after_cargo
                 cargo_delta = None
@@ -15430,6 +15581,9 @@ class ManualTwoCityBusinessSelectBuyGoodsAction(CustomAction):
                         cargo_delta = int(after_cargo.get("used") or 0) - before_used
                     except (TypeError, ValueError):
                         cargo_delta = None
+                if market_stock and (cargo_delta is None or cargo_delta < 0 or after_cargo["capacity"] != market_stock["capacity"]):
+                    state["buy_selection_market_stock_error"] = f"{good} 点击后的载量变化无法确认"
+                    return True
                 if cargo_delta is not None and cargo_delta <= 0:
                     no_delta.append(good)
                     cumulative_no_delta.add(good)
@@ -15523,13 +15677,19 @@ class ManualTwoCityBusinessSelectBuyGoodsAction(CustomAction):
                     data={"good": good, "entry": entry},
                 )
 
-        state["selected_buy_goods"] = list(selected)
+        state["selected_buy_goods"] = [good for good in planned_goods if good in selected]
+        state["buy_selection_deferred_goods"] = [good for good in planned_goods if good in deferred_goods]
         state["buy_selection_locked_goods"] = sorted(cumulative_locked)
         state["buy_selection_no_delta_goods"] = sorted(cumulative_no_delta)
         state["buy_selection_capacity_limited_goods"] = sorted(cumulative_capacity_limited)
         state["selected_buy_goods_actual_load"] = actual_loads
         if cargo_load is not None:
             state["buy_selection_last_cargo_load"] = cargo_load
+        attempted = selected | cumulative_locked | cumulative_no_delta
+        if market_stock:
+            if page_index >= 4 and (attempted or deferred_goods):
+                unseen.update(set(planned_goods) - attempted - deferred_goods)
+            market_stock["unseen_goods"] = sorted(unseen)
         missing = [good for good in planned_goods if good not in selected and good not in cumulative_locked]
         remaining_blocks_missing = _manual_two_city_cargo_blocks_missing_goods(
             leg,
@@ -15547,7 +15707,7 @@ class ManualTwoCityBusinessSelectBuyGoodsAction(CustomAction):
         config_missing = [good for good in missing if good not in cumulative_no_delta]
         restore_replan = bool(restored) and not cargo_full
         planned_locked = [good for good in cumulative_locked if good in planned_goods]
-        needs_replan = restore_replan or bool(planned_locked and page_index >= 4 and not cargo_full)
+        needs_replan = restore_replan or bool(planned_locked and page_index >= 4 and not cargo_full and not market_stock)
         if needs_replan:
             _manual_two_city_mark_buy_selection_replan_needed(
                 state,
@@ -15604,6 +15764,11 @@ class ManualTwoCityBusinessSelectBuyGoodsAction(CustomAction):
             or (cargo_full and bool(selected))
             or (capacity_limited_selection and (bool(selected) or existing_cargo_used > 0))
         )
+        if market_stock:
+            selection_ok = bool(selected) and (
+                _manual_two_city_cargo_load_full(cargo_load)
+                or set(planned_goods).issubset(attempted | unseen)
+            )
         _json_payload(
             "manual_two_city_business_select_buy_goods",
             {
@@ -15631,11 +15796,43 @@ class ManualTwoCityBusinessSelectBuyGoodsAction(CustomAction):
         return selection_ok
 
 
+@AgentServer.custom_action("manual_two_city_business_resume_buy_priority_scan")
+class ManualTwoCityBusinessResumeBuyPriorityScanAction(CustomAction):
+    def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
+        state = _manual_two_city_state()
+        if state.get("buy_selection_replan_pending"):
+            return False
+        leg = _manual_two_city_active_leg()
+        attempted = set(state.get("selected_buy_goods") or [])
+        attempted.update(state.get("buy_selection_locked_goods") or [])
+        attempted.update(state.get("buy_selection_no_delta_goods") or [])
+        market_stock = state.get("buy_selection_market_stock") or {}
+        attempted.update(market_stock.get("unseen_goods") or [])
+        ranked = market_stock.get("lots") or leg.get("goods") or []
+        next_good = next((good for good in ranked if good not in attempted), None)
+        if next_good not in (state.get("buy_selection_deferred_goods") or []):
+            return False
+        if len(attempted) <= state.get("buy_selection_scan_start_count", 0):
+            return False
+        # Reverse the three scrolls in a complete four-page scan. The next
+        # recognition reads fresh positions while keeping the existing cart.
+        for _ in range(3):
+            _manual_two_city_swipe(context, (690, 210), (690, 560), duration=600, delay=0.65)
+        state["buy_selection_resume_priority_scan"] = True
+        return True
+
+
 @AgentServer.custom_action("manual_two_city_business_confirm_buy_selection")
 class ManualTwoCityBusinessConfirmBuySelectionAction(CustomAction):
     def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
         state = _manual_two_city_state()
         leg = _manual_two_city_active_leg()
+        if state.get("buy_selection_market_stock_error"):
+            _append_user_log(
+                MANUAL_TWO_CITY_TASK_ENTRY, f"按行情补货失败：{state['buy_selection_market_stock_error']}。",
+                level="error", event="manual_two_city_market_stock_unconfirmed",
+            )
+            return False
         quick_cancel_failure = state.pop("buy_selection_quick_cancel_failed", None)
         if quick_cancel_failure:
             _append_user_log(
@@ -15654,6 +15851,10 @@ class ManualTwoCityBusinessConfirmBuySelectionAction(CustomAction):
         selected = [str(item) for item in (state.get("selected_buy_goods") or []) if str(item).strip()]
         actual_loads = _manual_two_city_selected_buy_actual_loads(state)
         planned_total = _manual_two_city_planned_goods_total(leg)
+        market_stock = state.get("buy_selection_market_stock")
+        if market_stock:
+            planned_goods = list(market_stock["lots"])
+            planned_total = market_stock["expected_load"]
         if state.get("buy_selection_replan_pending"):
             _append_user_log(
                 MANUAL_TWO_CITY_TASK_ENTRY,
@@ -15686,7 +15887,8 @@ class ManualTwoCityBusinessConfirmBuySelectionAction(CustomAction):
         )
         if cargo_load is None and isinstance(state.get("buy_selection_last_cargo_load"), dict):
             cargo_load = dict(state.get("buy_selection_last_cargo_load") or {})
-        if not selected:
+        bulk_selected = bool((state.get("buy_selection_quick_all_buy") or {}).get("ok"))
+        if not selected and not bulk_selected:
             capacity_limited_with_existing_cargo = False
             if state.get("buy_selection_capacity_limited") and isinstance(cargo_load, dict):
                 try:
@@ -15727,6 +15929,8 @@ class ManualTwoCityBusinessConfirmBuySelectionAction(CustomAction):
             return False
 
         if cargo_load is None:
+            if market_stock:
+                return False
             _append_user_log(
                 MANUAL_TWO_CITY_TASK_ENTRY,
                 "买入前选货复核：未能读取右侧载货量，已选商品非空，继续进入砍价/买入。",
@@ -15753,11 +15957,13 @@ class ManualTwoCityBusinessConfirmBuySelectionAction(CustomAction):
             and used > 0
             and (bool(selected) or _manual_two_city_existing_cargo_limited_buy(state))
         )
-        skip_restock_quick_buy = bool(state.get("buy_selection_skip_restock_quick_buy")) and bool(selected)
+        skip_restock_quick_buy = bool(state.get("buy_selection_skip_restock_quick_buy")) and bulk_selected
         missing = [good for good in planned_goods if good not in selected]
         book_shortfall = _manual_two_city_buy_book_shortfall(state, leg)
         book_shortfall_ok = bool(book_shortfall) and used > 0 and not missing
         passed = skip_restock_quick_buy or capacity_limited_ok or book_shortfall_ok or (capacity_ok and planned_load_ok)
+        if market_stock:
+            passed = _manual_two_city_market_load_verified(state, cargo_load)
         if not passed:
             _append_user_log(
                 MANUAL_TWO_CITY_TASK_ENTRY,
@@ -15802,8 +16008,8 @@ class ManualTwoCityBusinessConfirmBuySelectionAction(CustomAction):
             MANUAL_TWO_CITY_TASK_ENTRY,
             (
                 f"买入前选货复核：实际已选载量 {used}/{capacity}，计划 {planned_total}/{capacity}，"
-                f"已选 {len(selected)}/{len(planned_goods)}。"
-                f"{' 载量已满，剩余计划商品按实际满仓跳过。' if missing and _manual_two_city_cargo_load_full(cargo_load) else ''}"
+                + ("已确认全部买入。" if bulk_selected else f"已选 {len(selected)}/{len(planned_goods)}。")
+                + f"{' 载量已满，剩余计划商品按实际满仓跳过。' if missing and _manual_two_city_cargo_load_full(cargo_load) else ''}"
                 f"{' 进货书不足，已按实际可购库存通过复核。' if book_shortfall_ok else ''}"
             ),
             level="warning" if book_shortfall_ok else "info",
@@ -15899,7 +16105,7 @@ class ManualTwoCityBusinessBuyGoodsMissingAction(CustomAction):
             retry_counts[city] = retry_count + 1
         state["selected_buy_goods"] = []
         state["buy_selection_replan_pending"] = False
-        ok = _manual_two_city_recalculate_after_product_scan(city)
+        ok = _manual_two_city_recalculate_at_station(city, reason="买入商品复核")
         if not ok:
             _json_payload(
                 "manual_two_city_business_buy_goods_missing",
@@ -16047,7 +16253,12 @@ class ManualTwoCityBusinessVerifyCargoAfterBuyAction(CustomAction):
             cargo_load = dict(state.get("buy_selection_verified_cargo_load") or {})
             cargo_load_source = "pre_buy_verified"
         planned_total = _manual_two_city_planned_goods_total(leg)
+        market_stock = state.get("buy_selection_market_stock")
+        if market_stock:
+            planned_total = market_stock["expected_load"]
         if cargo_load is None:
+            if market_stock:
+                return False
             _append_user_log(
                 MANUAL_TWO_CITY_TASK_ENTRY,
                 "买入后货仓复核：未能读取货仓载量，继续发车；若肉眼发现未满，请保留日志继续定位。",
@@ -16070,10 +16281,12 @@ class ManualTwoCityBusinessVerifyCargoAfterBuyAction(CustomAction):
         capacity_ok = (not strict) or actual_ratio >= POST_BUY_CARGO_VERIFY_PASS_RATIO
         planned_load_ok = planned_total <= 0 or planned_load_ratio >= POST_BUY_CARGO_VERIFY_PLANNED_LOAD_PASS_RATIO
         capacity_limited_ok = bool(state.get("buy_selection_capacity_limited")) and used > 0
-        skip_restock_quick_buy = bool(state.get("buy_selection_skip_restock_quick_buy"))
+        skip_restock_quick_buy = bool(state.get("buy_selection_skip_restock_quick_buy") and (state.get("buy_selection_quick_all_buy") or {}).get("ok"))
         book_shortfall = _manual_two_city_buy_book_shortfall(state, leg)
         book_shortfall_ok = bool(book_shortfall) and used > 0
         passed = skip_restock_quick_buy or capacity_limited_ok or book_shortfall_ok or (capacity_ok and planned_load_ok)
+        if market_stock:
+            passed = _manual_two_city_market_load_verified(state, cargo_load)
         level = "warning" if book_shortfall_ok else ("info" if passed else "error")
         message = (
             f"买入后货仓复核：实际 {used}/{capacity}，计划 {planned_total}/{capacity}。"
@@ -16647,9 +16860,11 @@ class ManualTwoCityBusinessAfterSellAction(CustomAction):
         legs = _manual_two_city_legs()
         if _manual_two_city_until_fatigue_exhausted(state) and legs:
             completed_rounds = int(state.get("completed_rounds") or 0) + 1
-            next_leg = legs[0]
+            city = str(current_leg.get("sell_city") or "")
+            if not _manual_two_city_recalculate_at_station(city, reason="新一轮跑商规划", new_round=True):
+                return False
+            next_leg = _manual_two_city_active_leg()
             state["completed_rounds"] = completed_rounds
-            state["active_leg_index"] = 0
             state["selected_buy_goods"] = []
             state["trade_phase"] = "buy"
             state["current_city"] = str(current_leg.get("sell_city") or next_leg.get("buy_city") or "")
@@ -16670,7 +16885,7 @@ class ManualTwoCityBusinessAfterSellAction(CustomAction):
                     "loop_next_round": True,
                     "completed_rounds": completed_rounds,
                     "next_leg": next_leg,
-                    "active_leg_index": 0,
+                    "active_leg_index": state["active_leg_index"],
                 },
             )
             return True

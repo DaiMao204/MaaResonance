@@ -16,10 +16,18 @@ class RouteModel(BaseModel):
         sell_price: int = 0
         profit: int = 0
 
+    class PurchaseCandidate(BaseModel):
+        name: str
+        base_lot: int
+        single_profit: int
+        buy_price: int
+        sell_price: int
+
     buy_city_name: str = ""
     sell_city_name: str = ""
     haggle_num: int = 0
     goods_data: Dict[str, GoodsData] = Field(default_factory=dict)
+    purchase_candidates: List[PurchaseCandidate] = Field(default_factory=list)
     buy_goods: Dict[str, int] = Field(default_factory=dict)
     buy_price: int = 0
     sell_price: int = 0

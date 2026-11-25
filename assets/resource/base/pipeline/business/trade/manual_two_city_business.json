@@ -1163,9 +1163,15 @@
             "ManualTwoCityBusinessBuyDrinkCheck"
         ],
         "on_error": [
+            "ManualTwoCityBusinessMarketReplanFailed",
             "ManualTwoCityBusinessCloseDailyCheckInForBuyPageReady",
             "ManualTwoCityBusinessRecoverToBuyPage"
         ]
+    },
+    "ManualTwoCityBusinessMarketReplanFailed": {
+        "recognition": "Custom",
+        "custom_recognition": "manual_two_city_business_market_replan_failed",
+        "next": "RunManualTwoCityBusinessDone"
     },
     "ManualTwoCityBusinessCloseDailyCheckInForBuyPageReady": {
         "recognition": {
@@ -2052,7 +2058,10 @@
         },
         "post_delay": 300,
         "next": "ManualTwoCityBusinessBuyDrinkCheck",
-        "on_error": "ManualTwoCityBusinessProductScanRetryMissingTradeFields"
+        "on_error": [
+            "ManualTwoCityBusinessMarketReplanFailed",
+            "ManualTwoCityBusinessProductScanRetryMissingTradeFields"
+        ]
     },
     "ManualTwoCityBusinessProductScanRetryMissingTradeFields": {
         "recognition": {
@@ -3247,6 +3256,16 @@
             }
         },
         "next": "ManualTwoCityBusinessConfirmBuySelection",
+        "on_error": "ManualTwoCityBusinessResumeBuyPriorityScan"
+    },
+    "ManualTwoCityBusinessResumeBuyPriorityScan": {
+        "action": {
+            "type": "Custom",
+            "param": {
+                "custom_action": "manual_two_city_business_resume_buy_priority_scan"
+            }
+        },
+        "next": "ManualTwoCityBusinessSelectBuyGoodsPage001",
         "on_error": "ManualTwoCityBusinessBuyGoodsMissing"
     },
     "ManualTwoCityBusinessConfirmBuySelection": {
@@ -4941,7 +4960,10 @@
         },
         "post_delay": 300,
         "next": "ManualTwoCityBusinessBuySelectionResetTop001",
-        "on_error": "ManualTwoCityBusinessRecoverToBuyPage"
+        "on_error": [
+            "ManualTwoCityBusinessMarketReplanFailed",
+            "ManualTwoCityBusinessRecoverToBuyPage"
+        ]
     },
     "ManualTwoCityBusinessSellGoodsMissing": {
         "recognition": {

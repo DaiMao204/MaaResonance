@@ -51,7 +51,7 @@ class AccountIdentityRegressionTest(unittest.TestCase):
             with self.subTest(calculate=calculate.__name__), patch.object(
                 manual_trade, "find_account_config", side_effect=AssertionError("must not load latest account")
             ) as find, patch.object(manual_trade, "build_default_account_config", return_value={}) as default, patch.object(
-                manual_trade, "load_columba_baseline_market_data", side_effect=RuntimeError("market boundary")
+                manual_trade, "load_trade_market_data", side_effect=RuntimeError("market boundary")
             ):
                 with self.assertRaisesRegex(RuntimeError, "market boundary"):
                     calculate(**params, uid="", require_uid=True, allow_default_account=True)
