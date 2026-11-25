@@ -15,12 +15,25 @@ class PcTradeInterfaceTest(unittest.TestCase):
         interface = read_json(ASSETS / "interface.json")
         tasks = [task for path in interface["import"] for task in read_json(ASSETS / path)["task"]]
         manual, auto, launch = "ManualTwoCityBusiness", "AutoTwoCityBusiness", "LaunchGame"
+        custom_pc_tasks = {
+            "WakeUp",
+            "DailyPrep",
+            "AutoShop",
+            "CoopAssault",
+            "EventStageFarm",
+            "EventStoryDaily",
+            "DailyClaim",
+            "DailyRoutine",
+            "AutoBattle",
+            "AutoTeamFormation",
+            "StorySkip",
+        }
         pc_controllers = ("Win32", "Win32BackgroundWindowPos", "Win32BackgroundCursorPos")
         available = {ctrl: {t["name"] for t in tasks if ctrl in t["controller"]} for ctrl in ("ADB", *pc_controllers)}
         for ctrl in pc_controllers:
             with self.subTest(controller=ctrl):
-                self.assertEqual(available[ctrl], {manual})
-        self.assertTrue({manual, auto, launch} <= available["ADB"])
+                self.assertEqual(available[ctrl], {manual} | custom_pc_tasks)
+        self.assertTrue(({manual, auto, launch} | custom_pc_tasks) <= available["ADB"])
 
         presets = {p["name"]: [t for t in p["task"] if t["enabled"]] for p in interface["preset"]}
         pc = presets["pc-manual-business"]
@@ -33,6 +46,21 @@ class PcTradeInterfaceTest(unittest.TestCase):
             enabled = presets[preset]
             self.assertEqual([t["name"] for t in enabled], [launch, task])
             self.assertEqual(enabled[1]["option"]["ManualTwoCityRunMode"], "until_fatigue_exhausted")
+
+        all_in_one = next(p for p in interface["preset"] if p["name"] == "daily-all-in-one")
+        self.assertEqual(
+            [(t["name"], bool(t["enabled"])) for t in all_in_one["task"]],
+            [
+                ("WakeUp", True),
+                ("DailyPrep", True),
+                ("AutoShop", True),
+                ("CoopAssault", True),
+                ("EventStageFarm", True),
+                ("EventStoryDaily", True),
+                ("AutoTwoCityBusiness", False),
+                ("DailyClaim", True),
+            ],
+        )
 
     def test_android_lifecycle_actions_are_overridden_only_on_pc(self):
         interface = read_json(ASSETS / "interface.json")

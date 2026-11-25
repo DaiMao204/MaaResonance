@@ -1,0 +1,104 @@
+{
+    "AutoShopStart": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "auto_shop_run",
+        "focus": {
+            "Node.Action.Starting": "【自动商店】正在检查各商店周期刷新与购买计划...",
+            "Node.Action.Succeeded": "【自动商店】自动商店检查与采购流程完成。"
+        },
+        "next": [
+            "AutoShopComplete"
+        ],
+        "on_error": [
+            "AutoShopComplete"
+        ]
+    },
+    "AutoShopOptScheduleMode": {
+        "action": "DoNothing",
+        "attach": {
+            "schedule_mode": "smart"
+        }
+    },
+    "AutoShopOptBlackMoonHqEnabled": {
+        "action": "DoNothing",
+        "attach": {
+            "hq_enabled": true
+        }
+    },
+    "AutoShopOptHqGoldItems": {
+        "action": "DoNothing",
+        "attach": {}
+    },
+    "AutoShopOptHqGoldConfig": {
+        "action": "DoNothing",
+        "attach": {
+            "hq_gold_reserve": 3000000,
+            "hq_gold_extra": ""
+        }
+    },
+    "AutoShopOptHqTicketEnabled": {
+        "action": "DoNothing",
+        "attach": {
+            "hq_ticket_enabled": false
+        }
+    },
+    "AutoShopOptHqTicketItems": {
+        "action": "DoNothing",
+        "attach": {}
+    },
+    "AutoShopOptHqTicketConfig": {
+        "action": "DoNothing",
+        "attach": {
+            "hq_ticket_reserve": 0,
+            "hq_ticket_extra": ""
+        }
+    },
+    "AutoShopOptFumingEnabled": {
+        "action": "DoNothing",
+        "attach": {
+            "fuming_enabled": true
+        }
+    },
+    "AutoShopOptFumingItems": {
+        "action": "DoNothing",
+        "attach": {}
+    },
+    "AutoShopOptFumingConfig": {
+        "action": "DoNothing",
+        "attach": {
+            "fuming_purple_reserve": 2000,
+            "fuming_extra": ""
+        }
+    },
+    "AutoShopOptFumingAllowGoldMedal": {
+        "action": "DoNothing",
+        "attach": {
+            "fuming_allow_gold_medal": false
+        }
+    },
+    "AutoShopOptChamberEnabled": {
+        "action": "DoNothing",
+        "attach": {
+            "chamber_enabled": true
+        }
+    },
+    "AutoShopOptChamberItems": {
+        "action": "DoNothing",
+        "attach": {}
+    },
+    "AutoShopOptChamberConfig": {
+        "action": "DoNothing",
+        "attach": {
+            "chamber_reserve": 1000,
+            "chamber_extra": ""
+        }
+    },
+    "AutoShopComplete": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "focus": {
+            "Node.Action.Succeeded": "【自动商店】任务已结束。"
+        }
+    }
+}

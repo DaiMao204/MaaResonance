@@ -102,6 +102,14 @@
             "label": "跑商"
         },
         {
+            "name": "daily",
+            "label": "日常"
+        },
+        {
+            "name": "experimental",
+            "label": "实验与原子工具"
+        },
+        {
             "name": "system",
             "label": "系统"
         }
@@ -109,6 +117,75 @@
     "task": [],
     "option": {},
     "preset": [
+        {
+            "name": "daily-all-in-one",
+            "label": "一键自动日常",
+            "description": "拆分为独立可勾选、可调顺序的完整日常流程：开始唤醒 -> 前置收菜与签到 -> 自动商店采购 -> 共斗众志攻坚 -> 限时活动刷关清澄明度 -> 糖霜记忆每日取景 -> [可选]自动跑商 -> 每日活跃与通行证收尾领奖。",
+            "task": [
+                {
+                    "name": "WakeUp",
+                    "enabled": true
+                },
+                {
+                    "name": "DailyPrep",
+                    "enabled": true
+                },
+                {
+                    "name": "AutoShop",
+                    "enabled": true
+                },
+                {
+                    "name": "CoopAssault",
+                    "enabled": true
+                },
+                {
+                    "name": "EventStageFarm",
+                    "enabled": true
+                },
+                {
+                    "name": "EventStoryDaily",
+                    "enabled": true
+                },
+                {
+                    "name": "AutoTwoCityBusiness",
+                    "enabled": false,
+                    "option": {
+                        "AutoTwoCityPriorityCity1": "none",
+                        "AutoTwoCityPriorityCity2": "none",
+                        "AutoTwoCityExcludeCities": [],
+                        "AutoTwoCityPlannerParams": {
+                            "max_restock": "6"
+                        },
+                        "ManualTwoCityUseHaggleBook": "No",
+                        "ManualTwoCityWulinyuanEnabled": "Yes",
+                        "AutoTwoCityWulinyuanPriority": "total",
+                        "ManualTwoCityRunMode": "until_fatigue_exhausted",
+                        "ManualTwoCityAccountProfileReadMode": "smart",
+                        "ManualTwoCityAutoImpactDrill": "Yes",
+                        "ManualTwoCityAutoSpeedProjectile": "Yes",
+                        "ManualTwoCityAutoPickup": "No",
+                        "ManualTwoCityAutoDrink": "Yes",
+                        "ManualTwoCityAutoBento": "Yes",
+                        "ManualTwoCityUseMedicine": "No"
+                    }
+                },
+                {
+                    "name": "DailyClaim",
+                    "enabled": true
+                }
+            ]
+        },
+        {
+            "name": "daily-routine",
+            "label": "自动日常（轻量整合）",
+            "description": "兼容整合入口：自动执行邮箱一键领取、派遣委托收菜与再次委托、好友名片支援金币、限时活动启程签到、营收排行榜全部玩家点赞 3 次、导航手册「每日活跃」点数与 100~600 宝箱领取，以及环游手册（通行证）每日/每周任务与等级奖励领取。",
+            "task": [
+                {
+                    "name": "DailyRoutine",
+                    "enabled": true
+                }
+            ]
+        },
         {
             "name": "auto-business",
             "label": "自动跑商",
@@ -219,8 +296,19 @@
         }
     ],
     "import": [
+        "resource/tasks/WakeUp.json",
+        "resource/tasks/DailyPrep.json",
+        "resource/tasks/AutoShop.json",
+        "resource/tasks/CoopAssault.json",
+        "resource/tasks/EventStageFarm.json",
+        "resource/tasks/EventStoryDaily.json",
+        "resource/tasks/DailyClaim.json",
+        "resource/tasks/DailyRoutine.json",
         "resource/tasks/ManualTwoCityBusiness.json",
         "resource/tasks/AutoTwoCityBusiness.json",
+        "resource/tasks/StorySkip.json",
+        "resource/tasks/AutoTeamFormation.json",
+        "resource/tasks/AutoBattle.json",
         "resource/tasks/LaunchGame.json"
     ]
 }
