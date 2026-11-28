@@ -146,9 +146,10 @@ jobs:
         id: release_notes
         shell: bash
         run: |
+          version=$(jq -er .version assets/interface.json)
           {
             echo "release_body<<EOF"
-            cat docs/zh_cn/changelog/v2.0.0-beta.2.md
+            cat "docs/zh_cn/changelog/$version.md"
             echo ""
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
