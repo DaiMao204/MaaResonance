@@ -1209,6 +1209,26 @@ class TradeRuntimeFixTest(unittest.TestCase):
             self.assertTrue(trade.ManualTwoCityBusinessVerifyCargoAfterBuyAction().run(None, None))
             self.assertGreaterEqual(probe.call_count, 2)
 
+    def test_open_buy_and_sell_page_retry_nodes_in_pipeline(self) -> None:
+        pipeline_path = ROOT / "assets" / "resource" / "base" / "pipeline" / "business" / "trade" / "manual_two_city_business.json"
+        pipeline = json.loads(pipeline_path.read_text(encoding="utf-8"))
+
+        for kind, ready_node, recover_node in (
+            ("Buy", "ManualTwoCityBusinessBuyPageReady", "ManualTwoCityBusinessRecoverToBuyPage"),
+            ("Sell", "ManualTwoCityBusinessSellPageReady", "ManualTwoCityBusinessRecoverToSellPage"),
+        ):
+            base_name = f"ManualTwoCityBusinessOpen{kind}Page"
+            retry_name = f"{base_name}Retry"
+            base_node = pipeline[base_name]
+            retry_node = pipeline[retry_name]
+            self.assertEqual(base_node["next"], [ready_node, retry_name])
+            self.assertEqual(retry_node["recognition"], base_node["recognition"])
+            self.assertEqual(retry_node["action"], base_node["action"])
+            self.assertEqual(retry_node["next"], ready_node)
+            self.assertEqual(retry_node["on_error"], recover_node)
+            self.assertNotIn("max_hit", base_node)
+            self.assertNotIn("max_hit", retry_node)
+
 
 if __name__ == "__main__":
     unittest.main()
