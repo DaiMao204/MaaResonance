@@ -16,6 +16,7 @@ from maa_resonance.logic.team_formation import (
     choose_next_quick_team_step,
     extract_quick_team_cards,
     is_main_formation_needs_update,
+    match_formation_role,
     parse_target_roles,
     quick_team_page_signature,
 )
@@ -182,16 +183,34 @@ class TeamFormationNeedsUpdateRecognition(CustomRecognition):
         if not needs_update:
             return CustomRecognition.AnalyzeResult(box=None, detail={"ok": False, "reason": "already_satisfied"})
 
+        detail = {"ok": True, "reason": "needs_update", "has_story_lock": has_story_lock}
+        if not strict_match:
+            # Carry the lineup from the formation screen. Some members may be off-screen in quick select.
+            selected = {match_formation_role(entry["text"], targets) for entry in name_entries}
+            selected.discard(None)
+            # "添加" and "EMPTY" can describe the same slot. Group their centers by column.
+            empty_centers = sorted(
+                entry["x"] + entry["w"] / 2
+                for entry in empty_entries
+                if "添加" in entry["text"] or "EMPTY" in entry["text"].upper()
+            )
+            vacancies = sum(
+                index == 0 or x - empty_centers[index - 1] > 80
+                for index, x in enumerate(empty_centers)
+            )
+            if len(selected) + vacancies != 5:
+                return CustomRecognition.AnalyzeResult(box=None, detail={"reason": "incomplete_lineup"})
+            detail["selected_roles"] = sorted(selected)
         quick_box = getattr(getattr(quick_detail, "best_result", None), "box", None) or [1045, 36, 70, 35]
         return CustomRecognition.AnalyzeResult(
             box=quick_box,
-            detail={"ok": True, "reason": "needs_update", "has_story_lock": has_story_lock},
+            detail=detail,
         )
 
 
 @AgentServer.custom_action("team_formation_quick_select")
 class TeamFormationQuickSelectAction(CustomAction):
-    """Select target roles in the quick-team grid and remove non-target ones."""
+    """Fill vacancies or replace the lineup with the configured roles."""
 
     def run(self, context: Context, argv: CustomAction.RunArg) -> bool:
         params = _parse_action_param(argv)
@@ -200,9 +219,21 @@ class TeamFormationQuickSelectAction(CustomAction):
             print("[AutoTeamFormation] 未配置目标角色名单，保持现有阵容并直接确认。", flush=True)
             return True
         max_team_size = int(params.get("max_team_size") or 5)
-
+        node = context.get_node_data(argv.node_name)
+        if node is None:
+            return False
         known_story_roles: set[str] = set()
         confirmed_selected: set[str] = set()
+        fill_from = node.get("attach", {}).get("fill_empty_from")
+        if fill_from:
+            formation = context.tasker.get_latest_node(fill_from)
+            if formation is None or formation.node_id not in argv.task_detail.node_id_list:
+                return False
+            previous = getattr(formation.recognition, "best_result", None)
+            lineup = getattr(previous, "detail", None)
+            if not isinstance(lineup, dict) or not isinstance(lineup.get("selected_roles"), list):
+                return False
+            confirmed_selected.update(lineup["selected_roles"])
         blocked_select_roles: set[str] = set()
         last_signature: tuple[str, ...] | None = None
         stale_count = 0
@@ -225,7 +256,7 @@ class TeamFormationQuickSelectAction(CustomAction):
                     confirmed_selected.add(card["role"])
                 elif card["state"] == "selected":
                     confirmed_selected.add(card["role"])
-                elif card["state"] == "unselected":
+                elif card["state"] == "unselected" and not fill_from:
                     confirmed_selected.discard(card["role"])
 
             step = choose_next_quick_team_step(
@@ -234,6 +265,7 @@ class TeamFormationQuickSelectAction(CustomAction):
                 known_story_roles=known_story_roles,
                 confirmed_selected=confirmed_selected,
                 max_team_size=max_team_size,
+                fill_empty_only=bool(fill_from),
             )
 
             action = step["action"]
@@ -266,6 +298,12 @@ class TeamFormationQuickSelectAction(CustomAction):
                         return False
                     verify_cards = extract_quick_team_cards(verify_entries, target_roles=targets)
                     matched = next((c for c in verify_cards if c["role"] == role), None)
+                    if fill_from:
+                        # A quick-team card toggles. Never tap it a second time after a missing badge.
+                        if not matched or matched["state"] == "unselected":
+                            print(f"[AutoTeamFormation] 未能确认「{role}」上阵，保留当前阵容。", flush=True)
+                            return True
+                        confirmed_selected.add(role)
                     if matched and matched["state"] == "unselected":
                         blocked_select_roles.add(role)
                     else:

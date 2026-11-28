@@ -1,3 +1,5 @@
+import json
+from pathlib import Path
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
@@ -15,6 +17,97 @@ from maa_resonance.logic.team_formation import (
 
 
 class TeamFormationLogicTest(unittest.TestCase):
+    def test_empty_only_preserves_manual_and_story_roles_in_all_callers(self):
+        import agent.team_formation_action as tfa
+
+        root = Path(__file__).resolve().parents[1] / "assets/resource/tasks"
+        callers = (
+            ("MainlineAdvance", "MainlineFormationMode", "Mainline"),
+            ("CoopAssault", "CoopFormationMode", "CoopAssault"),
+            ("EventStageFarm", "EventStageFormationMode", "EventStageFarm"),
+        )
+        for task, mode_name, prefix in callers:
+            with self.subTest(task=task):
+                options = json.loads((root / f"{task}.json").read_text(encoding="utf-8"))["option"]
+                mode = options[mode_name]
+                self.assertEqual(mode["default_case"], "Off")
+                cases = {case["name"]: case["pipeline_override"] for case in mode["cases"]}
+                quick = prefix + "FormationQuickSelect"
+                source = prefix + "FormationEmpty"
+                self.assertFalse(cases["Off"][source]["enabled"])
+                self.assertFalse(cases["Strict"][quick]["attach"]["fill_empty_from"])
+                self.assertEqual(cases["EmptyOnly"][quick]["attach"]["fill_empty_from"], source)
+
+                # Four current members, including a story member, and one vacancy.
+                names = ("伊卡菈", "那由他", "静流", "苍叶")
+                def recognize(node, *_args):
+                    entries = []
+                    if node.endswith("NameCheck"):
+                        entries = [{"text": name, "box": [150 + i * 170, 540, 65, 22]}
+                                   for i, name in enumerate(names)]
+                    if node.endswith("EmptyCheck"):
+                        entries = [{"text": "添加", "box": [848, 310, 38, 22]},
+                                   {"text": "EMPTY", "box": [845, 345, 44, 20]}]
+                    return SimpleNamespace(hit=True, all_results=entries, best_result=None)
+
+                ctx = SimpleNamespace(run_recognition=recognize)
+                result_type = lambda box=None, detail=None: SimpleNamespace(box=box, detail=detail)
+                with patch.object(tfa.CustomRecognition, "AnalyzeResult", result_type, create=True):
+                    lineup = tfa.TeamFormationNeedsUpdateRecognition().analyze(
+                        ctx, SimpleNamespace(node_name=source, image=True,
+                                             custom_recognition_param={"target_roles": "那由他,小红帽,星花"})
+                    )
+                self.assertEqual(set(lineup.detail["selected_roles"]), set(names))
+                previous = SimpleNamespace(node_id=42, recognition=SimpleNamespace(best_result=lineup))
+                ctx.tasker = SimpleNamespace(get_latest_node=lambda node: previous if node == source else None)
+                ctx.get_node_data = lambda node: cases["EmptyOnly"][node]
+                argv = SimpleNamespace(node_name=quick, task_detail=SimpleNamespace(node_id_list=[42]),
+                                       custom_action_param={"target_roles": "那由他,小红帽,星花"})
+                # 那由他's badge is unreadable; two members are off-screen. The initial lineup still protects them.
+                initial = [
+                    {"text": "剧情", "box": [75, 225, 48, 20]},
+                    {"text": "伊卡菈", "box": [122, 291, 51, 20]},
+                    {"text": "那由他", "box": [301, 291, 53, 20]},
+                    {"text": "小红帽", "box": [454, 292, 76, 19]},
+                    {"text": "星花", "box": [674, 288, 42, 25]},
+                ]
+                selected = initial + [{"text": "已上阵", "box": [437, 239, 40, 15]}]
+                chosen = extract_quick_team_cards(initial, ["小红帽"])[2]["center"]
+                with (
+                    patch.object(tfa, "_ocr_quick_team_row", side_effect=[initial, selected, initial]),
+                    patch.object(tfa, "sleep_with_stop", return_value=True),
+                    patch.object(tfa, "_tap_point", return_value=True) as tap,
+                ):
+                    self.assertTrue(tfa.TeamFormationQuickSelectAction().run(ctx, argv))
+                    tap.assert_called_once_with(ctx, quick, *chosen)
+
+                # A leftover recognition from another task must never authorize selection.
+                argv.task_detail.node_id_list.clear()
+                with patch.object(tfa, "_tap_point") as tap:
+                    self.assertFalse(tfa.TeamFormationQuickSelectAction().run(ctx, argv))
+                    tap.assert_not_called()
+
+                # Missing a member on the original screen cannot turn occupied slots into vacancies.
+                names = names[:-1]
+                with patch.object(tfa.CustomRecognition, "AnalyzeResult", result_type, create=True):
+                    incomplete = tfa.TeamFormationNeedsUpdateRecognition().analyze(
+                        ctx, SimpleNamespace(node_name=source, image=True,
+                                             custom_recognition_param={"target_roles": "小红帽"})
+                    )
+                self.assertIsNone(incomplete.box)
+                self.assertEqual(incomplete.detail["reason"], "incomplete_lineup")
+
+    def test_empty_only_full_team_and_strict_replacement(self):
+        targets = ["小红帽"]
+        cards = [{"role": "那由他", "state": "selected", "center": (100, 205)},
+                 {"role": "小红帽", "state": "unselected", "center": (279, 205)}]
+        selected = {"那由他", "静流", "伊卡菈", "星花", "苍叶"}
+        self.assertEqual(choose_next_quick_team_step(
+            cards, targets, confirmed_selected=selected, fill_empty_only=True)["action"], "confirm")
+        step = choose_next_quick_team_step(cards, targets, confirmed_selected=selected)
+        self.assertEqual((step["reason"], step["role"]), ("deselect_unwanted", "那由他"))
+        self.assertEqual(choose_next_quick_team_step(cards, [], fill_empty_only=True)["action"], "confirm")
+
     def test_parse_target_roles_splits_and_deduplicates(self):
         parsed = parse_target_roles("小红帽, 静流·逐夏、那由他\n小红帽；星花")
         self.assertEqual(parsed, ["小红帽", "静流·逐夏", "那由他", "星花"])

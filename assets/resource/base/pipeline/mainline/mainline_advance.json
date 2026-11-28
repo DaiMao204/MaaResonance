@@ -1,0 +1,1067 @@
+{
+    "MainlineAdvanceLoop": {
+        "recognition": "DirectHit",
+        "action": "DoNothing",
+        "rate_limit": 900,
+        "timeout": 60000,
+        "next": [
+            "MainlineStorySkip",
+            "MainlineBattleAuto",
+            "MainlineBattleDefeatStop",
+            "MainlineClarityRecovery",
+            "MainlineClarityDisabledStop",
+            "MainlineClarityLowPrompt",
+            "MainlineDifficultyWarnPrompt",
+            "MainlineSettleMission",
+            "MainlineSettleNextTemplate",
+            "MainlineSettleNextOcr",
+            "MainlineGenericPopup",
+            "MainlineFormationEmpty",
+            "MainlineFormationStrict",
+            "MainlineFormationReadyCheck",
+            "MainlineStageStartBattle",
+            "MainlineTravelArrivedVisitPrompt",
+            "MainlineTravelRouteEventAttack",
+            "MainlineTravelRouteEventPanel",
+            "MainlineTravelRouteEventContinue",
+            "MainlineTravelContinue",
+            "MainlineTravelInProgress",
+            "MainlineMapUnverifiedPrompt",
+            "MainlineMapUnverifiedSelection",
+            "MainlineMapFocusQuestStation",
+            "MainlineInCityCheckByTemplate",
+            "MainlineInCityCheckByOcr",
+            "MainlineInLobbyCheckByOcr",
+            "MainlineInLobbyCheckByTemplate"
+        ],
+        "on_error": [
+            "MainlineAdvanceUnknownStop"
+        ]
+    },
+    "MainlineStorySkip": {
+        "enabled": true,
+        "recognition": "OCR",
+        "expected": [
+            "跳过"
+        ],
+        "roi": [
+            1100,
+            0,
+            180,
+            90
+        ],
+        "action": "Custom",
+        "custom_action": "story_skip_loop",
+        "custom_action_param": {
+            "choice_index": 0,
+            "max_steps": 120
+        },
+        "post_delay": 600,
+        "next": [
+            "MainlineAdvanceLoop"
+        ]
+    },
+    "MainlineBattleAuto": {
+        "enabled": true,
+        "recognition": "OCR",
+        "expected": [
+            "MAX"
+        ],
+        "roi": [
+            1095,
+            655,
+            110,
+            60
+        ],
+        "action": "Custom",
+        "custom_action": "battle_autoplay_loop",
+        "custom_action_param": {
+            "play_mode": "fast_rush",
+            "prefer_native_auto": true,
+            "prefer_leader_skill": true,
+            "cost_preference": "left_to_right",
+            "min_cost_to_play": 2,
+            "discard_when_stuck_at_cost": 10,
+            "card_weights": {},
+            "disabled_cards": [],
+            "max_steps": 240
+        },
+        "post_delay": 500,
+        "next": [
+            "MainlineAdvanceLoop"
+        ]
+    },
+    "MainlineBattleAutoOptPlayMode": {
+        "action": "DoNothing",
+        "attach": {
+            "play_mode": "fast_rush"
+        }
+    },
+    "MainlineBattleAutoOptPreferNativeAuto": {
+        "action": "DoNothing",
+        "attach": {
+            "prefer_native_auto": true
+        }
+    },
+    "MainlineBattleAutoOptLeaderSkill": {
+        "action": "DoNothing",
+        "attach": {
+            "prefer_leader_skill": true
+        }
+    },
+    "MainlineBattleDefeatStop": {
+        "recognition": "OCR",
+        "expected": [
+            "作战失败",
+            "挑战失败",
+            "重新挑战"
+        ],
+        "roi": [
+            0,
+            220,
+            1280,
+            490
+        ],
+        "action": "StopTask",
+        "focus": {
+            "Node.Recognition.Succeeded": "[color:red]检测到主线作战失败，已自动停止任务，请调整阵容/练度或手动通关后继续。[/color]"
+        }
+    },
+    "MainlineSettleMission": {
+        "recognition": "OCR",
+        "expected": [
+            "触碰空白区域退出",
+            "任务完成",
+            "MISSION COMPLETED",
+            "通关记录"
+        ],
+        "roi": [
+            160,
+            180,
+            960,
+            520
+        ],
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "custom_action_param": {
+            "target": [
+                640,
+                660,
+                1,
+                1
+            ]
+        },
+        "post_delay": 800,
+        "next": [
+            "MainlineAdvanceLoop"
+        ]
+    },
+    "MainlineSettleNextTemplate": {
+        "recognition": "TemplateMatch",
+        "template": "fight/end_fight.png",
+        "threshold": 0.9,
+        "roi": [
+            1060,
+            520,
+            220,
+            200
+        ],
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "post_delay": 1000,
+        "next": [
+            "MainlineAdvanceLoop"
+        ]
+    },
+    "MainlineSettleNextOcr": {
+        "recognition": "OCR",
+        "expected": [
+            "下一步"
+        ],
+        "roi": [
+            1060,
+            520,
+            220,
+            200
+        ],
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "post_delay": 1000,
+        "next": [
+            "MainlineAdvanceLoop"
+        ]
+    },
+    "MainlineGenericPopup": {
+        "recognition": "OCR",
+        "expected": [
+            "触碰空白区域退出",
+            "点击空白处关闭",
+            "点击任意位置继续"
+        ],
+        "roi": [
+            240,
+            580,
+            800,
+            130
+        ],
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "custom_action_param": {
+            "target": [
+                640,
+                680,
+                1,
+                1
+            ]
+        },
+        "post_delay": 800,
+        "next": [
+            "MainlineAdvanceLoop"
+        ]
+    },
+    "MainlineFormationEmpty": {
+        "enabled": false,
+        "recognition": "Custom",
+        "custom_recognition": "team_formation_needs_update",
+        "custom_recognition_param": {
+            "target_roles": "",
+            "strict_match": false
+        },
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "post_delay": 700,
+        "next": [
+            "MainlineFormationQuickSelect"
+        ]
+    },
+    "MainlineFormationStrict": {
+        "enabled": false,
+        "recognition": "Custom",
+        "custom_recognition": "team_formation_needs_update",
+        "custom_recognition_param": {
+            "target_roles": "",
+            "strict_match": true
+        },
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "post_delay": 700,
+        "next": [
+            "MainlineFormationQuickSelect"
+        ]
+    },
+    "MainlineFormationQuickSelect": {
+        "recognition": "OCR",
+        "expected": [
+            "获取时间",
+            "稀有度",
+            "确认"
+        ],
+        "roi": [
+            800,
+            0,
+            480,
+            720
+        ],
+        "action": "Custom",
+        "custom_action": "team_formation_quick_select",
+        "custom_action_param": {
+            "target_roles": "",
+            "max_team_size": 5
+        },
+        "post_delay": 300,
+        "next": [
+            "MainlineFormationConfirm"
+        ]
+    },
+    "MainlineFormationConfirm": {
+        "recognition": "OCR",
+        "expected": [
+            "确认"
+        ],
+        "roi": [
+            960,
+            610,
+            260,
+            90
+        ],
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "post_delay": 700,
+        "next": [
+            "MainlineFormationStartBattle",
+            "MainlineAdvanceLoop"
+        ]
+    },
+    "MainlineFormationReadyCheck": {
+        "recognition": "OCR",
+        "expected": [
+            "快速编队"
+        ],
+        "roi": [
+            1000,
+            15,
+            270,
+            90
+        ],
+        "action": "DoNothing",
+        "next": [
+            "MainlineFormationStartBattle",
+            "MainlineAdvanceLoop"
+        ]
+    },
+    "MainlineFormationStartBattle": {
+        "recognition": "OCR",
+        "expected": [
+            "START BATTLE",
+            "开始作战"
+        ],
+        "roi": [
+            1110,
+            240,
+            170,
+            340
+        ],
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "post_delay": 1000,
+        "next": [
+            "MainlineAdvanceLoop"
+        ]
+    },
+    "MainlineStageStartBattle": {
+        "recognition": "OCR",
+        "expected": [
+            "开始作战",
+            "START BATTLE"
+        ],
+        "roi": [
+            860,
+            520,
+            380,
+            160
+        ],
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "post_delay": 1000,
+        "next": [
+            "MainlineAdvanceLoop"
+        ]
+    },
+    "MainlineTravelArrivedVisitPrompt": {
+        "recognition": "OCR",
+        "expected": [
+            "进入城市",
+            "进入站点",
+            "列车已经到站",
+            "已经到站"
+        ],
+        "roi": [
+            600,
+            220,
+            620,
+            280
+        ],
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "post_delay": 900,
+        "next": [
+            "MainlineAdvanceLoop"
+        ]
+    },
+    "MainlineTravelRouteEventAttack": {
+        "recognition": "OCR",
+        "expected": [
+            "护卫队迎击"
+        ],
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "post_delay": 1200,
+        "next": [
+            "MainlineAdvanceLoop"
+        ]
+    },
+    "MainlineTravelRouteEventPanel": {
+        "recognition": "OCR",
+        "expected": [
+            "应对方式"
+        ],
+        "roi": [
+            160,
+            80,
+            960,
+            560
+        ],
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "custom_action_param": {
+            "target": [
+                1009,
+                251,
+                1,
+                1
+            ]
+        },
+        "post_delay": 1200,
+        "next": [
+            "MainlineAdvanceLoop"
+        ]
+    },
+    "MainlineTravelRouteEventContinue": {
+        "recognition": "OCR",
+        "expected": [
+            "经过了一番休整之后",
+            "休整之后"
+        ],
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "custom_action_param": {
+            "target": [
+                640,
+                660,
+                1,
+                1
+            ]
+        },
+        "post_delay": 800,
+        "next": [
+            "MainlineAdvanceLoop"
+        ]
+    },
+    "MainlineTravelContinue": {
+        "recognition": "Custom",
+        "custom_recognition": "manual_two_city_business_travel_continue_available",
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "custom_action_param": {
+            "target": [
+                1248,
+                616,
+                1,
+                1
+            ]
+        },
+        "post_delay": 900,
+        "next": [
+            "MainlineAdvanceLoop"
+        ]
+    },
+    "MainlineTravelInProgress": {
+        "recognition": "OCR",
+        "expected": [
+            "剩余行程",
+            "巡航"
+        ],
+        "roi": [
+            460,
+            16,
+            380,
+            145
+        ],
+        "action": "DoNothing",
+        "post_delay": 1800,
+        "next": [
+            "MainlineAdvanceLoop"
+        ]
+    },
+    "MainlineMapHighLevelTitle": {
+        "recognition": "OCR",
+        "expected": [
+            "目标站点任务难度较高"
+        ],
+        "roi": [
+            380,
+            270,
+            560,
+            140
+        ],
+        "action": "DoNothing"
+    },
+    "MainlineMapUnverifiedPrompt": {
+        "recognition": "Or",
+        "any_of": [
+            "MainlineMapHighLevelTitle",
+            "MainlineMapDepartNow"
+        ],
+        "action": "DoNothing",
+        "timeout": 5000,
+        "next": [
+            "MainlineMapCancelUnverifiedPrompt"
+        ],
+        "on_error": [
+            "MainlineAdvanceUnknownStop"
+        ]
+    },
+    "MainlineMapCancelUnverifiedPrompt": {
+        "recognition": "And",
+        "all_of": [
+            "MainlineMapCancelButton",
+            "MainlineMapUnverifiedPrompt"
+        ],
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "post_delay": 350,
+        "timeout": 10000,
+        "next": [
+            "MainlineMapWaitPromptClosed"
+        ],
+        "on_error": [
+            "MainlineAdvanceUnknownStop"
+        ]
+    },
+    "MainlineMapCancelButton": {
+        "recognition": "OCR",
+        "expected": [
+            "^\\s*(?:取消|暂不出发|返回)\\s*$"
+        ],
+        "roi": [
+            120,
+            350,
+            770,
+            285
+        ],
+        "action": "DoNothing"
+    },
+    "MainlineMapWaitPromptClosed": {
+        "recognition": "Or",
+        "any_of": [
+            "MainlineMapUnverifiedPrompt"
+        ],
+        "action": "DoNothing",
+        "inverse": true,
+        "timeout": 8000,
+        "next": [
+            "MainlineMapUnverifiedSelection",
+            "MainlineMapFocusQuestStation"
+        ],
+        "on_error": [
+            "MainlineAdvanceUnknownStop"
+        ]
+    },
+    "MainlineMapGoButton": {
+        "recognition": "OCR",
+        "expected": [
+            "前往目的地"
+        ],
+        "roi": [
+            880,
+            590,
+            380,
+            120
+        ],
+        "action": "DoNothing"
+    },
+    "MainlineMapZeroDistance": {
+        "recognition": "OCR",
+        "expected": [
+            "^\\s*(?:路程\\s*[:：]\\s*)?0+(?:[.]0+)?\\s*[kK][mM]\\s*$"
+        ],
+        "roi": [
+            950,
+            100,
+            310,
+            90
+        ],
+        "action": "DoNothing"
+    },
+    "MainlineMapPositiveDistance": {
+        "recognition": "OCR",
+        "expected": [
+            "^\\s*(?:路程\\s*[:：]\\s*)?(?:0*[1-9][0-9]*(?:[.][0-9]+)?|0+[.][0-9]*[1-9][0-9]*)\\s*[kK][mM]\\s*$"
+        ],
+        "roi": [
+            950,
+            100,
+            310,
+            90
+        ],
+        "action": "DoNothing"
+    },
+    "MainlineMapSelectionVisible": {
+        "recognition": "Or",
+        "any_of": [
+            "MainlineMapGoButton",
+            "MainlineMapZeroDistance",
+            "MainlineMapPositiveDistance"
+        ],
+        "action": "DoNothing"
+    },
+    "MainlineMapUnverifiedSelection": {
+        "recognition": "Custom",
+        "custom_recognition": "mainline_map_unobstructed",
+        "custom_recognition_param": {
+            "target": "MainlineMapSelectionVisible",
+            "blockers": [
+                "MainlineMapUnverifiedPrompt"
+            ]
+        },
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "custom_action_param": {
+            "target": [
+                80,
+                360,
+                1,
+                1
+            ]
+        },
+        "post_delay": 350,
+        "timeout": 10000,
+        "next": [
+            "MainlineMapWaitSelectionClosed"
+        ],
+        "on_error": [
+            "MainlineAdvanceUnknownStop"
+        ]
+    },
+    "MainlineMapWaitSelectionClosed": {
+        "recognition": "Or",
+        "any_of": [
+            "MainlineMapSelectionVisible"
+        ],
+        "action": "DoNothing",
+        "inverse": true,
+        "timeout": 8000,
+        "next": [
+            "MainlineMapFocusQuestStation"
+        ],
+        "on_error": [
+            "MainlineAdvanceUnknownStop"
+        ]
+    },
+    "MainlineMapFocusLabel": {
+        "recognition": "OCR",
+        "expected": [
+            "导航至主线任务车站",
+            "主线任务车站"
+        ],
+        "roi": [
+            780,
+            560,
+            480,
+            150
+        ],
+        "action": "DoNothing"
+    },
+    "MainlineMapFocusQuestStation": {
+        "recognition": "Custom",
+        "custom_recognition": "mainline_map_unobstructed",
+        "custom_recognition_param": {
+            "target": "MainlineMapFocusLabel",
+            "blockers": [
+                "MainlineMapSelectionVisible",
+                "MainlineMapUnverifiedPrompt"
+            ]
+        },
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "post_delay": 400,
+        "timeout": 12000,
+        "next": [
+            "MainlineMapAlreadyAtStation",
+            "MainlineMapGoDestination"
+        ],
+        "on_error": [
+            "MainlineAdvanceUnknownStop"
+        ]
+    },
+    "MainlineMapAlreadyAtStation": {
+        "recognition": "Custom",
+        "custom_recognition": "mainline_map_unobstructed",
+        "custom_recognition_param": {
+            "target": "MainlineMapZeroDistance",
+            "blockers": [
+                "MainlineMapUnverifiedPrompt"
+            ]
+        },
+        "action": "DoNothing",
+        "next": [
+            "MainlineMapTapGoHome",
+            "MainlineMapTapGoHomeFallback"
+        ]
+    },
+    "MainlineMapRemoteDestination": {
+        "recognition": "And",
+        "all_of": [
+            "MainlineMapGoButton",
+            "MainlineMapPositiveDistance"
+        ],
+        "action": "DoNothing"
+    },
+    "MainlineMapGoDestination": {
+        "recognition": "Custom",
+        "custom_recognition": "mainline_map_unobstructed",
+        "custom_recognition_param": {
+            "target": "MainlineMapRemoteDestination",
+            "blockers": [
+                "MainlineMapUnverifiedPrompt"
+            ]
+        },
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "post_delay": 350,
+        "timeout": 18000,
+        "next": [
+            "MainlineMapHighLevelConfirm",
+            "MainlineMapDepartNow",
+            "MainlineTravelInProgress",
+            "MainlineTravelArrivedVisitPrompt"
+        ],
+        "on_error": [
+            "MainlineAdvanceUnknownStop"
+        ]
+    },
+    "MainlineMapHighLevelConfirm": {
+        "recognition": "And",
+        "all_of": [
+            "MainlineMapDifficultyConfirmButton",
+            "MainlineMapHighLevelTitle"
+        ],
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "post_delay": 350,
+        "timeout": 18000,
+        "next": [
+            "MainlineMapDepartNow",
+            "MainlineTravelInProgress",
+            "MainlineTravelArrivedVisitPrompt"
+        ],
+        "on_error": [
+            "MainlineAdvanceUnknownStop"
+        ]
+    },
+    "MainlineMapDifficultyConfirmButton": {
+        "recognition": "OCR",
+        "expected": [
+            "^\\s*(?:确认|确定)\\s*$"
+        ],
+        "roi": [
+            650,
+            430,
+            610,
+            120
+        ],
+        "action": "DoNothing"
+    },
+    "MainlineMapDepartNow": {
+        "recognition": "OCR",
+        "expected": [
+            "立即出发",
+            "^\\s*出发\\s*$"
+        ],
+        "roi": [
+            440,
+            360,
+            620,
+            150
+        ],
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "custom_action_param": {
+            "target_offset": [
+                170,
+                0
+            ]
+        },
+        "post_delay": 350,
+        "timeout": 18000,
+        "next": [
+            "MainlineTravelInProgress",
+            "MainlineTravelArrivedVisitPrompt"
+        ],
+        "on_error": [
+            "MainlineAdvanceUnknownStop"
+        ]
+    },
+    "MainlineMapTapGoHome": {
+        "recognition": "TemplateMatch",
+        "template": "go_home.png",
+        "threshold": 0.8,
+        "roi": [
+            120,
+            0,
+            150,
+            90
+        ],
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "post_delay": 900,
+        "next": [
+            "MainlineInLobbyCheckByOcr",
+            "MainlineInLobbyCheckByTemplate"
+        ],
+        "timeout": 12000,
+        "on_error": [
+            "MainlineAdvanceUnknownStop"
+        ]
+    },
+    "MainlineMapTapGoHomeFallback": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "custom_action_param": {
+            "target": [
+                185,
+                42,
+                1,
+                1
+            ]
+        },
+        "post_delay": 900,
+        "next": [
+            "MainlineInLobbyCheckByOcr",
+            "MainlineInLobbyCheckByTemplate"
+        ],
+        "timeout": 12000,
+        "on_error": [
+            "MainlineAdvanceUnknownStop"
+        ]
+    },
+    "MainlineAdvanceUnknownStop": {
+        "action": "Custom",
+        "custom_action": "mainline_navigation_failed",
+        "focus": {
+            "Node.Action.Starting": "【主线自动推进】当前画面未能确认，已停止。请回到车站大厅或路线图后重新运行。"
+        }
+    },
+    "MainlineInCityCheckByTemplate": {
+        "recognition": "TemplateMatch",
+        "template": "fame.png",
+        "threshold": 0.8,
+        "roi": [
+            25,
+            634,
+            74,
+            73
+        ],
+        "action": "DoNothing",
+        "next": [
+            "MainlineCityQuestDirectTap",
+            "MainlineCityQuestSweepTap"
+        ]
+    },
+    "MainlineInCityCheckByOcr": {
+        "recognition": "OCR",
+        "expected": [
+            "帮助手册",
+            "城市发展度",
+            "声望等级"
+        ],
+        "roi": [
+            0,
+            0,
+            500,
+            720
+        ],
+        "action": "DoNothing",
+        "next": [
+            "MainlineCityQuestDirectTap",
+            "MainlineCityQuestSweepTap"
+        ]
+    },
+    "MainlineCityQuestDirectTap": {
+        "recognition": "Custom",
+        "custom_recognition": "mainline_city_quest_target",
+        "custom_recognition_param": {
+            "min_score": 0.7
+        },
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "post_delay": 900,
+        "next": [
+            "MainlineAdvanceLoop"
+        ]
+    },
+    "MainlineCityQuestSweepTap": {
+        "recognition": "DirectHit",
+        "action": "Custom",
+        "custom_action": "mainline_city_sweep_and_tap_quest",
+        "custom_action_param": {
+            "min_score": 0.7,
+            "retry_rounds": 1
+        },
+        "post_delay": 900,
+        "next": [
+            "MainlineAdvanceLoop"
+        ],
+        "on_error": [
+            "MainlineAdvanceStopWithAlert"
+        ]
+    },
+    "MainlineAdvanceStopWithAlert": {
+        "recognition": "DirectHit",
+        "action": "StopTask",
+        "focus": {
+            "Node.Action.Succeeded": "【主线自动推进】未在当前城市找到主线任务图标，请检查右上角任务提示或手动介入处理。"
+        }
+    },
+    "MainlineClarityRecovery": {
+        "enabled": false,
+        "recognition": "OCR",
+        "expected": [
+            "请选择恢复方式"
+        ],
+        "roi": [
+            280,
+            320,
+            320,
+            90
+        ],
+        "action": "Custom",
+        "custom_action": "clarity_recovery_action",
+        "custom_action_param": {
+            "lollipop_use_limit": 0,
+            "roll_use_limit": 0,
+            "candy_use_limit": 0,
+            "huashi_use_limit": 0
+        },
+        "post_delay": 700,
+        "next": [
+            "MainlineAdvanceLoop"
+        ],
+        "on_error": [
+            "MainlineClarityStopWithAlert"
+        ]
+    },
+    "MainlineClarityDisabledStop": {
+        "recognition": "OCR",
+        "expected": [
+            "请选择恢复方式"
+        ],
+        "roi": [
+            280,
+            320,
+            320,
+            90
+        ],
+        "action": "StopTask",
+        "focus": {
+            "Node.Action.Succeeded": "【主线自动推进】澄明度不足（当前未开启体力恢复或配额已用完），请补充体力后继续。"
+        }
+    },
+    "MainlineClarityLowPrompt": {
+        "recognition": "OCR",
+        "expected": [
+            "澄明度不足"
+        ],
+        "roi": [
+            300,
+            180,
+            680,
+            240
+        ],
+        "action": "DoNothing",
+        "next": [
+            "MainlineClarityLowPromptConfirm"
+        ]
+    },
+    "MainlineClarityLowPromptConfirm": {
+        "recognition": "OCR",
+        "expected": [
+            "前往",
+            "确认",
+            "确定"
+        ],
+        "roi": [
+            520,
+            380,
+            560,
+            220
+        ],
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "post_delay": 700,
+        "next": [
+            "MainlineAdvanceLoop"
+        ]
+    },
+    "MainlineClarityStopWithAlert": {
+        "recognition": "DirectHit",
+        "action": "StopTask",
+        "focus": {
+            "Node.Action.Succeeded": "【主线自动推进】澄明度不足且无可用体力药，请补充体力后继续。"
+        }
+    },
+    "MainlineDifficultyWarnPrompt": {
+        "recognition": "OCR",
+        "expected": [
+            "难度过高",
+            "是否仍要继续挑战"
+        ],
+        "roi": [
+            300,
+            260,
+            680,
+            180
+        ],
+        "action": "DoNothing",
+        "next": [
+            "MainlineDifficultyWarnConfirm"
+        ]
+    },
+    "MainlineDifficultyWarnConfirm": {
+        "recognition": "OCR",
+        "expected": [
+            "确认",
+            "确定"
+        ],
+        "roi": [
+            640,
+            440,
+            560,
+            120
+        ],
+        "action": "Custom",
+        "custom_action": "guarded_click",
+        "post_delay": 700,
+        "next": [
+            "MainlineAdvanceLoop"
+        ],
+        "on_error": [
+            "MainlineAdvanceLoop"
+        ]
+    },
+    "MainlineInLobbyCheckByOcr": {
+        "recognition": "OCR",
+        "expected": [
+            "整备列车",
+            "客运管理",
+            "START ENGINE",
+            "STARTENGINE"
+        ],
+        "roi": [
+            680,
+            580,
+            600,
+            140
+        ],
+        "action": "Custom",
+        "custom_action": "mainline_lobby_advance_action",
+        "custom_action_param": {
+            "min_score": 0.7
+        },
+        "post_delay": 900,
+        "next": [
+            "MainlineAdvanceLoop"
+        ]
+    },
+    "MainlineInLobbyCheckByTemplate": {
+        "recognition": "TemplateMatch",
+        "template": "main_map.png",
+        "threshold": 0.88,
+        "roi": [
+            1100,
+            600,
+            180,
+            120
+        ],
+        "action": "Custom",
+        "custom_action": "mainline_lobby_advance_action",
+        "custom_action_param": {
+            "min_score": 0.7
+        },
+        "post_delay": 900,
+        "next": [
+            "MainlineAdvanceLoop"
+        ]
+    }
+}

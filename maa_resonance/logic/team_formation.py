@@ -236,6 +236,7 @@ def choose_next_quick_team_step(
     known_story_roles: set[str] | None = None,
     confirmed_selected: set[str] | None = None,
     max_team_size: int = 5,
+    fill_empty_only: bool = False,
 ) -> dict[str, Any]:
     """Decide the next single action on the visible quick-team row.
 
@@ -249,9 +250,10 @@ def choose_next_quick_team_step(
     visible_selected = {
         card["role"] for card in cards if card["state"] in {"selected", "story_locked"}
     }
-    active_selected = (set(confirmed_selected or ()) - {
-        card["role"] for card in cards if card["state"] == "unselected"
-    }) | visible_selected
+    active_selected = set(confirmed_selected or ())
+    if not fill_empty_only:
+        active_selected.difference_update(card["role"] for card in cards if card["state"] == "unselected")
+    active_selected.update(visible_selected)
 
     if not target_roles:
         return {
@@ -262,12 +264,13 @@ def choose_next_quick_team_step(
             "active_selected": sorted(active_selected),
         }
 
-    desired = resolve_desired_roles(target_roles, story_roles, max_team_size=max_team_size)
+    protected_roles = active_selected | story_roles if fill_empty_only else story_roles
+    desired = resolve_desired_roles(target_roles, protected_roles, max_team_size=max_team_size)
     desired_set = set(desired)
 
     # 1. Remove any non-locked selected character on the current page that is not in desired_set.
     for card in cards:
-        if card["state"] == "selected" and card["role"] not in desired_set:
+        if not fill_empty_only and card["state"] == "selected" and card["role"] not in desired_set:
             return {
                 "action": "click",
                 "reason": "deselect_unwanted",
@@ -291,6 +294,8 @@ def choose_next_quick_team_step(
     # 3. Select any desired character visible and currently unselected if team has free slots.
     if len(active_selected) < max_team_size:
         for role in desired:
+            if fill_empty_only and role in active_selected:
+                continue
             for card in cards:
                 if card["role"] == role and card["state"] == "unselected":
                     return {

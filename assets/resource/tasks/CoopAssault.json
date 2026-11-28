@@ -249,6 +249,11 @@
                         "CoopAssaultFormationEmpty": {
                             "enabled": true
                         },
+                        "CoopAssaultFormationQuickSelect": {
+                            "attach": {
+                                "fill_empty_from": "CoopAssaultFormationEmpty"
+                            }
+                        },
                         "CoopAssaultFormationStrict": {
                             "enabled": false
                         }
@@ -266,6 +271,11 @@
                         },
                         "CoopAssaultFormationStrict": {
                             "enabled": true
+                        },
+                        "CoopAssaultFormationQuickSelect": {
+                            "attach": {
+                                "fill_empty_from": ""
+                            }
                         }
                     }
                 }

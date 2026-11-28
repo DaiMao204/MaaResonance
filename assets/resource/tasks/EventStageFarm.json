@@ -275,6 +275,11 @@
                         "EventStageFarmFormationEmpty": {
                             "enabled": true
                         },
+                        "EventStageFarmFormationQuickSelect": {
+                            "attach": {
+                                "fill_empty_from": "EventStageFarmFormationEmpty"
+                            }
+                        },
                         "EventStageFarmFormationStrict": {
                             "enabled": false
                         }
@@ -292,6 +297,11 @@
                         },
                         "EventStageFarmFormationStrict": {
                             "enabled": true
+                        },
+                        "EventStageFarmFormationQuickSelect": {
+                            "attach": {
+                                "fill_empty_from": ""
+                            }
                         }
                     }
                 }
