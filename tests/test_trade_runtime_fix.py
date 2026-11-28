@@ -1209,6 +1209,169 @@ class TradeRuntimeFixTest(unittest.TestCase):
             self.assertTrue(trade.ManualTwoCityBusinessVerifyCargoAfterBuyAction().run(None, None))
             self.assertGreaterEqual(probe.call_count, 2)
 
+    def test_cargo_load_ocr_recovers_plus_misread_slash_and_prefers_explicit_and_expected_capacity(self) -> None:
+        def entry(text: str) -> list[dict]:
+            return [{"text": text, "x": 1154, "y": 388, "w": 90, "h": 15}]
+
+        cases = [
+            ("3+871950", None, (90, 950)),
+            ("3+871950", 950, (90, 950)),
+            ("3+871950", 1950, (90, 1950)),
+            ("3+241950", None, (27, 950)),
+            ("7+117711300", None, (1184, 1300)),
+            ("3+1111950", 950, (114, 950)),
+            ("3+87950", 950, (90, 950)),
+            ("3+150/950", 1016, (153, 950)),
+        ]
+        for text, expected_cap, expected_pair in cases:
+            with self.subTest(text=text, expected_capacity=expected_cap):
+                parsed = trade._manual_two_city_parse_buy_page_cargo_load(
+                    entry(text),
+                    roi=trade.BUY_PAGE_CARGO_LOAD_PROBE_ROI,
+                    expected_capacity=expected_cap,
+                )
+                self.assertIsNotNone(parsed)
+                self.assertEqual((parsed["used"], parsed["capacity"]), expected_pair)
+
+        mixed_entries = [
+            {"text": "1111950", "x": 1154, "y": 388, "w": 90, "h": 15},
+            {"text": "111/950", "x": 1154, "y": 388, "w": 90, "h": 15},
+        ]
+        explicit_wins = trade._manual_two_city_parse_buy_page_cargo_load(
+            mixed_entries,
+            roi=trade.BUY_PAGE_CARGO_LOAD_PROBE_ROI,
+        )
+        self.assertEqual((explicit_wins["used"], explicit_wins["capacity"]), (111, 950))
+        self.assertIsNone(trade._manual_two_city_parse_buy_page_cargo_load(entry("3+1111950")))
+        self.assertIsNone(trade._manual_two_city_parse_buy_page_cargo_load(entry("1+11/1113UU")))
+
+    def test_buy_checks_reuse_confirmed_capacity_and_reject_conflicting_live_readings(self) -> None:
+        leg = {"goods": ["镍基高温合金"], "goods_detail": [{"name": "镍基高温合金", "num": 111}]}
+        state = {
+            "selected_buy_goods": leg["goods"],
+            "selected_buy_goods_actual_load": {"镍基高温合金": 111},
+            "buy_selection_last_cargo_load": {"used": 114, "capacity": 950},
+        }
+        with ExitStack() as stack:
+            stack.enter_context(patch.object(trade, "_manual_two_city_state", return_value=state))
+            stack.enter_context(patch.object(trade, "_manual_two_city_active_leg", return_value=leg))
+            stack.enter_context(patch.object(trade, "_append_user_log"))
+            stack.enter_context(patch.object(trade, "_json_payload"))
+            stack.enter_context(patch.object(trade.time, "sleep"))
+            ocr = stack.enter_context(patch.object(trade, "_manual_two_city_ocr_entries"))
+            confirm = trade.ManualTwoCityBusinessConfirmBuySelectionAction()
+            verify = trade.ManualTwoCityBusinessVerifyCargoAfterBuyAction()
+            for raw, passed in [("3+1111950", True), ("3+150/1016", False)]:
+                with self.subTest(raw=raw):
+                    ocr.return_value = (True, [{"text": raw, "x": 1154, "y": 388}], [raw])
+                    self.assertEqual(confirm.run(None, None), passed)
+                    self.assertEqual(verify.run(None, None), passed)
+                    verified = state["buy_selection_verified_cargo_load"]
+                    self.assertEqual((verified["used"], verified["capacity"]), (114, 950))
+            ocr.return_value = (False, [], [])
+            self.assertTrue(verify.run(None, None))
+
+    def test_select_buy_goods_handles_plus_misread_slash_and_capacity_mismatch_guard(self) -> None:
+        leg = {
+            "buy_city": "阿妮塔发射中心",
+            "sell_city": "7号自由港",
+            "restock": 0,
+            "goods": ["高导热陶瓷", "镍基高温合金"],
+            "goods_detail": [
+                {"name": "高导热陶瓷", "num": 87},
+                {"name": "镍基高温合金", "num": 63},
+            ],
+        }
+        visible_entries = [
+            {"text": "高导热陶瓷", "center_x": 744, "center_y": 520},
+            {"text": "镍基高温合金", "center_x": 744, "center_y": 610},
+        ]
+
+        # Sequence A: real OCR misread "3+871950" then explicit "3+150/950"
+        state_a = {"completed_rounds": 0, "active_leg_index": 0}
+        ocr_sequence = iter(
+            [
+                # Before page probe (2 calls inside _manual_two_city_probe_buy_page_cargo_load)
+                (True, [{"text": "3/950", "x": 1189, "y": 384, "w": 56, "h": 21}], ["3/950"]),
+                (True, [{"text": "3/950", "x": 1189, "y": 384, "w": 56, "h": 21}], ["3/950"]),
+                # After clicking 高导热陶瓷 ("3+871950" misread)
+                (True, [{"text": "12/1113", "x": 1160, "y": 384}], ["12/1113"]),
+                (True, [{"text": "12/1113", "x": 1160, "y": 384}], ["12/1113"]),
+                (True, [{"text": "3+871950", "x": 1160, "y": 384, "w": 84, "h": 22}], ["3+871950"]),
+                (True, [{"text": "3+871950", "x": 1160, "y": 384, "w": 84, "h": 22}], ["3+871950"]),
+                # After clicking 镍基高温合金 ("3+150/950")
+                (True, [{"text": "3+150/950", "x": 1154, "y": 388, "w": 89, "h": 15}], ["3+150/950"]),
+                (True, [{"text": "3+150/950", "x": 1154, "y": 388, "w": 89, "h": 15}], ["3+150/950"]),
+            ]
+        )
+        context_a = Mock()
+        context_a.tasker.stopping = False
+        context_a.tasker.controller.post_click.return_value.wait.return_value = Mock(succeeded=True)
+        argv = types.SimpleNamespace(param=json.dumps({"page_index": 1}), reco_detail=None)
+
+        with ExitStack() as stack:
+            stack.enter_context(patch.object(trade, "_manual_two_city_state", return_value=state_a))
+            stack.enter_context(patch.object(trade, "_manual_two_city_active_leg", return_value=leg))
+            stack.enter_context(patch.object(trade, "_manual_two_city_set_active_leg_by_visible_goods", return_value=leg))
+            stack.enter_context(patch.object(trade, "_manual_two_city_configured_locked_goods", return_value=[]))
+            stack.enter_context(patch.object(trade, "_ocr_entries", return_value=visible_entries))
+            stack.enter_context(patch.object(trade, "_manual_two_city_ocr_entries", side_effect=lambda *_a, **_kw: next(ocr_sequence)))
+            stack.enter_context(patch.object(trade, "_manual_two_city_product_locked_after_click", return_value=(False, [])))
+            stack.enter_context(patch.object(trade, "_manual_two_city_update_product_status"))
+            stack.enter_context(patch.object(trade.time, "sleep"))
+            stack.enter_context(patch.object(trade, "_append_user_log"))
+            stack.enter_context(patch.object(trade, "_json_payload"))
+            ok = trade.ManualTwoCityBusinessSelectBuyGoodsAction().run(context_a, argv)
+
+        self.assertTrue(ok)
+        self.assertEqual(set(state_a["selected_buy_goods"]), {"高导热陶瓷", "镍基高温合金"})
+        self.assertEqual(state_a["selected_buy_goods_actual_load"].get("高导热陶瓷"), 87)
+        self.assertEqual(state_a["selected_buy_goods_actual_load"].get("镍基高温合金"), 63)
+        self.assertEqual(state_a["buy_selection_no_delta_goods"], [])
+        self.assertEqual(context_a.tasker.controller.post_click.call_count, 2)
+
+        # Sequence B: contradictory readings must not authorize a purchase.
+        state_b = {"completed_rounds": 0, "active_leg_index": 0}
+        single_leg = {
+            "buy_city": "阿妮塔发射中心",
+            "sell_city": "7号自由港",
+            "restock": 0,
+            "goods": ["镍基高温合金"],
+            "goods_detail": [{"name": "镍基高温合金", "num": 63}],
+        }
+        context_b = Mock()
+        context_b.tasker.stopping = False
+        context_b.tasker.controller.post_click.return_value.wait.return_value = Mock(succeeded=True)
+        with ExitStack() as stack:
+            stack.enter_context(patch.object(trade, "_manual_two_city_state", return_value=state_b))
+            stack.enter_context(patch.object(trade, "_manual_two_city_active_leg", return_value=single_leg))
+            stack.enter_context(patch.object(trade, "_manual_two_city_set_active_leg_by_visible_goods", return_value=single_leg))
+            stack.enter_context(patch.object(trade, "_manual_two_city_configured_locked_goods", return_value=[]))
+            stack.enter_context(patch.object(trade, "_ocr_entries", return_value=[visible_entries[1]]))
+            stack.enter_context(
+                patch.object(
+                    trade,
+                    "_manual_two_city_probe_buy_page_cargo_load",
+                    side_effect=[({"used": 387, "capacity": 1950}, ["387/1950"])]
+                    + [({"used": 153, "capacity": 950}, ["3+150/950"])] * 4,
+                )
+            )
+            stack.enter_context(patch.object(trade, "_manual_two_city_product_locked_after_click", return_value=(False, [])))
+            stack.enter_context(patch.object(trade, "_manual_two_city_update_product_status"))
+            stack.enter_context(patch.object(trade.time, "sleep"))
+            stack.enter_context(patch.object(trade, "_append_user_log"))
+            stack.enter_context(patch.object(trade, "_json_payload"))
+            ok_b = trade.ManualTwoCityBusinessSelectBuyGoodsAction().run(context_b, argv)
+            # The select node hands off to the confirmation guard, which stops the purchase.
+            self.assertTrue(ok_b)
+            self.assertFalse(trade.ManualTwoCityBusinessConfirmBuySelectionAction().run(context_b, argv))
+        self.assertEqual(state_b["selected_buy_goods"], [])
+        self.assertEqual(state_b["buy_selection_no_delta_goods"], [])
+        self.assertEqual(state_b["selected_buy_goods_actual_load"], {})
+        last = state_b["buy_selection_last_cargo_load"]
+        self.assertEqual((last["used"], last["capacity"]), (387, 1950))
+        context_b.tasker.controller.post_click.assert_called_once()
+
     def test_open_buy_and_sell_page_retry_nodes_in_pipeline(self) -> None:
         pipeline_path = ROOT / "assets" / "resource" / "base" / "pipeline" / "business" / "trade" / "manual_two_city_business.json"
         pipeline = json.loads(pipeline_path.read_text(encoding="utf-8"))
